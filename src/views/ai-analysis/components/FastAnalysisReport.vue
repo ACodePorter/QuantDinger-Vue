@@ -16,7 +16,7 @@
             strokeColor="#1890ff"
             :strokeWidth="8"
           />
-          <span class="progress-text">{{ progressPercent }}%</span>
+          <span class="progress-text">{{ formatProgress(progressPercent) }}%</span>
         </div>
 
         <!-- 当前步骤 -->
@@ -373,7 +373,8 @@ export default {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
     },
     progressPercent () {
-      return this.progress
+      // 限制小数位数，避免显示过多小数（如 90.20000000001%）
+      return Math.round(this.progress * 10) / 10
     },
     // 根据进度计算当前步骤
     step () {
@@ -461,6 +462,12 @@ export default {
       const num = parseFloat(value)
       if (isNaN(num)) return '--'
       return num.toFixed(decimals)
+    },
+    formatProgress (value) {
+      // 格式化进度显示，最多显示1位小数
+      const num = parseFloat(value) || 0
+      // 如果是整数，不显示小数；否则显示1位小数
+      return num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)
     },
     getScoreColor (score) {
       if (score >= 70) return '#52c41a'

@@ -52,6 +52,13 @@ export const asyncRouterMap = [
         component: () => import('@/views/trading-assistant'),
         meta: { title: 'menu.dashboard.tradingAssistant', keepAlive: true, icon: 'robot', permission: ['dashboard'] }
       },
+      // 预测市场
+      {
+        path: '/polymarket',
+        name: 'Polymarket',
+        component: () => import('@/views/polymarket'),
+        meta: { title: 'menu.dashboard.polymarket', keepAlive: false, icon: 'radar-chart', permission: ['dashboard'] }
+      },
       // 资产监测
       {
         path: '/portfolio',

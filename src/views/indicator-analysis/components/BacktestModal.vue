@@ -1043,12 +1043,13 @@ export default {
       try {
         const response = await request({
           url: '/api/indicator/backtest/precision-info',
-          method: 'post',
-          data: {
+          method: 'get',
+          params: {
             market: this.market,
             startDate: startDate.format('YYYY-MM-DD'),
             endDate: endDate.format('YYYY-MM-DD')
-          }
+          },
+          timeout: 30000 // 30s for precision info (quick query)
         })
 
         if (response.code === 1 && response.data) {
@@ -1167,6 +1168,10 @@ export default {
         // otherwise stopLoss/takeProfit/trailing configs will be missing (defaulting to 0).
         const allValues = { ...(this.form.getFieldsValue() || {}), ...(values || {}) }
 
+        // Log start time for debugging
+        const startTime = Date.now()
+        console.log('Backtest started at:', new Date().toISOString())
+
         if (!this.indicator || !this.indicator.id) {
           this.$message.error(this.$t('dashboard.indicator.backtest.noIndicatorCode'))
           return
@@ -1247,11 +1252,16 @@ export default {
             enableMtf: this.market && this.market.toLowerCase() === 'crypto'
           }
 
+          console.log('Sending backtest request with timeout: 600000ms (10 minutes)')
           const response = await request({
             url: '/api/indicator/backtest',
             method: 'post',
-            data: requestData
+            data: requestData,
+            timeout: 600000 // 10 minutes timeout for backtest (can take several minutes)
           })
+
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+          console.log(`Backtest completed in ${elapsed}s`)
 
           if (response.code === 1 && response.data) {
             // Backward compatible: data can be { runId, result } or raw result
@@ -1269,7 +1279,17 @@ export default {
             this.$message.error(response.msg || this.$t('dashboard.indicator.backtest.failed'))
           }
         } catch (error) {
-          this.$message.error(this.$t('dashboard.indicator.backtest.failed'))
+          console.error('Backtest error:', error)
+          // 提供更详细的错误信息
+          let errorMsg = this.$t('dashboard.indicator.backtest.failed')
+          if (error.code === 'ECONNABORTED' || error.message && error.message.includes('timeout')) {
+            errorMsg = '回测超时，请减少回测时间范围或使用更大的时间周期'
+          } else if (error.response) {
+            errorMsg = error.response.data?.msg || error.response.statusText || errorMsg
+          } else if (error.message) {
+            errorMsg = error.message
+          }
+          this.$message.error(errorMsg)
         } finally {
           this.stopLoadingAnimation()
           this.loading = false

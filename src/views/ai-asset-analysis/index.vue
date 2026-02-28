@@ -24,26 +24,40 @@
             class="opp-card"
             v-for="(opp, idx) in carouselItems"
             :key="'opp-' + idx"
-            :class="[opp.impact, 'market-' + (opp.market || '').toLowerCase()]"
+            :class="[opp.impact, 'market-' + (opp.market || '').toLowerCase(), { 'is-prediction-market': opp.market === 'PredictionMarket' }]"
             @click="analyzeOpportunity(opp)"
           >
             <div class="opp-top">
-              <span class="opp-symbol">{{ opp.symbol }}</span>
+              <span class="opp-symbol" :class="{ 'prediction-title': opp.market === 'PredictionMarket' }">
+                {{ opp.market === 'PredictionMarket' ? (opp.name || opp.symbol) : opp.symbol }}
+              </span>
               <a-tag :color="getMarketTagColor(opp.market)" size="small" class="opp-market-tag">
                 {{ getMarketLabel(opp.market) }}
               </a-tag>
             </div>
-            <div class="opp-price">${{ formatOppPrice(opp.price) }}</div>
-            <div class="opp-change" :class="opp.change_24h >= 0 ? 'up' : 'down'">
+            <div class="opp-price" v-if="opp.market !== 'PredictionMarket'">${{ formatOppPrice(opp.price) }}</div>
+            <div class="opp-price" v-else>{{ (opp.price || 0).toFixed(1) }}%</div>
+            <div class="opp-change" :class="opp.change_24h >= 0 ? 'up' : 'down'" v-if="opp.market !== 'PredictionMarket'">
               {{ opp.change_24h >= 0 ? '+' : '' }}{{ (opp.change_24h || 0).toFixed(1) }}%
             </div>
-            <div class="opp-signal">
+            <div class="opp-change" v-else-if="opp.ai_analysis">
+              <a-tag :color="getRecommendationColor(opp.ai_analysis.recommendation)" size="small">
+                {{ getRecommendationLabel(opp.ai_analysis.recommendation) }}
+              </a-tag>
+              <span style="margin-left: 8px; font-size: 12px; color: rgba(0,0,0,0.65);">
+                机会评分: {{ opp.ai_analysis.opportunity_score.toFixed(0) }}
+              </span>
+            </div>
+            <div class="opp-signal" v-if="opp.market !== 'PredictionMarket'">
               <a-tag :color="getSignalColor(opp.signal)" size="small">{{ getSignalLabel(opp.signal) }}</a-tag>
             </div>
             <div class="opp-reason">{{ getReasonText(opp) }}</div>
             <div class="opp-actions">
-              <span class="opp-action" @click.stop="analyzeOpportunity(opp)">
+              <span class="opp-action" v-if="opp.market !== 'PredictionMarket'" @click.stop="analyzeOpportunity(opp)">
                 <a-icon type="thunderbolt" /> {{ $t('aiAssetAnalysis.opportunities.analyze') }}
+              </span>
+              <span class="opp-action" v-else @click.stop="analyzeOpportunity(opp)">
+                <a-icon type="link" /> {{ $t('polymarket.action.viewDetail') }}
               </span>
               <span class="opp-trade-btn" v-if="opp.market === 'Crypto'" @click.stop="openQuickTradeFromOpp(opp)">
                 <a-icon type="transaction" /> {{ $t('quickTrade.tradeNow') }}
@@ -204,7 +218,8 @@ export default {
       const colors = {
         Crypto: 'purple',
         USStock: 'green',
-        Forex: 'gold'
+        Forex: 'gold',
+        PredictionMarket: 'cyan'
       }
       return colors[market] || 'default'
     },
@@ -233,12 +248,32 @@ export default {
       return price.toFixed(4)
     },
     analyzeOpportunity (opp) {
+      // 如果是预测市场，跳转到预测市场详情页
+      if (opp.market === 'PredictionMarket' && opp.market_id) {
+        this.$router.push({
+          path: '/polymarket',
+          query: { marketId: opp.market_id }
+        })
+        return
+      }
+      // 其他市场，在AI分析中打开
       this.activeTab = 'quick'
       const market = opp.market || 'Crypto'
       this.presetSymbol = `${market}:${opp.symbol}`
       this.$nextTick(() => {
         this.autoAnalyzeSignal++
       })
+    },
+    getRecommendationColor (rec) {
+      const colors = {
+        YES: 'green',
+        NO: 'red',
+        HOLD: 'default'
+      }
+      return colors[rec] || 'default'
+    },
+    getRecommendationLabel (rec) {
+      return this.$t(`polymarket.recommendation.${rec}`) || rec
     },
     // ==================== Quick Trade ====================
     onAnalysisSymbolChange (value) {
@@ -391,12 +426,24 @@ export default {
       border-left: 3px solid #d9d9d9;
       flex-shrink: 0;
 
+      // 预测市场卡片更宽
+      &.is-prediction-market {
+        width: 280px;
+        min-height: 160px;
+      }
+
       &.bullish {
         border-left-color: #52c41a;
       }
 
       &.bearish {
         border-left-color: #ff4d4f;
+      }
+
+      // 预测市场特殊样式
+      &.market-predictionmarket {
+        border-left-color: #13c2c2;
+        background: linear-gradient(135deg, #fff 0%, #f0f9ff 100%);
       }
 
       &:hover {
@@ -406,19 +453,37 @@ export default {
 
       .opp-top {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
+        gap: 8px;
       }
 
       .opp-symbol {
         font-weight: 700;
         font-size: 14px;
         color: #1a1a2e;
+        flex: 1;
+        word-break: break-word;
+        line-height: 1.4;
+
+        // 预测市场标题样式
+        &.prediction-title {
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
 
       .opp-market-tag {
         font-size: 11px;
+        flex-shrink: 0;
+        margin-left: auto;
       }
 
       .opp-price {
@@ -579,6 +644,12 @@ export default {
         background: #161b22;
         border-color: #30363d;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+        // 预测市场暗色主题样式
+        &.market-predictionmarket {
+          background: linear-gradient(135deg, #161b22 0%, #0d1419 100%);
+          border-left-color: #13c2c2;
+        }
 
         .opp-symbol {
           color: #e6edf3;

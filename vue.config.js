@@ -128,7 +128,9 @@ const vueConfig = {
       '/api': {
         target: 'http://localhost:5000',
         ws: true,
-        changeOrigin: true
+        changeOrigin: true,
+        timeout: 600000, // 10 minutes for long-running requests like backtest
+        proxyTimeout: 600000 // 10 minutes proxy timeout
       }
     }
   },

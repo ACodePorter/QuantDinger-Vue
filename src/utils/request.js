@@ -38,12 +38,15 @@ const request = axios.create({
   // API 请求的默认前缀
   // 生产环境应由 Nginx 处理，开发环境由 devServer proxy 处理
   baseURL: '/',
-  timeout: 30000, // Default request timeout 30s
+  timeout: 30000, // Default request timeout 30s (can be overridden per request)
   withCredentials: true // 允许携带 cookies
 })
 
 // Extended timeout for long-running AI analysis APIs
 export const ANALYSIS_TIMEOUT = 180000 // 3 minutes for AI analysis
+
+// Extended timeout for backtest APIs (can take several minutes)
+export const BACKTEST_TIMEOUT = 600000 // 10 minutes for backtest
 
 // 异常拦截处理器
 const errorHandler = (error) => {
@@ -86,6 +89,15 @@ const errorHandler = (error) => {
 
 // request interceptor
 request.interceptors.request.use(config => {
+  // 确保请求级别的 timeout 设置生效（不会被实例默认值覆盖）
+  // axios 会使用请求级别的 timeout，如果提供了的话
+  if (config.timeout && config.timeout > 0) {
+    // timeout 已设置，保持原值
+  } else if (config.url && config.url.includes('/backtest')) {
+    // 回测接口默认使用长超时
+    config.timeout = 600000 // 10 minutes
+  }
+
   // 使用统一的 token 获取函数
   const token = getToken()
   const lang = storage.get(LOCALE_KEY) || 'en-US'
