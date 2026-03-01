@@ -1604,7 +1604,7 @@ export default {
         paid: 'green',
         confirmed: 'green',
         pending: 'orange',
-        expired: 'default',
+        expired: 'grey', // 改为灰色，确保文字可见
         cancelled: 'default',
         failed: 'red'
       }
@@ -1917,6 +1917,15 @@ export default {
 
     &:hover {
       text-decoration: underline;
+    }
+  }
+
+  // Order status tag styles - ensure expired status is visible
+  /deep/ .ant-tag {
+    &.ant-tag-grey {
+      background-color: #f5f5f5;
+      border-color: #d9d9d9;
+      color: #595959;
     }
   }
 

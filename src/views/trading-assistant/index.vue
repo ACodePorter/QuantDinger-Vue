@@ -256,7 +256,7 @@
                     <div class="stat-content">
                       <div class="stat-label">{{ $t('trading-assistant.detail.totalInvestment') }}</div>
                       <div class="stat-value">${{ parseFloat((selectedStrategy.initial_capital ||
-                      selectedStrategy.trading_config?.initial_capital) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div>
+                        selectedStrategy.trading_config?.initial_capital) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div>
                     </div>
                   </div>
                   <div class="stat-card" v-if="currentEquity !== null">

@@ -15,7 +15,7 @@ export function fastAnalyze (params) {
     url: `${BASE_URL}/analyze`,
     method: 'post',
     data: params,
-    timeout: 60000 // 60s timeout for analysis
+    timeout: 300000 // 300s (5 minutes) timeout for analysis
   })
 }
 
@@ -28,7 +28,7 @@ export function fastAnalyzeLegacy (params) {
     url: `${BASE_URL}/analyze-legacy`,
     method: 'post',
     data: params,
-    timeout: 60000
+    timeout: 300000 // 300s (5 minutes) timeout for analysis
   })
 }
 

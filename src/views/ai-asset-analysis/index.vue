@@ -118,8 +118,38 @@
             />
           </div>
         </a-tab-pane>
+        <a-tab-pane key="polymarket">
+          <span slot="tab">
+            <a-icon type="radar-chart" />
+            {{ $t('aiAssetAnalysis.tabs.polymarket') }}
+          </span>
+          <div class="tab-body">
+            <div class="polymarket-tab-content">
+              <div class="polymarket-placeholder">
+                <div class="placeholder-icon"><a-icon type="radar-chart" /></div>
+                <h3>{{ $t('polymarket.analysis.title') }}</h3>
+                <p>{{ $t('polymarket.analysis.description') }}</p>
+                <a-button
+                  type="primary"
+                  size="large"
+                  icon="thunderbolt"
+                  @click="showPolymarketModal = true"
+                  style="margin-top: 16px;"
+                >
+                  {{ $t('polymarket.analysis.startAnalysis') }}
+                </a-button>
+              </div>
+            </div>
+          </div>
+        </a-tab-pane>
       </a-tabs>
     </a-card>
+
+    <!-- Polymarket分析对话框 -->
+    <PolymarketAnalysisModal
+      :visible="showPolymarketModal"
+      @close="showPolymarketModal = false"
+    />
 
   </div>
 </template>
@@ -130,13 +160,15 @@ import AnalysisView from '@/views/ai-analysis'
 import PortfolioView from '@/views/portfolio'
 import { getTradingOpportunities } from '@/api/global-market'
 import QuickTradePanel from '@/components/QuickTradePanel/QuickTradePanel'
+import PolymarketAnalysisModal from '@/components/PolymarketAnalysisModal'
 
 export default {
   name: 'AIAssetAnalysis',
   components: {
     AnalysisView,
     PortfolioView,
-    QuickTradePanel
+    QuickTradePanel,
+    PolymarketAnalysisModal
   },
   data () {
     return {
@@ -156,7 +188,9 @@ export default {
       qtSource: 'ai_radar',
       // Current analysis symbol (from AnalysisView)
       currentAnalysisSymbol: '',
-      currentAnalysisMarket: ''
+      currentAnalysisMarket: '',
+      // Polymarket Analysis Modal
+      showPolymarketModal: false
     }
   },
   computed: {
@@ -248,12 +282,13 @@ export default {
       return price.toFixed(4)
     },
     analyzeOpportunity (opp) {
-      // 如果是预测市场，跳转到预测市场详情页
-      if (opp.market === 'PredictionMarket' && opp.market_id) {
-        this.$router.push({
-          path: '/polymarket',
-          query: { marketId: opp.market_id }
-        })
+      // 如果是预测市场，打开分析对话框
+      if (opp.market === 'PredictionMarket') {
+        // 切换到polymarket标签页并打开分析对话框
+        this.activeTab = 'polymarket'
+        this.showPolymarketModal = true
+        // 如果有market_id，可以预填充到输入框（需要修改对话框组件支持）
+        // 暂时先打开对话框，让用户输入
         return
       }
       // 其他市场，在AI分析中打开
@@ -613,6 +648,32 @@ export default {
       ::v-deep .portfolio-container.embedded {
         border-radius: 0;
         overflow: hidden;
+      }
+
+      .polymarket-tab-content {
+        padding: 40px 20px;
+        text-align: center;
+
+        .polymarket-placeholder {
+          .placeholder-icon {
+            font-size: 64px;
+            color: #1890ff;
+            margin-bottom: 24px;
+          }
+
+          h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: rgba(0, 0, 0, 0.85);
+          }
+
+          p {
+            font-size: 14px;
+            color: rgba(0, 0, 0, 0.65);
+            margin-bottom: 24px;
+          }
+        }
       }
     }
   }
