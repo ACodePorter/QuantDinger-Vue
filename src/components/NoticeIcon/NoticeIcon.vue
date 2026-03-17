@@ -154,7 +154,7 @@
 </template>
 
 <script>
-import { getStrategyNotifications } from '@/api/strategy'
+import { getStrategyNotifications, getUnreadNotificationCount } from '@/api/strategy'
 import request from '@/utils/request'
 
 export default {
@@ -166,13 +166,14 @@ export default {
       detailVisible: false,
       detailNotice: null,
       notifications: [],
+      unreadTotal: 0,
       lastFetchId: 0,
       pollingTimer: null
     }
   },
   computed: {
     unreadCount () {
-      return this.notifications.filter(n => !n.is_read).length
+      return Number(this.unreadTotal || 0)
     },
     isHtmlReport () {
       if (!this.detailNotice || !this.detailNotice.message) return false
@@ -181,7 +182,7 @@ export default {
     }
   },
   mounted () {
-    this.fetchNotifications()
+    this.fetchUnreadCount()
     this.startPolling()
   },
   beforeDestroy () {
@@ -192,13 +193,29 @@ export default {
       this.stopPolling()
       // 每30秒轮询一次
       this.pollingTimer = setInterval(() => {
-        this.fetchNotifications(true)
+        this.fetchUnreadCount(true)
+        // If popover is open, keep the list fresh too.
+        if (this.visible) {
+          this.fetchNotifications(true)
+        }
       }, 30000)
     },
     stopPolling () {
       if (this.pollingTimer) {
         clearInterval(this.pollingTimer)
         this.pollingTimer = null
+      }
+    },
+    async fetchUnreadCount (silent = false) {
+      try {
+        const res = await getUnreadNotificationCount()
+        if (res && res.code === 1 && res.data && typeof res.data.unread !== 'undefined') {
+          this.unreadTotal = Number(res.data.unread || 0)
+        }
+      } catch (e) {
+        if (!silent) {
+          // Ignore: badge can be stale, list fetch will still work.
+        }
       }
     },
     async fetchNotifications (silent = false) {
@@ -237,6 +254,7 @@ export default {
     fetchNotice () {
       if (!this.visible) {
         this.fetchNotifications()
+        this.fetchUnreadCount(true)
       }
       this.visible = !this.visible
     },
@@ -407,6 +425,7 @@ export default {
           method: 'post',
           data: { id }
         })
+        this.fetchUnreadCount(true)
       } catch (e) {
         // 忽略错误，前端已标记
       }
@@ -418,6 +437,7 @@ export default {
           url: '/api/strategies/notifications/read-all',
           method: 'post'
         })
+        this.fetchUnreadCount(true)
       } catch (e) {
         // 忽略错误
       }
@@ -429,6 +449,7 @@ export default {
           url: '/api/strategies/notifications/clear',
           method: 'delete'
         })
+        this.fetchUnreadCount(true)
       } catch (e) {
         // 忽略错误
       }

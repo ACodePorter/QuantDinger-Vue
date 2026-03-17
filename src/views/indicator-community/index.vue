@@ -77,7 +77,7 @@
       <!-- 分页 -->
       <div v-if="pagination.total > 0" class="pagination-wrapper">
         <a-pagination
-          v-model="pagination.current"
+          :current="pagination.current"
           :total="pagination.total"
           :page-size="pagination.pageSize"
           :show-total="(total) => `${$t('community.total')} ${total} ${$t('community.items')}`"
@@ -177,7 +177,7 @@
         <!-- 审核分页 -->
         <div v-if="reviewPagination.total > 0" class="pagination-wrapper">
           <a-pagination
-            v-model="reviewPagination.current"
+            :current="reviewPagination.current"
             :total="reviewPagination.total"
             :page-size="reviewPagination.pageSize"
             :show-total="(total) => `${$t('community.total')} ${total} ${$t('community.items')}`"
@@ -353,7 +353,12 @@ export default {
         })
         if (res.code === 1) {
           this.indicators = res.data.items || []
-          this.pagination.total = res.data.total || 0
+          this.pagination.total = Number(res.data.total || 0)
+          // Keep current page in range if backend total changed.
+          const totalPages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.pageSize))
+          if (this.pagination.current > totalPages) {
+            this.pagination.current = totalPages
+          }
         } else {
           this.$message.error(res.msg || this.$t('community.loadFailed'))
         }
@@ -394,7 +399,7 @@ export default {
     },
 
     handlePageChange (page) {
-      this.pagination.current = page
+      this.pagination.current = Number(page || 1)
       this.loadIndicators()
     },
 
@@ -465,7 +470,7 @@ export default {
         })
         if (res.code === 1) {
           this.pendingIndicators = res.data.items || []
-          this.reviewPagination.total = res.data.total || 0
+          this.reviewPagination.total = Number(res.data.total || 0)
         }
       } catch (e) {
         console.error('Load pending indicators failed:', e)
@@ -476,7 +481,7 @@ export default {
     },
 
     handleReviewPageChange (page) {
-      this.reviewPagination.current = page
+      this.reviewPagination.current = Number(page || 1)
       this.loadPendingIndicators()
     },
 

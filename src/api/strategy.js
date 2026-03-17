@@ -17,7 +17,8 @@ const api = {
   trades: '/api/strategies/trades',
   positions: '/api/strategies/positions',
   equityCurve: '/api/strategies/equityCurve',
-  notifications: '/api/strategies/notifications'
+  notifications: '/api/strategies/notifications',
+  unreadNotificationCount: '/api/strategies/notifications/unread-count'
 }
 
 /**
@@ -233,5 +234,15 @@ export function getStrategyNotifications (params = {}) {
     url: api.notifications,
     method: 'get',
     params
+  })
+}
+
+/**
+ * Unread notification count for header badge.
+ */
+export function getUnreadNotificationCount () {
+  return request({
+    url: api.unreadNotificationCount,
+    method: 'get'
   })
 }

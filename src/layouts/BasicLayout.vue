@@ -119,7 +119,7 @@
         </div>
         <!-- 版本号 -->
         <div class="footer-section version">
-          V2.2.2
+          V2.2.3
         </div>
       </div>
     </div>
@@ -210,8 +210,8 @@ export default {
         },
         social_accounts: [
           { name: 'GitHub', icon: 'github', url: 'https://github.com/brokermr810/QuantDinger' },
-          { name: 'X', icon: 'x', url: 'https://x.com/HenryCryption' },
-          { name: 'Discord', icon: 'discord', url: 'https://discord.gg/cn6HVE2KC' },
+          { name: 'X', icon: 'x', url: 'https://x.com/quantdinger_en' },
+          { name: 'Discord', icon: 'discord', url: 'https://discord.com/invite/tyx5B6TChr' },
           { name: 'Telegram', icon: 'telegram', url: 'https://t.me/quantdinger' },
           { name: 'YouTube', icon: 'youtube', url: 'https://youtube.com/@quantdinger' }
         ],

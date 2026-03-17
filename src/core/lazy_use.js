@@ -47,6 +47,7 @@ import {
   Descriptions,
   Space,
   Empty,
+  Pagination,
   Rate,
   AutoComplete,
   message,
@@ -107,6 +108,7 @@ Vue.use(Statistic)
 Vue.use(Descriptions)
 Vue.use(Space)
 Vue.use(Empty)
+Vue.use(Pagination)
 Vue.use(Rate)
 Vue.use(AutoComplete)
 // Textarea 是 Input 组件的一部分，通过 Vue.use(Input) 已自动注册
