@@ -2269,16 +2269,11 @@ const locale = {
   'settings.field.STRATEGY_TICK_INTERVAL_SEC': 'Tick Interval (sec)',
   'settings.field.PRICE_CACHE_TTL_SEC': 'Price Cache TTL (sec)',
   // Settings fields - Proxy
-  'settings.field.PROXY_PORT': 'Proxy Port',
-  'settings.field.PROXY_HOST': 'Proxy Host',
-  'settings.field.PROXY_SCHEME': 'Proxy Scheme',
   'settings.field.PROXY_URL': 'Full Proxy URL',
   // Settings fields - App
-  'settings.field.CORS_ORIGINS': 'CORS Origins',
   'settings.field.RATE_LIMIT': 'Rate Limit (per min)',
   'settings.field.ENABLE_CACHE': 'Enable Cache',
   'settings.field.ENABLE_REQUEST_LOG': 'Enable Request Log',
-  'settings.field.ENABLE_AI_ANALYSIS': 'Enable AI Analysis',
   // Settings fields - Memory/Reflection
   'settings.field.ENABLE_AGENT_MEMORY': 'Enable Agent Memory',
   'settings.field.AGENT_MEMORY_ENABLE_VECTOR': 'Enable Vector Retrieval (Local)',
@@ -2300,7 +2295,6 @@ const locale = {
   'settings.field.OPENROUTER_MAX_TOKENS': 'Max Tokens',
   'settings.field.OPENROUTER_TIMEOUT': 'Timeout (sec)',
   'settings.field.OPENROUTER_CONNECT_TIMEOUT': 'Connect Timeout (sec)',
-  'settings.field.AI_MODELS_JSON': 'Models JSON',
   // Settings fields - Market
   'settings.field.MARKET_TYPES_JSON': 'Market Types JSON',
   'settings.field.TRADING_SUPPORTED_SYMBOLS_JSON': 'Supported Symbols JSON',
@@ -2321,7 +2315,6 @@ const locale = {
   'settings.field.SEARCH_PROVIDER': 'Search Provider',
   'settings.field.SEARCH_MAX_RESULTS': 'Max Results',
   'settings.field.TAVILY_API_KEYS': 'Tavily API Keys',
-  'settings.field.BOCHA_API_KEYS': 'Bocha API Keys',
   'settings.field.SERPAPI_KEYS': 'SerpAPI Keys',
   'settings.field.SEARCH_GOOGLE_API_KEY': 'Google API Key',
   'settings.field.SEARCH_GOOGLE_CX': 'Google CX',
@@ -2332,7 +2325,6 @@ const locale = {
   // Note: These are optional since backend already provides English descriptions
   'settings.desc.SEARCH_PROVIDER': 'Web search provider for AI research',
   'settings.desc.TAVILY_API_KEYS': 'Tavily Search API keys, comma-separated for rotation. Free 1000 requests/month',
-  'settings.desc.BOCHA_API_KEYS': 'Bocha Search API keys, comma-separated for rotation',
   'settings.desc.SERPAPI_KEYS': 'SerpAPI keys for Google/Bing search, comma-separated for rotation',
   'settings.desc.ORDER_MODE': 'maker: Limit order first (lower fees), market: Market order (instant fill)',
   'settings.desc.MAKER_WAIT_SEC': 'Wait time for limit order fill before switching to market order',
@@ -2678,7 +2670,6 @@ const locale = {
   // Settings - Billing
   'settings.group.billing': 'Billing & Credits',
   'settings.field.BILLING_ENABLED': 'Enable Billing',
-  'settings.field.BILLING_VIP_BYPASS': 'VIP Bypass (Legacy)',
   'settings.field.BILLING_COST_AI_ANALYSIS': 'AI Analysis Cost',
   'settings.field.BILLING_COST_STRATEGY_RUN': 'Strategy Run Cost',
   'settings.field.BILLING_COST_BACKTEST': 'Backtest Cost',
@@ -2701,7 +2692,6 @@ const locale = {
   'settings.field.USDT_PAY_CONFIRM_SECONDS': 'Confirm Delay (sec)',
   'settings.field.USDT_PAY_EXPIRE_MINUTES': 'Order Expire (min)',
   'settings.desc.BILLING_ENABLED': 'Enable billing system. Users need credits to use certain features when enabled',
-  'settings.desc.BILLING_VIP_BYPASS': 'Legacy switch. If enabled, VIP users bypass ALL feature credit costs. Recommended OFF: VIP should only unlock VIP-free indicators.',
   'settings.desc.BILLING_COST_AI_ANALYSIS': 'Credits consumed per AI analysis request',
   'settings.desc.BILLING_COST_STRATEGY_RUN': 'Credits consumed when starting a strategy',
   'settings.desc.BILLING_COST_BACKTEST': 'Credits consumed per backtest run',

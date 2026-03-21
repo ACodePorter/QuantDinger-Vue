@@ -1798,16 +1798,11 @@ const locale = {
   'settings.field.STRATEGY_TICK_INTERVAL_SEC': '策略Tick間隔(秒)',
   'settings.field.PRICE_CACHE_TTL_SEC': '價格緩存TTL(秒)',
   // Settings fields - Proxy
-  'settings.field.PROXY_PORT': '代理端口',
-  'settings.field.PROXY_HOST': '代理主機',
-  'settings.field.PROXY_SCHEME': '代理協議',
   'settings.field.PROXY_URL': '完整代理URL',
   // Settings fields - App
-  'settings.field.CORS_ORIGINS': 'CORS來源',
   'settings.field.RATE_LIMIT': '速率限制(每分鐘)',
   'settings.field.ENABLE_CACHE': '啟用緩存',
   'settings.field.ENABLE_REQUEST_LOG': '啟用請求日誌',
-  'settings.field.ENABLE_AI_ANALYSIS': '啟用AI分析',
   // Settings fields - 記憶/反思
   'settings.field.ENABLE_AGENT_MEMORY': '啟用Agent記憶',
   'settings.field.AGENT_MEMORY_ENABLE_VECTOR': '啟用向量檢索(本地)',
@@ -1829,7 +1824,6 @@ const locale = {
   'settings.field.OPENROUTER_MAX_TOKENS': 'Max Tokens',
   'settings.field.OPENROUTER_TIMEOUT': '超時時間(秒)',
   'settings.field.OPENROUTER_CONNECT_TIMEOUT': '連接超時(秒)',
-  'settings.field.AI_MODELS_JSON': '模型列表(JSON)',
   // Settings fields - Market
   'settings.field.MARKET_TYPES_JSON': '市場類型(JSON)',
   'settings.field.TRADING_SUPPORTED_SYMBOLS_JSON': '支持的交易對(JSON)',
@@ -1869,7 +1863,6 @@ const locale = {
   'settings.desc.OPENROUTER_MAX_TOKENS': '每次請求最大輸出token數',
   'settings.desc.OPENROUTER_TIMEOUT': 'API請求超時時間（秒）',
   'settings.desc.OPENROUTER_CONNECT_TIMEOUT': '連接建立超時時間（秒）',
-  'settings.desc.AI_MODELS_JSON': '自定義模型列表，JSON格式，用於模型選擇器',
   'settings.desc.ENABLE_PENDING_ORDER_WORKER': '啟用後台訂單處理Worker，實盤交易必需',
   'settings.desc.PENDING_ORDER_STALE_SEC': '等待訂單超時時間，超時後標記為過期',
   'settings.desc.ORDER_MODE': 'maker: 限價單優先(手續費低)，market: 市價單(立即成交)',
@@ -1918,9 +1911,6 @@ const locale = {
   'settings.desc.AGENT_MEMORY_W_RETURNS': '記憶排序中收益表現的權重(0-1)',
   'settings.desc.ENABLE_REFLECTION_WORKER': '啟用後台自動交易反思Worker',
   'settings.desc.REFLECTION_WORKER_INTERVAL_SEC': '自動反思運行間隔（默認24小時）',
-  'settings.desc.PROXY_HOST': '代理服務器主機名或IP',
-  'settings.desc.PROXY_PORT': '代理服務器端口（留空則禁用代理）',
-  'settings.desc.PROXY_SCHEME': '代理協議類型。socks5h 表示DNS也走代理',
   'settings.desc.PROXY_URL': '完整代理URL（設置後覆蓋上面的配置）',
   'settings.desc.SEARCH_PROVIDER': '網頁搜索提供商，用於AI研究功能',
   'settings.desc.SEARCH_MAX_RESULTS': '搜索返回的最大結果數',
@@ -1928,11 +1918,9 @@ const locale = {
   'settings.desc.SEARCH_GOOGLE_CX': 'Google可編程搜索引擎ID (CX)',
   'settings.desc.SEARCH_BING_API_KEY': 'Microsoft Bing網頁搜索API密鑰',
   'settings.desc.INTERNAL_API_KEY': '內部API認證密鑰，用於服務間調用',
-  'settings.desc.CORS_ORIGINS': '允許的CORS來源（* 表示全部，或逗號分隔的列表）',
   'settings.desc.RATE_LIMIT': '每IP每分鐘的API請求限制',
   'settings.desc.ENABLE_CACHE': '啟用響應緩存以提高性能',
   'settings.desc.ENABLE_REQUEST_LOG': '記錄所有API請求日誌，用於調試',
-  'settings.desc.ENABLE_AI_ANALYSIS': '啟用AI驅動的市場分析功能',
 
   // Portfolio - 資產監測
   'portfolio.summary.totalValue': '總市值',
@@ -2225,7 +2213,6 @@ const locale = {
   // Settings - Billing
   'settings.group.billing': '計費配置',
   'settings.field.BILLING_ENABLED': '啟用計費',
-  'settings.field.BILLING_VIP_BYPASS': 'VIP免費',
   'settings.field.BILLING_COST_AI_ANALYSIS': 'AI分析消耗',
   'settings.field.BILLING_COST_STRATEGY_RUN': '策略運行消耗',
   'settings.field.BILLING_COST_BACKTEST': '回測消耗',
@@ -2234,7 +2221,6 @@ const locale = {
   'settings.field.CREDITS_REFERRAL_BONUS': '邀請獎勵',
   'settings.field.RECHARGE_TELEGRAM_URL': '充值Telegram鏈接',
   'settings.desc.BILLING_ENABLED': '啟用計費系統。啟用後，用戶使用某些功能需要消耗積分',
-  'settings.desc.BILLING_VIP_BYPASS': 'VIP用戶在有效期內可免費使用所有付費功能',
   'settings.desc.BILLING_COST_AI_ANALYSIS': '每次AI分析消耗的積分數',
   'settings.desc.BILLING_COST_STRATEGY_RUN': '啟動策略時消耗的積分數',
   'settings.desc.BILLING_COST_BACKTEST': '每次回測消耗的積分數',

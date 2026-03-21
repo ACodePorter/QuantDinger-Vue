@@ -769,9 +769,7 @@ export default {
         is_vip: false,
         vip_expires_at: null,
         billing_enabled: false,
-        vip_bypass: true,
-        feature_costs: {},
-        recharge_telegram_url: ''
+        feature_costs: {}
       },
       rechargeTelegramUrl: 'https://t.me/your_support_bot',
       // Notification settings
@@ -952,10 +950,6 @@ export default {
           // 提取计费信息
           if (res.data.billing) {
             this.billing = res.data.billing
-            // Prefer server-provided public recharge link
-            if (this.billing.recharge_telegram_url) {
-              this.rechargeTelegramUrl = this.billing.recharge_telegram_url
-            }
           }
           // 提取通知设置
           if (res.data.notification_settings) {
