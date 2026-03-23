@@ -106,18 +106,6 @@
             />
           </div>
         </a-tab-pane>
-        <a-tab-pane key="monitor">
-          <span slot="tab">
-            <a-icon type="eye" />
-            {{ $t('aiAssetAnalysis.tabs.monitor') }}
-          </span>
-          <div class="tab-body">
-            <PortfolioView
-              v-if="activeTab === 'monitor'"
-              :embedded="true"
-            />
-          </div>
-        </a-tab-pane>
         <a-tab-pane key="polymarket">
           <span slot="tab">
             <a-icon type="radar-chart" />
@@ -157,7 +145,6 @@
 <script>
 import { mapState } from 'vuex'
 import AnalysisView from '@/views/ai-analysis'
-import PortfolioView from '@/views/portfolio'
 import { getTradingOpportunities } from '@/api/global-market'
 import QuickTradePanel from '@/components/QuickTradePanel/QuickTradePanel'
 import PolymarketAnalysisModal from '@/components/PolymarketAnalysisModal'
@@ -166,7 +153,6 @@ export default {
   name: 'AIAssetAnalysis',
   components: {
     AnalysisView,
-    PortfolioView,
     QuickTradePanel,
     PolymarketAnalysisModal
   },
@@ -680,7 +666,7 @@ export default {
 
   /* ==================== Dark Theme ==================== */
   &.theme-dark {
-    background: #0d1117;
+    background: #141414;
 
     .opp-section {
       .opp-header .opp-title {
@@ -693,22 +679,22 @@ export default {
 
       .opp-carousel-wrapper {
         &::before {
-          background: linear-gradient(to right, #0d1117, transparent);
+          background: linear-gradient(to right, #141414, transparent);
         }
 
         &::after {
-          background: linear-gradient(to left, #0d1117, transparent);
+          background: linear-gradient(to left, #141414, transparent);
         }
       }
 
       .opp-card {
-        background: #161b22;
-        border-color: #30363d;
+        background: #1c1c1c;
+        border-color: #2a2a2a;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
         // 预测市场暗色主题样式
         &.market-predictionmarket {
-          background: linear-gradient(135deg, #161b22 0%, #0d1419 100%);
+          background: linear-gradient(135deg, #1c1c1c 0%, #141414 100%);
           border-left-color: #13c2c2;
         }
 
@@ -739,12 +725,12 @@ export default {
     }
 
     .workspace-card {
-      background: #161b22;
-      border-color: #30363d;
+      background: #1c1c1c;
+      border-color: #2a2a2a;
 
       .workspace-tabs {
         ::v-deep .ant-tabs-bar {
-          border-bottom-color: #30363d;
+          border-bottom-color: #2a2a2a;
         }
 
         ::v-deep .ant-tabs-tab {
@@ -761,6 +747,18 @@ export default {
 
         ::v-deep .ant-tabs-ink-bar {
           background-color: #58a6ff;
+        }
+      }
+
+      .polymarket-tab-content {
+        .polymarket-placeholder {
+          h3 {
+            color: #d4d4d4;
+          }
+
+          p {
+            color: #a3a3a3;
+          }
         }
       }
     }

@@ -1417,12 +1417,12 @@ export default {
 
 <style lang="less" scoped>
 // Design tokens
-@bg-dark: #0f172a;
-@bg-card-dark: #1e293b;
-@bg-card-hover-dark: #334155;
-@border-dark: #334155;
+@bg-dark: #141414;
+@bg-card-dark: #1c1c1c;
+@bg-card-hover-dark: #252525;
+@border-dark: #2a2a2a;
 @text-primary-dark: #f1f5f9;
-@text-secondary-dark: #94a3b8;
+@text-secondary-dark: #888888;
 
 @bg-light: #f8fafc;
 @bg-card-light: #ffffff;
@@ -1469,7 +1469,7 @@ export default {
     }
 
     .ranking-card {
-      background: rgba(51, 65, 85, 0.5);
+      background: rgba(255, 255, 255, 0.03);
       border-color: @border-dark;
 
       .rank-name { color: @text-primary-dark; }
@@ -1485,7 +1485,7 @@ export default {
       .calendar-empty { color: @text-secondary-dark; }
 
       .month-summary {
-        background: rgba(51, 65, 85, 0.5);
+        background: rgba(255, 255, 255, 0.03);
 
         .summary-label { color: @text-secondary-dark; }
       }
@@ -1493,9 +1493,9 @@ export default {
       .calendar-weekdays .weekday { color: @text-secondary-dark; }
 
       .calendar-grid .calendar-cell {
-        background: rgba(51, 65, 85, 0.3);
+        background: rgba(255, 255, 255, 0.03);
 
-        &.no-data { background: rgba(51, 65, 85, 0.2); }
+        &.no-data { background: rgba(255, 255, 255, 0.02); }
 
         &.profit {
           background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.25) 100%);
@@ -1506,7 +1506,7 @@ export default {
         }
 
         &.zero {
-          background: rgba(100, 116, 139, 0.2);
+          background: rgba(255, 255, 255, 0.03);
         }
 
         .day-number { color: @text-primary-dark; }
@@ -1519,7 +1519,7 @@ export default {
         color: @text-primary-dark;
       }
       ::v-deep .ant-table-thead > tr > th {
-        background: rgba(51, 65, 85, 0.5);
+        background: #141414;
         color: @text-secondary-dark;
         border-color: @border-dark;
       }
@@ -1528,7 +1528,7 @@ export default {
         color: @text-primary-dark;
       }
       ::v-deep .ant-table-tbody > tr:hover > td {
-        background: rgba(51, 65, 85, 0.3);
+        background: #252525;
       }
       ::v-deep .ant-table-placeholder {
         background: transparent;
@@ -2108,6 +2108,7 @@ export default {
   .table-row {
     display: flex;
     gap: 16px;
+    margin-top: 16px;
     margin-bottom: 16px;
 
     @media (max-width: 1024px) {

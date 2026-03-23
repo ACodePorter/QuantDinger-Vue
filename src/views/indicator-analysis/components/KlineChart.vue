@@ -353,11 +353,11 @@ export default {
     const themeConfig = computed(() => {
       if (chartTheme.value === 'dark') {
         return {
-          backgroundColor: '#131722',
+          backgroundColor: '#141414',
           textColor: '#d1d4dc',
           textColorSecondary: '#787b86',
-          borderColor: '#2a2e39',
-          gridLineColor: '#1f2943',
+          borderColor: '#2a2a2a',
+          gridLineColor: '#252525',
           gridLineColorDashed: '#363c4e',
           tooltipBg: 'rgba(25, 27, 32, 0.95)',
           tooltipBorder: '#333',
@@ -365,11 +365,11 @@ export default {
           tooltipTextSecondary: '#888',
           axisLabelColor: '#787b86',
           splitAreaColor: ['rgba(250,250,250,0.05)', 'rgba(200,200,200,0.02)'],
-          dataZoomBorder: '#2a2e39',
+          dataZoomBorder: '#2a2a2a',
           dataZoomFiller: 'rgba(41, 98, 255, 0.15)',
           dataZoomHandle: '#13c2c2',
           dataZoomText: 'transparent',
-          dataZoomBg: '#1f2943'
+          dataZoomBg: '#252525'
         }
       } else {
         return {
@@ -3653,8 +3653,8 @@ registerOverlay({
   -webkit-overflow-scrolling: touch;
 
   &.theme-dark {
-    background: #131722;
-    border-right-color: #2a2e39;
+    background: #141414;
+    border-right-color: #2a2a2a;
   }
 }
 
@@ -3669,7 +3669,7 @@ registerOverlay({
   display: flex;
 
   .theme-dark & {
-    background: #131722;
+    background: #141414;
   }
 }
 
@@ -3690,8 +3690,8 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .drawing-toolbar {
-  background: #131722;
-  border-right-color: #2a2e39;
+  background: #141414;
+  border-right-color: #2a2a2a;
 }
 
 .drawing-tool-btn {
@@ -3718,7 +3718,7 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .drawing-tool-btn:hover {
-  background: #1f2943;
+  background: #252525;
   color: #13c2c2;
 }
 
@@ -3729,7 +3729,7 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .drawing-tool-btn.active {
-  background: #1f2943;
+  background: #252525;
   color: #13c2c2;
   border-color: #13c2c2;
 }
@@ -3774,8 +3774,8 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .indicator-toolbar {
-  background: #131722;
-  border-bottom-color: #2a2e39;
+  background: #141414;
+  border-bottom-color: #2a2a2a;
 }
 
 .indicator-btn {
@@ -3796,8 +3796,8 @@ registerOverlay({
 
 .chart-left.theme-dark .indicator-btn {
   color: #d1d4dc;
-  background: #1f2943;
-  border-color: #2a2e39;
+  background: #252525;
+  border-color: #2a2a2a;
 }
 
 .indicator-btn:hover {
@@ -3809,7 +3809,7 @@ registerOverlay({
 .chart-left.theme-dark .indicator-btn:hover {
   color: #13c2c2;
   border-color: #13c2c2;
-  background: #1f2943;
+  background: #252525;
 }
 
 .indicator-btn.active {
@@ -3822,7 +3822,7 @@ registerOverlay({
 
 .chart-left.theme-dark .indicator-btn.active {
   color: #13c2c2;
-  background: #1f2943;
+  background: #252525;
   border-color: #13c2c2;
   box-shadow: 0 0 0 2px rgba(19, 194, 194, 0.2);
 }
@@ -3838,7 +3838,7 @@ registerOverlay({
   overflow: hidden;
 
   .theme-dark & {
-    background: #131722;
+    background: #141414;
   }
 }
 
@@ -3857,7 +3857,7 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .chart-overlay {
-  background: rgba(19, 23, 34, 0.95);
+  background: rgba(20, 20, 20, 0.95);
 }
 
 .error-box {
@@ -3872,7 +3872,7 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .initial-hint {
-  background: rgba(19, 23, 34, 0.98);
+  background: rgba(20, 20, 20, 0.98);
 }
 
 .hint-box {
@@ -3890,7 +3890,7 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .pyodide-warning {
-  background: rgba(19, 23, 34, 0.98);
+  background: rgba(20, 20, 20, 0.98);
 }
 
 .warning-box {
@@ -3976,8 +3976,8 @@ registerOverlay({
 }
 
 .chart-left.theme-dark .history-loading-hint {
-  background: rgba(19, 23, 34, 0.98) !important;
-  border-color: #2a2e39;
+  background: rgba(20, 20, 20, 0.98) !important;
+  border-color: #2a2a2a;
   color: #d1d4dc !important;
 }
 

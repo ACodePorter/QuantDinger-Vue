@@ -1931,7 +1931,7 @@ export default {
 
   // Dark theme
   &.theme-dark {
-    background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+    background: linear-gradient(180deg, #141414 0%, #1c1c1c 100%);
 
     .page-header {
       .page-title {
@@ -1944,7 +1944,7 @@ export default {
 
     .manage-tabs {
       /deep/ .ant-tabs-bar {
-        border-bottom-color: #30363d;
+        border-bottom-color: #2a2a2a;
       }
       /deep/ .ant-tabs-tab {
         color: #8b949e;
@@ -1958,7 +1958,7 @@ export default {
     }
 
     .summary-cards .summary-card {
-      background: #1e222d;
+      background: #1c1c1c;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 
       .summary-info {
@@ -1979,29 +1979,29 @@ export default {
     }
 
     .user-table-card {
-      background: #1e222d;
+      background: #1c1c1c;
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 
       /deep/ .ant-card-body {
-        background: #1e222d;
+        background: #1c1c1c;
       }
 
       /deep/ .ant-table {
-        background: #1e222d;
+        background: #1c1c1c;
         color: #c9d1d9;
 
         .ant-table-thead > tr > th {
-          background: #252a36;
+          background: #252525;
           color: #e0e6ed;
-          border-bottom-color: #30363d;
+          border-bottom-color: #2a2a2a;
         }
 
         .ant-table-tbody > tr > td {
-          border-bottom-color: #30363d;
+          border-bottom-color: #2a2a2a;
         }
 
         .ant-table-tbody > tr:hover > td {
-          background: #252a36;
+          background: #252525;
         }
       }
 

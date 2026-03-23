@@ -498,7 +498,7 @@ export default {
       .page-desc { color: rgba(255, 255, 255, 0.55); }
     }
     .snapshot-card {
-      background: #161b22;
+      background: #1c1c1c;
       .snap-item {
         .snap-label { color: rgba(255, 255, 255, 0.55); }
         .snap-value { color: rgba(255, 255, 255, 0.9); }
@@ -506,7 +506,7 @@ export default {
       }
     }
     .plan-card {
-      background: #161b22;
+      background: #1c1c1c;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
       .plan-title { color: rgba(255, 255, 255, 0.9); }
       .plan-price {
@@ -779,8 +779,13 @@ export default {
   }
 }
 
-/* ===== Dark Theme (applied via parent .theme-dark) ===== */
-.theme-dark .usdt-checkout,
+/* ===== Dark Theme for USDT modal portal (body.dark / body.realdark) ===== */
+body.dark .usdt-pay-modal-wrap .ant-modal-content,
+body.realdark .usdt-pay-modal-wrap .ant-modal-content {
+  background: #1c1c1c;
+}
+
+body.dark .usdt-checkout,
 body.realdark .usdt-checkout {
   .checkout-header {
     background: linear-gradient(135deg, #1a7a5a 0%, #145c45 100%);
@@ -796,7 +801,7 @@ body.realdark .usdt-checkout {
   }
   .checkout-body {
     .qr-section {
-      .qr-frame { background: #1a1f28; border-color: rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+      .qr-frame { background: #252525; border-color: rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
       .qr-amount .amt-number { color: rgba(255,255,255,0.9); }
       .qr-amount .amt-currency { color: rgba(255,255,255,0.5); }
     }
@@ -820,6 +825,14 @@ body.realdark .usdt-checkout {
       .meta-row .meta-expire { color: rgba(255,255,255,0.45); }
     }
   }
-  .checkout-footer { border-top-color: rgba(255,255,255,0.08); }
+  .checkout-footer {
+    border-top-color: rgba(255,255,255,0.08);
+    .ant-btn:not(.ant-btn-primary) {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.8);
+      &:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); color: #fff; }
+    }
+  }
 }
 </style>

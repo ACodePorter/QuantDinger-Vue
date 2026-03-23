@@ -138,24 +138,51 @@
         </div>
         <div class="price-card entry">
           <div class="price-label">{{ $t('fastAnalysis.entryPrice') }}</div>
-          <div class="price-value">${{ formatPrice(result.trading_plan?.entry_price) }}</div>
+          <div class="price-value">${{ formatPrice(tradingPlan.entry_price) }}</div>
         </div>
         <div class="price-card stop">
           <div class="price-label">{{ $t('fastAnalysis.stopLoss') }}</div>
-          <div class="price-value negative">${{ formatPrice(result.trading_plan?.stop_loss) }}</div>
+          <div class="price-value negative">${{ formatPrice(tradingPlan.stop_loss) }}</div>
           <div class="price-hint">
-            <a-tooltip :title="$t('fastAnalysis.stopLossHint')">
+            <a-tooltip :title="stopLossHintText">
               <a-icon type="info-circle" /> {{ $t('fastAnalysis.atrBased') }}
             </a-tooltip>
           </div>
         </div>
         <div class="price-card target">
           <div class="price-label">{{ $t('fastAnalysis.takeProfit') }}</div>
-          <div class="price-value positive">${{ formatPrice(result.trading_plan?.take_profit) }}</div>
+          <div class="price-value positive">${{ formatPrice(tradingPlan.take_profit) }}</div>
           <div class="price-hint">
-            <a-tooltip :title="$t('fastAnalysis.takeProfitHint')">
+            <a-tooltip :title="takeProfitHintText">
               <a-icon type="info-circle" /> {{ $t('fastAnalysis.atrBased') }}
             </a-tooltip>
+          </div>
+        </div>
+      </div>
+
+      <!-- 多周期趋势预判 -->
+      <div v-if="trendOutlookBlocks.length || trendOutlookSummaryText" class="trend-outlook-card">
+        <div class="trend-outlook-header">
+          <a-icon type="calendar" />
+          <span>{{ $t('fastAnalysis.trendOutlookTitle') }}</span>
+        </div>
+        <div v-if="trendOutlookSummaryText" class="trend-outlook-summary">
+          {{ trendOutlookSummaryText }}
+        </div>
+        <div v-if="trendOutlookBlocks.length" class="trend-outlook-grid">
+          <div
+            v-for="row in trendOutlookBlocks"
+            :key="row.key"
+            class="trend-outlook-item"
+          >
+            <div class="to-label">{{ row.label }}</div>
+            <div class="to-trend" :class="outlookTrendClass(row.trend)">
+              {{ formatOutlookTrend(row.trend) }}
+            </div>
+            <div class="to-meta">
+              <span class="to-score">{{ row.score != null ? row.score : '--' }}</span>
+              <span class="to-str">{{ row.strength || '--' }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -288,6 +315,11 @@
         <div class="section-title">
           <a-icon type="stock" />
           <span>{{ $t('fastAnalysis.indicators') }}</span>
+          <a-tag color="blue" class="indicators-pro-badge">{{ $t('fastAnalysis.indicatorsProBadge') }}</a-tag>
+        </div>
+        <div class="indicators-methodology">
+          <a-icon type="experiment" />
+          <span>{{ $t('fastAnalysis.indicatorsProSubtitle') }}</span>
         </div>
         <div class="indicators-grid">
           <div class="indicator-item" v-if="result.indicators.rsi">
@@ -298,7 +330,7 @@
             <div class="indicator-signal">{{ translateSignal(result.indicators.rsi.signal) }}</div>
           </div>
           <div class="indicator-item" v-if="result.indicators.macd">
-            <div class="indicator-name">MACD</div>
+            <div class="indicator-name">MACD (12,26,9)</div>
             <div class="indicator-value" :class="result.indicators.macd.signal === 'bullish' ? 'bullish' : (result.indicators.macd.signal === 'bearish' ? 'bearish' : '')">
               {{ translateTrend(result.indicators.macd.trend) }}
             </div>
@@ -309,6 +341,30 @@
             <div class="indicator-value" :class="getMaTrendClass(result.indicators.moving_averages.trend)">
               {{ translateTrend(result.indicators.moving_averages.trend) }}
             </div>
+          </div>
+          <div class="indicator-item" v-if="result.indicators.volatility && result.indicators.volatility.atr != null">
+            <div class="indicator-name">ATR (14)</div>
+            <div class="indicator-value" :class="getVolatilityClass(result.indicators.volatility.level)">
+              ${{ formatPrice(result.indicators.volatility.atr) }}
+            </div>
+            <div class="indicator-signal">{{ $t('fastAnalysis.atrTrueRange') }}</div>
+          </div>
+          <div class="indicator-item" v-if="result.indicators.bollinger && result.indicators.bollinger.BB_width != null">
+            <div class="indicator-name">{{ $t('fastAnalysis.bbWidth') }}</div>
+            <div class="indicator-value">{{ formatNumber(result.indicators.bollinger.BB_width, 2) }}%</div>
+            <div class="indicator-signal">{{ $t('fastAnalysis.bbWidthHint') }}</div>
+          </div>
+          <div class="indicator-item" v-if="result.indicators.price_position != null">
+            <div class="indicator-name">{{ $t('fastAnalysis.rangePct20') }}</div>
+            <div class="indicator-value">{{ formatNumber(result.indicators.price_position, 1) }}%</div>
+            <div class="indicator-signal">{{ $t('fastAnalysis.rangePct20Hint') }}</div>
+          </div>
+          <div class="indicator-item" v-if="result.indicators.volume_ratio != null">
+            <div class="indicator-name">{{ $t('fastAnalysis.volumeRatio') }}</div>
+            <div class="indicator-value" :class="volumeRatioClass(result.indicators.volume_ratio)">
+              {{ formatNumber(result.indicators.volume_ratio, 2) }}×
+            </div>
+            <div class="indicator-signal">{{ $t('fastAnalysis.volumeRatioHint') }}</div>
           </div>
           <div class="indicator-item" v-if="result.indicators.levels">
             <div class="indicator-name">{{ $t('fastAnalysis.support') }}</div>
@@ -324,6 +380,28 @@
               {{ translateVolatility(result.indicators.volatility.level) }} ({{ result.indicators.volatility.pct }}%)
             </div>
           </div>
+        </div>
+
+        <!-- 机构风参数表：展示后端已计算的扩展字段 -->
+        <div v-if="professionalIndicatorRows.length" class="indicators-pro-wrap">
+          <div class="indicators-pro-title">
+            <a-icon type="deployment-unit" />
+            {{ $t('fastAnalysis.indicatorsProTableTitle') }}
+          </div>
+          <a-descriptions
+            bordered
+            size="small"
+            :column="2"
+            class="indicators-pro-desc"
+          >
+            <a-descriptions-item
+              v-for="row in professionalIndicatorRows"
+              :key="row.key"
+              :label="row.label"
+            >
+              <span :class="row.valueClass">{{ row.text }}</span>
+            </a-descriptions-item>
+          </a-descriptions>
         </div>
       </div>
 
@@ -455,6 +533,113 @@ export default {
       if (c.consensus_decision == null && c.consensus_score == null) return null
       return c
     },
+    /** 统一 snake_case / camelCase / 后端扩展字段 */
+    tradingPlan () {
+      const tp = this.result?.trading_plan || {}
+      const entry = tp.entry_price ?? tp.entryPrice
+      const sl = tp.stop_loss ?? tp.stopLoss ?? tp.loss_exit_price
+      const tpv = tp.take_profit ?? tp.takeProfit ?? tp.profit_target_price
+      return {
+        entry_price: entry,
+        stop_loss: sl,
+        take_profit: tpv
+      }
+    },
+    trendOutlookRaw () {
+      return this.result?.trend_outlook || this.result?.trendOutlook || null
+    },
+    trendOutlookSummaryText () {
+      const s = this.result?.trend_outlook_summary || this.result?.trendOutlookSummary
+      return (s && String(s).trim()) ? String(s).trim() : ''
+    },
+    trendOutlookBlocks () {
+      const o = this.trendOutlookRaw
+      if (!o || typeof o !== 'object') return []
+      const keys = [
+        { key: 'next_24h', labelKey: 'fastAnalysis.outlook24h' },
+        { key: 'next_3d', labelKey: 'fastAnalysis.outlook3d' },
+        { key: 'next_1w', labelKey: 'fastAnalysis.outlook1w' },
+        { key: 'next_1m', labelKey: 'fastAnalysis.outlook1m' }
+      ]
+      return keys.map(({ key, labelKey }) => {
+        const block = o[key] || {}
+        return {
+          key,
+          label: this.$t(labelKey),
+          trend: block.trend,
+          score: block.score,
+          strength: block.strength
+        }
+      }).filter(r => {
+        const b = o[r.key]
+        return b && typeof b === 'object' && (b.trend != null || b.score != null)
+      })
+    },
+    stopLossHintText () {
+      const d = String(this.result?.decision || '').toUpperCase()
+      if (d === 'SELL') return this.$t('fastAnalysis.stopLossHintShort')
+      return this.$t('fastAnalysis.stopLossHint')
+    },
+    takeProfitHintText () {
+      const d = String(this.result?.decision || '').toUpperCase()
+      if (d === 'SELL') return this.$t('fastAnalysis.takeProfitHintShort')
+      return this.$t('fastAnalysis.takeProfitHint')
+    },
+    /** 扩展技术指标行（与后端 market_data_collector 字段对齐） */
+    professionalIndicatorRows () {
+      const ind = this.result?.indicators || {}
+      const rows = []
+      const add = (key, label, text, valueClass = '') => {
+        if (text === undefined || text === null || text === '') return
+        rows.push({ key, label, text: String(text), valueClass })
+      }
+
+      const m = ind.macd || {}
+      if (m.value != null) add('macd_dif', this.$t('fastAnalysis.macdDif'), this.formatCompactNum(m.value))
+      if (m.signal_line != null) add('macd_dea', this.$t('fastAnalysis.macdDea'), this.formatCompactNum(m.signal_line))
+      if (m.histogram != null) {
+        const h = Number(m.histogram)
+        const cls = h > 0 ? 'bullish' : (h < 0 ? 'bearish' : '')
+        add('macd_hist', this.$t('fastAnalysis.macdHist'), this.formatCompactNum(m.histogram), cls)
+      }
+
+      const ma = ind.moving_averages || {}
+      if (ma.ma5 != null) add('ma5', this.$t('fastAnalysis.ma5Label'), '$' + this.formatPrice(ma.ma5))
+      if (ma.ma10 != null) add('ma10', this.$t('fastAnalysis.ma10Label'), '$' + this.formatPrice(ma.ma10))
+      if (ma.ma20 != null) add('ma20', this.$t('fastAnalysis.ma20Label'), '$' + this.formatPrice(ma.ma20))
+
+      const bb = ind.bollinger || {}
+      if (bb.BB_upper != null) add('bb_u', this.$t('fastAnalysis.bbUpper'), '$' + this.formatPrice(bb.BB_upper))
+      if (bb.BB_middle != null) add('bb_m', this.$t('fastAnalysis.bbMiddle'), '$' + this.formatPrice(bb.BB_middle))
+      if (bb.BB_lower != null) add('bb_l', this.$t('fastAnalysis.bbLower'), '$' + this.formatPrice(bb.BB_lower))
+      if (bb.BB_width != null) add('bb_w', this.$t('fastAnalysis.bbWidthPct'), this.formatNumber(bb.BB_width, 2) + '%')
+
+      const lv = ind.levels || {}
+      if (lv.pivot != null) add('piv', this.$t('fastAnalysis.pivotStd'), '$' + this.formatPrice(lv.pivot))
+      if (lv.s1 != null) add('s1', this.$t('fastAnalysis.levelS1'), '$' + this.formatPrice(lv.s1))
+      if (lv.r1 != null) add('r1', this.$t('fastAnalysis.levelR1'), '$' + this.formatPrice(lv.r1))
+      if (lv.s2 != null) add('s2', this.$t('fastAnalysis.levelS2'), '$' + this.formatPrice(lv.s2))
+      if (lv.r2 != null) add('r2', this.$t('fastAnalysis.levelR2'), '$' + this.formatPrice(lv.r2))
+      if (lv.swing_high != null) add('sw_h', this.$t('fastAnalysis.swingHigh20'), '$' + this.formatPrice(lv.swing_high))
+      if (lv.swing_low != null) add('sw_l', this.$t('fastAnalysis.swingLow20'), '$' + this.formatPrice(lv.swing_low))
+
+      const vol = ind.volatility || {}
+      if (vol.atr != null) {
+        const pct = vol.pct != null ? this.formatNumber(vol.pct, 2) + '% ATR/Price' : ''
+        add('atr14', this.$t('fastAnalysis.atr14Label'), '$' + this.formatPrice(vol.atr) + (pct ? ' · ' + pct : ''))
+      }
+
+      const tl = ind.trading_levels || {}
+      if (tl.risk_reward_ratio != null && Number(tl.risk_reward_ratio) > 0) {
+        add('rr', this.$t('fastAnalysis.rrLongRef'), '1 : ' + this.formatNumber(tl.risk_reward_ratio, 2))
+      }
+
+      if (ind.current_price != null) {
+        add('cref', this.$t('fastAnalysis.refClose'), '$' + this.formatPrice(ind.current_price))
+      }
+
+      return rows
+    },
     insufficientCreditsError () {
       if (!this.error) return false
       const e = String(this.error)
@@ -527,6 +712,33 @@ export default {
       const num = parseFloat(value) || 0
       // 如果是整数，不显示小数；否则显示1位小数
       return num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)
+    },
+    formatOutlookTrend (trend) {
+      const t = String(trend || 'HOLD').toUpperCase()
+      if (t === 'BUY') return this.$t('fastAnalysis.outlookBull')
+      if (t === 'SELL') return this.$t('fastAnalysis.outlookBear')
+      return this.$t('fastAnalysis.outlookNeutral')
+    },
+    outlookTrendClass (trend) {
+      const t = String(trend || '').toUpperCase()
+      if (t === 'BUY') return 'trend-bull'
+      if (t === 'SELL') return 'trend-bear'
+      return 'trend-neutral'
+    },
+    formatCompactNum (value) {
+      const x = parseFloat(value)
+      if (Number.isNaN(x)) return '--'
+      if (x !== 0 && Math.abs(x) < 1e-4) return x.toExponential(2)
+      if (Math.abs(x) < 1) return x.toFixed(6)
+      if (Math.abs(x) < 100) return x.toFixed(4)
+      return x.toFixed(2)
+    },
+    volumeRatioClass (ratio) {
+      const r = parseFloat(ratio)
+      if (Number.isNaN(r)) return ''
+      if (r >= 1.5) return 'bullish'
+      if (r <= 0.65) return 'bearish'
+      return ''
     },
     getScoreColor (score) {
       if (score >= 70) return '#52c41a'
@@ -961,6 +1173,86 @@ export default {
       }
     }
 
+    .trend-outlook-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border-left: 4px solid #722ed1;
+
+      .trend-outlook-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #262626;
+        margin-bottom: 10px;
+
+        .anticon { color: #722ed1; }
+      }
+
+      .trend-outlook-summary {
+        font-size: 13px;
+        line-height: 1.65;
+        color: #595959;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        background: #fafafa;
+        border-radius: 8px;
+      }
+
+      .trend-outlook-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+
+      .trend-outlook-item {
+        background: #fafafa;
+        border-radius: 8px;
+        padding: 10px 12px;
+        text-align: center;
+
+        .to-label {
+          font-size: 11px;
+          color: #8c8c8c;
+          margin-bottom: 6px;
+        }
+
+        .to-trend {
+          font-size: 14px;
+          font-weight: 700;
+          margin-bottom: 6px;
+
+          &.trend-bull { color: #52c41a; }
+          &.trend-bear { color: #ff4d4f; }
+          &.trend-neutral { color: #faad14; }
+        }
+
+        .to-meta {
+          font-size: 11px;
+          color: #8c8c8c;
+          display: flex;
+          justify-content: center;
+          gap: 8px;
+        }
+      }
+    }
+
+    @media (max-width: 992px) {
+      .trend-outlook-card .trend-outlook-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 576px) {
+      .trend-outlook-card .trend-outlook-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     // Scores Row
     .scores-row {
       display: grid;
@@ -1111,13 +1403,75 @@ export default {
       .section-title {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
         font-size: 16px;
         font-weight: 600;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
         color: #262626;
 
         .anticon { color: #1890ff; }
+
+        .indicators-pro-badge {
+          margin: 0;
+          font-size: 11px;
+          line-height: 18px;
+          font-weight: 500;
+        }
+      }
+
+      .indicators-methodology {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 12px;
+        line-height: 1.55;
+        color: #595959;
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        background: linear-gradient(90deg, #f0f5ff 0%, #fafafa 100%);
+        border-radius: 8px;
+        border: 1px solid #e6f0ff;
+
+        .anticon {
+          color: #2f54eb;
+          margin-top: 2px;
+        }
+      }
+
+      .indicators-pro-wrap {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px dashed #e8e8e8;
+
+        .indicators-pro-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #434343;
+          margin-bottom: 12px;
+
+          .anticon { color: #722ed1; }
+        }
+
+        .indicators-pro-desc {
+          .ant-descriptions-item-label {
+            font-size: 12px;
+            color: #8c8c8c;
+            width: 38%;
+            font-weight: 500;
+          }
+
+          .ant-descriptions-item-content {
+            font-size: 12px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+          }
+
+          .bullish { color: #52c41a; font-weight: 600; }
+          .bearish { color: #ff4d4f; font-weight: 600; }
+        }
       }
 
       .indicators-grid {
@@ -1235,25 +1589,30 @@ export default {
 
 // Dark Theme
 .fast-analysis-report.theme-dark {
-  background: linear-gradient(135deg, #1e222d 0%, #131722 100%);
+  background: linear-gradient(135deg, #141414 0%, #1c1c1c 100%);
 
   .loading-content .loading-text { color: #00e5ff; }
   .empty-content .empty-title { color: #d1d4dc; }
 
   .decision-card {
-    background: #2a2e39;
+    background: #1c1c1c;
     border-left-color: #1890ff;
 
     &.decision-buy {
-      background: linear-gradient(135deg, rgba(82, 196, 26, 0.1) 0%, #2a2e39 100%);
+      background: linear-gradient(135deg, rgba(82, 196, 26, 0.1) 0%, #1c1c1c 100%);
     }
 
     &.decision-sell {
-      background: linear-gradient(135deg, rgba(255, 77, 79, 0.1) 0%, #2a2e39 100%);
+      background: linear-gradient(135deg, rgba(255, 77, 79, 0.1) 0%, #1c1c1c 100%);
     }
 
     &.decision-hold {
-      background: linear-gradient(135deg, rgba(250, 173, 20, 0.1) 0%, #2a2e39 100%);
+      background: linear-gradient(135deg, rgba(250, 173, 20, 0.1) 0%, #1c1c1c 100%);
+    }
+
+    .confidence-ring {
+      .confidence-value { color: #e5e5e5; }
+      .confidence-label { color: #a3a3a3; }
     }
 
     .decision-summary {
@@ -1277,7 +1636,7 @@ export default {
   }
 
   .detailed-analysis .analysis-card {
-    background: linear-gradient(135deg, #2a2e39 0%, #1e222d 100%);
+    background: linear-gradient(135deg, #1c1c1c 0%, #141414 100%);
 
     &.technical { border-left-color: #1890ff; }
     &.fundamental { border-left-color: #722ed1; }
@@ -1292,13 +1651,74 @@ export default {
     }
   }
 
+  .trend-outlook-card {
+    background: #1c1c1c;
+    border-left-color: #b37feb;
+
+    .trend-outlook-header {
+      color: #d1d4dc;
+      .anticon { color: #b37feb; }
+    }
+
+    .trend-outlook-summary {
+      background: #252525;
+      color: #868993;
+    }
+
+    .trend-outlook-item {
+      background: #252525;
+
+      .to-label,
+      .to-meta {
+        color: #868993;
+      }
+    }
+  }
+
   .price-card,
   .score-item,
   .detail-section,
   .indicators-section,
   .feedback-section {
-    background: #2a2e39;
+    background: #1c1c1c;
     color: #d1d4dc;
+
+    .indicators-methodology {
+      background: linear-gradient(90deg, rgba(120, 120, 120, 0.12) 0%, #252525 100%);
+      border-color: rgba(180, 180, 180, 0.2);
+      color: #868993;
+
+      .anticon { color: #69c0ff; }
+    }
+
+    .indicators-pro-wrap {
+      border-top-color: #2a2a2a;
+
+      .indicators-pro-title {
+        color: #d1d4dc;
+        .anticon { color: #b37feb; }
+      }
+
+      .indicators-pro-desc {
+        .ant-descriptions-bordered .ant-descriptions-item-label,
+        .ant-descriptions-bordered .ant-descriptions-item-content {
+          background: #1c1c1c;
+          border-color: #2a2a2a !important;
+          color: #d1d4dc;
+        }
+
+        .ant-descriptions-bordered .ant-descriptions-item-label {
+          color: #868993;
+        }
+
+        .ant-descriptions-item-content > span {
+          color: #d1d4dc !important;
+        }
+
+        .bullish { color: #73d13d; }
+        .bearish { color: #ff7875; }
+      }
+    }
 
     .price-label,
     .score-header,
@@ -1318,17 +1738,17 @@ export default {
   }
 
   .score-item.overall {
-    background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, #2a2e39 100%);
-    border-color: #1890ff;
+    background: linear-gradient(135deg, rgba(120, 120, 120, 0.12) 0%, #1c1c1c 100%);
+    border-color: #3a3a3a;
   }
 
   .detail-list li {
     color: #868993;
-    border-bottom-color: #363c4e;
+    border-bottom-color: #2a2a2a;
   }
 
   .indicators-grid .indicator-item {
-    background: #363c4e;
+    background: #252525;
   }
 }
 </style>

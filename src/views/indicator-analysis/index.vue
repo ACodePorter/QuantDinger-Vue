@@ -3108,12 +3108,12 @@ getMarketColor,
 :global(.ant-layout.realdark) .chart-container,
 :global(.ant-pro-layout.dark) .chart-container,
 :global(.ant-pro-layout.realdark) .chart-container {
-  background: #131722;
+  background: #141414;
   color: #d1d4dc;
 
   .chart-header {
-    background: #1e222d;
-    border-bottom-color: #2a2e39;
+    background: #1c1c1c;
+    border-bottom-color: #2a2a2a;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 
     .header-top {
@@ -3123,8 +3123,8 @@ getMarketColor,
         }
 
         .market-tag {
-          color: #868993;
-          background: #2a2e39;
+          color: #888;
+          background: #2a2a2a;
         }
 
         .price-info {
@@ -3161,8 +3161,8 @@ getMarketColor,
 
   .symbol-select {
     :deep(.ant-select-selection) {
-      background-color: #1e222d;
-      border-color: #2a2e39;
+        background-color: #1c1c1c;
+        border-color: #2a2a2a;
       color: #d1d4dc;
 
       &:hover {
@@ -3185,27 +3185,27 @@ getMarketColor,
   }
 
   .timeframe-group {
-    background: #2a2e39;
+    background: #2a2a2a;
 
     .timeframe-item {
       color: #868993;
 
       &:hover {
         color: #1890ff;
-        background: #1e222d;
+        background: #1c1c1c;
       }
 
       &.active {
         color: #1890ff;
-        background: #1e222d;
+        background: #1c1c1c;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
       }
     }
   }
 
   .mobile-symbol-price {
-    background: #1e222d;
-    border-bottom-color: #2a2e39;
+    background: #1c1c1c;
+    border-bottom-color: #2a2a2a;
 
     .mobile-symbol-label {
       margin-left: 5px;
@@ -3213,8 +3213,8 @@ getMarketColor,
     }
 
     .mobile-market-tag {
-      color: #868993;
-      background: #21283c;
+      color: #888;
+      background: #2a2a2a;
     }
 
     .mobile-price-info {
@@ -3229,15 +3229,15 @@ getMarketColor,
   }
 
   .chart-right {
-    background: #1e222d;
-    border-left-color: #2a2e39;
+    background: #1c1c1c;
+    border-left-color: #2a2a2a;
 
     .indicators-panel {
-      background: #1e222d;
+      background: #1c1c1c;
 
       .panel-header {
-        background: #1e222d;
-        border-bottom-color: #2a2e39;
+        background: #1c1c1c;
+        border-bottom-color: #2a2a2a;
         color: #d1d4dc;
 
         .realtime-toggle-btn {
@@ -3245,28 +3245,28 @@ getMarketColor,
 
           &:hover {
             color: #1890ff;
-            background: #2a2e39;
+            background: #2a2a2a;
           }
 
           &.active {
             color: #1890ff;
-            background: #2a2e39;
+            background: #2a2a2a;
           }
         }
       }
 
       .panel-body {
-        background: #1e222d;
+        background: #1c1c1c;
       }
 
       .indicator-section {
-        border-bottom-color: #2a2e39;
+        border-bottom-color: #2a2a2a;
       }
 
       .section-label {
         color: #868993;
-        background: #2a2e39;
-        border-bottom-color: #2a2e39;
+        background: #2a2a2a;
+        border-bottom-color: #2a2a2a;
 
         .section-label-left {
           .collapse-icon {
@@ -3288,16 +3288,16 @@ getMarketColor,
       }
 
       .indicator-card {
-        background: #1e222d;
-        border-color: #2a2e39;
+        background: #1c1c1c;
+        border-color: #2a2a2a;
 
         &:hover {
-          background: #2a2e39;
+          background: #2a2a2a;
           border-color: #1890ff;
         }
 
         &.active {
-          background: #2a2e39;
+          background: #2a2a2a;
           border-color: #1890ff;
 
           .card-name {
@@ -3393,30 +3393,30 @@ getMarketColor,
   /* 移动端适配 */
   @media (max-width: 768px) {
     .chart-header {
-      background: #1e222d;
-      border-bottom-color: #2a2e39;
+      background: #1c1c1c;
+      border-bottom-color: #2a2a2a;
 
       .current-symbol {
-        border-top-color: #2a2e39;
+        border-top-color: #2a2a2a;
       }
     }
 
     .chart-left {
-      border-bottom-color: #2a2e39;
+      border-bottom-color: #2a2a2a;
     }
 
     .chart-right {
-      border-top-color: #2a2e39;
+      border-top-color: #2a2a2a;
       max-height: 500px !important;
       .indicators-panel {
         .panel-header {
-          background: #1e222d;
-          border-bottom-color: #2a2e39;
+          background: #1c1c1c;
+          border-bottom-color: #2a2a2a;
         }
 
         .mobile-indicator-tabs {
           :deep(.ant-tabs-bar) {
-            border-bottom-color: #2a2e39;
+            border-bottom-color: #2a2a2a;
           }
 
           :deep(.ant-tabs-tab) {
@@ -3432,15 +3432,15 @@ getMarketColor,
           }
 
           .mobile-create-btn-wrapper {
-            background: #1e222d;
+            background: #1c1c1c;
           }
         }
       }
     }
 
     .mobile-symbol-price {
-      background: #1e222d;
-      border-bottom-color: #2a2e39;
+      background: #1c1c1c;
+      border-bottom-color: #2a2a2a;
 
       .mobile-symbol-label {
         margin-left: 5px;
@@ -3551,7 +3551,7 @@ getMarketColor,
 
     .symbol-list {
       border-color: #363c4e;
-      background-color: #2a2e39;
+      background-color: #2a2a2a;
 
       .symbol-list-item {
         &:hover {

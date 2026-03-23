@@ -172,7 +172,7 @@
                         :placeholder="item.default ? `${$t('settings.default')}: ${item.default}` : $t('settings.pleaseSelect')"
                       >
                         <a-select-option
-                          v-for="opt in getSelectOptions(item.options)"
+                          v-for="opt in getSelectOptions(item)"
                           :key="opt.value"
                           :value="opt.value"
                         >
@@ -256,16 +256,25 @@ export default {
     // 兼容后端 schema options 两种格式：
     // - string[]: ['openrouter','openai', ...]
     // - {value,label}[]: [{value:'openrouter',label:'OpenRouter'}, ...]
-    getSelectOptions (options) {
-      const arr = Array.isArray(options) ? options : []
+    getSelectOptions (item) {
+      const options = item && Array.isArray(item.options) ? item.options : []
+      const arr = options
       return arr.map(opt => {
-        if (opt && typeof opt === 'object') {
-          return {
-            value: opt.value != null ? String(opt.value) : '',
-            label: opt.label != null ? String(opt.label) : String(opt.value || '')
+        const optObj = (opt && typeof opt === 'object')
+          ? { value: opt.value != null ? String(opt.value) : '', label: opt.label != null ? String(opt.label) : String(opt.value || '') }
+          : { value: String(opt), label: String(opt) }
+        // Try i18n first: settings.option.<ITEM_KEY>.<value>
+        const i18nKey = item && item.key ? `settings.option.${item.key}.${optObj.value}` : ''
+        if (i18nKey) {
+          const translated = this.$t(i18nKey)
+          if (translated && translated !== i18nKey) {
+            optObj.label = translated
           }
         }
-        return { value: String(opt), label: String(opt) }
+        if (opt && typeof opt === 'object') {
+          return optObj
+        }
+        return optObj
       }).filter(o => o.value !== '')
     },
     async loadSettings () {
@@ -701,10 +710,10 @@ export default {
 
   // 暗黑主题
   &.theme-dark {
-    background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+    background: linear-gradient(180deg, #141414 0%, #1c1c1c 100%);
 
     .restart-alert {
-      background: #2d333b;
+      background: #1c1c1c;
       border-color: #b08800;
     }
 
@@ -720,11 +729,11 @@ export default {
 
     .settings-collapse {
       /deep/ .ant-collapse-item {
-        background: #1e222d;
+        background: #1c1c1c;
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 
         .ant-collapse-header {
-          background: linear-gradient(135deg, #252a36 0%, #1e222d 100%);
+          background: linear-gradient(135deg, #252525 0%, #1c1c1c 100%);
           color: #e0e6ed;
           border-bottom-color: rgba(255, 255, 255, 0.06);
 
@@ -739,10 +748,10 @@ export default {
         }
 
         .ant-collapse-content {
-          background: #1e222d;
+          background: #1c1c1c;
 
           .ant-collapse-content-box {
-            background: #1e222d;
+            background: #1c1c1c;
           }
         }
       }
@@ -782,8 +791,8 @@ export default {
       /deep/ .ant-input-password,
       /deep/ .ant-input-number,
       /deep/ .ant-select-selection {
-        background: #0d1117;
-        border-color: #30363d;
+        background: #141414;
+        border-color: #2a2a2a;
         color: #c9d1d9;
 
         &:hover,
@@ -807,7 +816,7 @@ export default {
     }
 
     .settings-footer {
-      background: #1e222d;
+      background: #1c1c1c;
       border-top: 1px solid rgba(255, 255, 255, 0.06);
       box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
     }

@@ -4,10 +4,11 @@
     :title="$t('polymarket.analysis.title')"
     :width="900"
     :footer="null"
+    :wrapClassName="isDarkTheme ? 'qd-dark-modal' : ''"
     @cancel="handleClose"
     :maskClosable="false"
   >
-    <div class="polymarket-analysis-modal">
+    <div class="polymarket-analysis-modal" :class="{ 'theme-dark': isDarkTheme }">
       <a-tabs default-active-key="analyze" @change="handleTabChange">
         <a-tab-pane key="analyze" :tab="$t('polymarket.analysis.tabAnalyze')">
           <!-- 输入区域 -->
@@ -148,7 +149,7 @@
                   show-icon
                   style="margin-top: 16px;"
                 />
-                <div v-if="analysisResult.remaining_credits !== undefined" style="margin-top: 8px; text-align: right; color: rgba(0,0,0,0.65);">
+                <div v-if="analysisResult.remaining_credits !== undefined" style="margin-top: 8px; text-align: right;" :style="{ color: isDarkTheme ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)' }">
                   {{ $t('polymarket.analysis.remainingCredits', { credits: analysisResult.remaining_credits.toFixed(0) }) }}
                 </div>
               </div>
@@ -168,7 +169,7 @@
           <!-- 加载状态 -->
           <div class="loading-section" v-if="analyzing">
             <a-spin size="large" />
-            <p style="margin-top: 16px; color: rgba(0,0,0,0.65);">
+            <p :style="{ marginTop: '16px', color: isDarkTheme ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)' }">
               {{ $t('polymarket.analysis.analyzing') }}
             </p>
           </div>
@@ -208,6 +209,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 import { analyzePolymarketMarket, getPolymarketHistory } from '@/api/polymarket'
 
 export default {
@@ -234,6 +236,14 @@ export default {
         showTotal: (total) => this.$t('polymarket.analysis.historyTotal', { total })
       },
       historyColumns: []
+    }
+  },
+  computed: {
+    ...mapState({
+      navTheme: state => state.app.theme
+    }),
+    isDarkTheme () {
+      return this.navTheme === 'dark' || this.navTheme === 'realdark'
     }
   },
   methods: {
@@ -529,15 +539,82 @@ export default {
   }
 }
 
-.theme-dark {
-  .polymarket-analysis-modal {
+.polymarket-analysis-modal.theme-dark {
+    /deep/ .ant-tabs-bar {
+      border-bottom-color: #2a2a2a;
+    }
+
+    /deep/ .ant-tabs-tab {
+      color: #a3a3a3 !important;
+    }
+
+    /deep/ .ant-tabs-tab-active {
+      color: #d4d4d4 !important;
+    }
+
+    /deep/ .ant-tabs-ink-bar {
+      background: #58a6ff !important;
+    }
+
+    /deep/ .ant-divider {
+      color: #d4d4d4;
+      border-top-color: #2a2a2a;
+    }
+
+    /deep/ .ant-divider-inner-text {
+      color: #d4d4d4 !important;
+    }
+
+    /deep/ .ant-input,
+    /deep/ .ant-input-number,
+    /deep/ .ant-input-affix-wrapper,
+    /deep/ .ant-input-textarea textarea {
+      background: #141414 !important;
+      border-color: #2a2a2a !important;
+      color: #d4d4d4 !important;
+    }
+
+    /deep/ .ant-table {
+      background: #1c1c1c;
+      color: #d4d4d4;
+    }
+
+    /deep/ .ant-table-thead > tr > th {
+      background: #252525;
+      color: #d4d4d4;
+      border-bottom-color: #2a2a2a;
+    }
+
+    /deep/ .ant-table-tbody > tr > td {
+      background: #1c1c1c;
+      color: #d4d4d4;
+      border-bottom-color: #2a2a2a;
+    }
+
+    /deep/ .ant-btn-link {
+      color: #58a6ff !important;
+    }
+
+    /deep/ .ant-alert {
+      background: #1c1c1c;
+      border-color: #2a2a2a;
+    }
+
+    /deep/ .ant-alert-message {
+      color: #d4d4d4 !important;
+    }
+
+    /deep/ .ant-alert-description {
+      color: #a3a3a3 !important;
+    }
+
     .market-info {
       h3 {
-        color: rgba(255, 255, 255, 0.85);
+        color: #d4d4d4;
       }
       .market-meta {
         .meta-item {
-          color: rgba(255, 255, 255, 0.65);
+          color: #a3a3a3;
         }
       }
     }
@@ -545,18 +622,29 @@ export default {
     .analysis-result {
       .probability-comparison {
         .prob-item {
-          background: rgba(255, 255, 255, 0.05);
+          background: #252525;
+          border: 1px solid #2a2a2a;
           .prob-label {
-            color: rgba(255, 255, 255, 0.65);
+            color: #a3a3a3;
+          }
+          .prob-value {
+            color: #e5e5e5;
+          }
+          .prob-value.divergence-neutral {
+            color: #b3b3b3;
           }
         }
       }
 
       .recommendation-section {
         .rec-card {
-          background: rgba(255, 255, 255, 0.05);
+          background: #252525;
+          border: 1px solid #2a2a2a;
           .rec-label {
-            color: rgba(255, 255, 255, 0.65);
+            color: #a3a3a3;
+          }
+          .rec-value {
+            color: #e5e5e5;
           }
         }
       }
@@ -564,13 +652,12 @@ export default {
       .reasoning-section,
       .key-factors-section {
         h4 {
-          color: rgba(255, 255, 255, 0.85);
+          color: #d4d4d4;
         }
         .reasoning-text {
-          color: rgba(255, 255, 255, 0.85);
+          color: #d4d4d4;
         }
       }
     }
-  }
 }
 </style>

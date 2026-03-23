@@ -1968,7 +1968,7 @@ export default {
 
   // Dark theme
   &.theme-dark {
-    background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+    background: linear-gradient(180deg, #141414 0%, #1c1c1c 100%);
 
     .page-header {
       .page-title {
@@ -1981,11 +1981,11 @@ export default {
 
     .profile-card,
     .edit-card {
-      background: #1e222d;
+      background: #1c1c1c;
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 
       /deep/ .ant-card-body {
-        background: #1e222d;
+        background: #1c1c1c;
       }
     }
 
@@ -1998,7 +1998,7 @@ export default {
 
       .profile-info {
         .info-item {
-          border-bottom-color: #30363d;
+          border-bottom-color: #2a2a2a;
 
           .label {
             color: #8b949e;
@@ -2013,7 +2013,7 @@ export default {
 
     .edit-card {
       /deep/ .ant-tabs-bar {
-        border-bottom-color: #30363d;
+        border-bottom-color: #2a2a2a;
       }
 
       /deep/ .ant-tabs-tab {
@@ -2034,8 +2034,8 @@ export default {
 
       /deep/ .ant-input,
       /deep/ .ant-input-password {
-        background: #0d1117;
-        border-color: #30363d;
+        background: #141414;
+        border-color: #2a2a2a;
         color: #c9d1d9;
 
         &:hover,
@@ -2046,7 +2046,7 @@ export default {
     }
 
     .credits-card {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      background: linear-gradient(135deg, #1c1c1c 0%, #1a1a1a 50%, #141414 100%);
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 
       /deep/ .ant-divider {
@@ -2069,28 +2069,28 @@ export default {
     // Tables in tabs (消费记录、交易所配置、邀请列表)
     /deep/ .ant-table-wrapper {
       .ant-table {
-        background: #1e222d;
+        background: #1c1c1c;
         color: #c9d1d9;
       }
 
       .ant-table-thead > tr > th {
-        background: #2a2e39;
+        background: #2a2a2a;
         color: #c9d1d9;
-        border-bottom-color: #30363d;
+        border-bottom-color: #2a2a2a;
       }
 
       .ant-table-tbody > tr > td {
-        background: #1e222d;
+        background: #1c1c1c;
         color: #c9d1d9;
-        border-bottom-color: #30363d;
+        border-bottom-color: #2a2a2a;
       }
 
       .ant-table-tbody > tr:hover > td {
-        background: #2a2e39;
+        background: #2a2a2a;
       }
 
       .ant-table-placeholder {
-        background: #1e222d;
+        background: #1c1c1c;
         color: #8b949e;
       }
 
@@ -2129,8 +2129,8 @@ export default {
       /deep/ .ant-input-password,
       /deep/ .ant-select-selector,
       /deep/ .ant-input-number {
-        background: #0d1117;
-        border-color: #30363d;
+        background: #141414;
+        border-color: #2a2a2a;
         color: #c9d1d9;
 
         &::placeholder {
@@ -2172,8 +2172,8 @@ export default {
     // 通知设置表单
     .notification-settings-form {
       /deep/ .ant-alert {
-        background: #1e222d;
-        border-color: #30363d;
+        background: #1c1c1c;
+        border-color: #2a2a2a;
         color: #c9d1d9;
 
         .ant-alert-message {
@@ -2221,11 +2221,27 @@ export default {
       color: #c9d1d9;
     }
 
+    // 消费记录「类型」列：带底色标签文字在暗黑下保持可读
+    /deep/ .ant-tag.ant-tag-has-color {
+      color: #ffffff !important;
+      border-color: transparent !important;
+    }
+
+    // 修复暗黑下部分小图标仍为黑色
+    /deep/ .ant-input-prefix .anticon,
+    /deep/ .ant-input-suffix .anticon,
+    /deep/ .field-hint .anticon,
+    /deep/ .email-hint .anticon,
+    /deep/ .credits-hint .anticon,
+    /deep/ .notification-settings-form .anticon {
+      color: #c9d1d9 !important;
+    }
+
     // 分页样式
     /deep/ .ant-pagination {
       .ant-pagination-item {
-        background: #1e222d;
-        border-color: #30363d;
+        background: #1c1c1c;
+        border-color: #2a2a2a;
 
         a {
           color: #c9d1d9;
@@ -2248,16 +2264,16 @@ export default {
       .ant-pagination-prev,
       .ant-pagination-next {
         .ant-pagination-item-link {
-          background: #1e222d;
-          border-color: #30363d;
+          background: #1c1c1c;
+          border-color: #2a2a2a;
           color: #c9d1d9;
         }
       }
 
       .ant-pagination-options {
         .ant-select-selector {
-          background: #0d1117;
-          border-color: #30363d;
+          background: #141414;
+          border-color: #2a2a2a;
           color: #c9d1d9;
         }
       }
@@ -2266,8 +2282,8 @@ export default {
     // 按钮样式
     /deep/ .ant-btn {
       &.ant-btn-default {
-        background: #1e222d;
-        border-color: #30363d;
+        background: #1c1c1c;
+        border-color: #2a2a2a;
         color: #c9d1d9;
 
         &:hover {

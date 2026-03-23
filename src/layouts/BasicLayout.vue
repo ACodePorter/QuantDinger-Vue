@@ -627,8 +627,8 @@ export default {
     left: 0;
     z-index: 100;
     width: 256px; /* 统一固定宽度 256px */
-    background: #001529; /* 默认暗色背景 */
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: #111111;
+    border-top: 1px solid #1c1c1c;
     /* 与菜单栏抽屉动画同步：使用相同的过渡时间和缓动函数 */
     /* Ant Design Vue Drawer 使用 0.3s 和 cubic-bezier(0.78, 0.14, 0.15, 0.86) */
     transition: left 0.3s cubic-bezier(0.78, 0.14, 0.15, 0.86),
@@ -670,69 +670,14 @@ export default {
       }
     }
 
-    /* 浅色主题 */
-    body.light &,
-    .ant-pro-layout.light & {
-      background: #fff;
-      border-top-color: #e8e8e8;
-      color: rgba(0, 0, 0, 0.85);
-
-      .menu-footer-content {
-        .footer-section {
-          .section-links a {
-            color: rgba(0, 0, 0, 0.65);
-          }
-        }
-        .social-icon {
-          background: rgba(0, 0, 0, 0.05);
-          color: rgba(0, 0, 0, 0.65);
-          &:hover {
-            background: rgba(0, 0, 0, 0.1);
-            color: rgba(0, 0, 0, 0.85);
-          }
-          .social-icon-svg {
-            color: currentColor;
-          }
-        }
-      }
-    }
-
-    /* 暗黑主题 */
-    body.dark &,
-    body.realdark &,
-    .ant-pro-layout.dark &,
-    .ant-pro-layout.realdark & {
-      background: #001529;
-      border-top-color: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.65);
-
-      .menu-footer-content {
-        .footer-section {
-          .section-links a {
-            color: rgba(255, 255, 255, 0.65);
-          }
-        }
-        .social-icon {
-          background: rgba(255, 255, 255, 0.05);
-          color: rgba(255, 255, 255, 0.65);
-          &:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.85);
-          }
-          .social-icon-svg {
-            color: currentColor;
-          }
-        }
-      }
-    }
+    /* 浅色/暗黑 footer 配色见 src/qd-layout-dark-override.less（在 main.js 中于 global.less 之后加载） */
 
     .menu-footer-content {
       padding: 12px 16px;
       font-size: 11px;
       color: inherit;
-      max-height: 30vh;
-      overflow-y: auto;
-      overflow-x: hidden;
+      max-height: none;
+      overflow: visible;
 
       /* 隐藏滚动条但保持滚动功能 */
       scrollbar-width: thin;
@@ -843,7 +788,7 @@ export default {
         &.copyright {
           margin-top: 12px;
           padding-top: 12px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid #2a2a2a;
           opacity: 0.6;
           font-size: 10px;
         }
@@ -951,22 +896,29 @@ export default {
 /* 暗黑主题样式 */
 .basic-layout-wrapper.dark,
 .basic-layout-wrapper.realdark {
-  /* Header 适配 */
+  /* Header 适配 - 与侧栏亮黑 #111 一致 + 顶缘内高光 */
+  .ant-layout-header {
+    background: #111111 !important;
+    border-bottom: 1px solid #1c1c1c !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
   .ant-pro-global-header {
-    background: #001529 !important;
+    background: #111111 !important;
+    border-bottom: none !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
     color: rgba(255, 255, 255, 0.85) !important;
 
     .ant-pro-global-header-trigger {
       color: rgba(255, 255, 255, 0.85) !important;
       &:hover {
-        background: rgba(255, 255, 255, 0.03) !important;
+        background: rgba(255, 255, 255, 0.06) !important;
       }
     }
 
     .action {
       color: rgba(255, 255, 255, 0.85) !important;
       &:hover {
-        background: rgba(255, 255, 255, 0.03) !important;
+        background: rgba(255, 255, 255, 0.06) !important;
       }
     }
   }

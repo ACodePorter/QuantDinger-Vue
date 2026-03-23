@@ -28,9 +28,9 @@
   .ant-layout.realdark .ant-layout-header,
   .ant-pro-layout.dark .ant-layout-header,
   .ant-pro-layout.realdark .ant-layout-header {
-    background: #001529 !important;
-    border-bottom: 1px solid #1f1f1f !important;
-    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08) !important;
+    background: #111111 !important;
+    border-bottom: 1px solid #1c1c1c !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1px 4px rgba(0, 0, 0, 0.2) !important;
     color: rgba(255, 255, 255, 0.85) !important;
 
     /* Header 内的所有文字和图标 */
@@ -115,10 +115,9 @@
   body.realdark .ant-layout-header .ant-pro-global-header,
   .ant-pro-layout.dark .ant-layout-header .ant-pro-global-header,
   .ant-pro-layout.realdark .ant-layout-header .ant-pro-global-header {
-    /* 核心：背景色和边框 */
-    background: #001529 !important;
-    border-bottom: 1px solid #1f1f1f !important;
-    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08) !important;
+    background: #111111 !important;
+    border-bottom: none !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
     color: rgba(255, 255, 255, 0.85) !important;
 
     /* 强制所有子元素文字颜色 */
@@ -258,25 +257,24 @@
   /* 暗黑主题下的完整布局 */
   &.dark,
   &.realdark {
-    /* 0. 基础 Layout 背景 - 确保整体背景变暗 */
+    /* 0. 基础 Layout 背景 */
     :global(.ant-layout) {
-      background-color: #001529 !important;
+      background-color: #0a0a0a !important;
     }
 
     /* 1. 顶部 Header */
     :global(.ant-layout-header) {
-      background: #001529 !important;
-      border-bottom: 1px solid #1f1f1f !important;
+      background: #111111 !important;
+      border-bottom: 1px solid #1c1c1c !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
       color: rgba(255, 255, 255, 0.85) !important;
 
       :global(.ant-pro-global-header) {
-        background: #001529 !important;
+        background: #111111 !important;
         border-bottom: none !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
         color: rgba(255, 255, 255, 0.85) !important;
-
-        * {
-          color: rgba(255, 255, 255, 0.85) !important;
-        }
+        * { color: rgba(255, 255, 255, 0.85) !important; }
       }
     }
 
@@ -285,10 +283,39 @@
       background: #141414 !important;
       color: rgba(255, 255, 255, 0.85) !important;
     }
-
     :global(.ant-pro-basicLayout-content) {
       background: #141414 !important;
       color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    /* 3. 侧边栏 - 强制去蓝改纯黑 */
+    :global(.ant-layout-sider),
+    :global(.ant-pro-sider-menu-sider),
+    :global(.ant-pro-sider) {
+      background: #0a0a0a !important;
+      :global(.ant-layout-sider-children) {
+        background: #0a0a0a !important;
+      }
+    }
+    :global(.ant-menu-dark),
+    :global(.ant-menu.ant-menu-dark),
+    :global(.ant-menu-dark .ant-menu-inline.ant-menu-sub) {
+      background: #0a0a0a !important;
+    }
+    :global(.ant-menu-dark .ant-menu-sub) {
+      background: #111111 !important;
+    }
+    :global(.ant-menu-dark .ant-menu-item-selected) {
+      background: rgba(24, 144, 255, 0.25) !important;
+    }
+    :global(.ant-menu-dark .ant-menu-item:hover),
+    :global(.ant-menu-dark .ant-menu-submenu-title:hover) {
+      background: rgba(255, 255, 255, 0.06) !important;
+    }
+    :global(.ant-layout-sider-trigger) {
+      background: #111111 !important;
+      border-top: 1px solid #1c1c1c;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
   }
@@ -384,22 +411,73 @@
   .ant-pro-layout.dark,
   .ant-pro-layout.realdark {
     .ant-dropdown-menu {
-      background: #1f1f1f !important;
-      border: 1px solid #303030 !important;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+      background: #1c1c1c !important;
+      border: 1px solid #2a2a2a !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
 
       .ant-dropdown-menu-item {
         color: rgba(255, 255, 255, 0.85) !important;
 
         &:hover {
-          background: #262626 !important;
+          background: #252525 !important;
           color: #1890ff !important;
         }
       }
 
       .ant-dropdown-menu-item-divider {
-        background: #303030 !important;
+        background: #2a2a2a !important;
       }
+    }
+  }
+}
+
+/* ========== 侧边栏 body 级强力覆盖 ========== */
+:global {
+  body.dark,
+  body.realdark {
+    /* 侧边栏容器 */
+    .ant-layout-sider,
+    .ant-layout-sider-dark,
+    .ant-pro-sider-menu-sider,
+    .ant-pro-sider-menu-sider.ant-layout-sider-dark {
+      background: #0a0a0a !important;
+    }
+    .ant-layout-sider-children {
+      background: #0a0a0a !important;
+    }
+    /* 菜单本体 */
+    .ant-menu-dark,
+    .ant-menu.ant-menu-dark,
+    .ant-menu-dark .ant-menu-inline.ant-menu-sub,
+    ul.ant-menu.ant-menu-dark.ant-menu-root {
+      background: #0a0a0a !important;
+    }
+    .ant-menu-dark .ant-menu-sub,
+    .ant-menu.ant-menu-dark .ant-menu-sub {
+      background: #111111 !important;
+    }
+    .ant-menu-dark .ant-menu-item-selected {
+      background: rgba(24, 144, 255, 0.25) !important;
+    }
+    /* Logo 区域 */
+    .ant-pro-sider-menu-logo {
+      background: #0a0a0a !important;
+    }
+    /* 折叠触发器 */
+    .ant-layout-sider-trigger {
+      background: #111111 !important;
+      border-top: 1px solid #1c1c1c;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    }
+    /* 顶栏 - 与侧栏亮黑一致 */
+    .ant-layout-header {
+      background: #111111 !important;
+      border-bottom: 1px solid #1c1c1c !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    }
+    .ant-pro-global-header {
+      background: #111111 !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
     }
   }
 }
