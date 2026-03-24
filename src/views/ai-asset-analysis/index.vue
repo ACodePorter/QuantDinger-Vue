@@ -1,65 +1,79 @@
 <template>
   <div class="ai-asset-analysis-page" :class="{ 'theme-dark': isDarkTheme }">
 
-    <!-- ======== Trading Opportunities (Carousel) ======== -->
-    <div class="opp-section" v-if="opportunities.length > 0">
-      <div class="opp-header">
-        <span class="opp-title"><a-icon type="radar-chart" /> {{ $t('aiAssetAnalysis.opportunities.title') }}</span>
-        <span class="opp-header-right">
-          <span class="opp-update-hint">
-            <a-icon type="clock-circle" /> {{ $t('aiAssetAnalysis.opportunities.updateHint') }}
-          </span>
-          <a-button type="link" size="small" icon="reload" :loading="oppLoading" @click="loadOpportunities(true)">
-            {{ $t('common.refresh') || '刷新' }}
-          </a-button>
-        </span>
+    <!-- ======== AI Trading Radar ======== -->
+    <div class="radar-section" v-if="opportunities.length > 0">
+      <div class="radar-header">
+        <div class="radar-header-left">
+          <h2 class="radar-title">{{ $t('aiAssetAnalysis.opportunities.title') }}</h2>
+          <p class="radar-subtitle">{{ $t('aiAssetAnalysis.opportunities.updateHint') }}</p>
+        </div>
+        <a-button class="radar-refresh-btn" size="small" :loading="oppLoading" @click="loadOpportunities(true)">
+          <a-icon type="sync" /> {{ $t('common.refresh') || 'Refresh' }}
+        </a-button>
       </div>
       <div
-        class="opp-carousel-wrapper"
+        class="radar-carousel"
         @mouseenter="oppHover = true"
         @mouseleave="oppHover = false"
       >
-        <div class="opp-track" :class="{ paused: oppHover }" :style="oppTrackStyle">
+        <div class="radar-track" :class="{ paused: oppHover }" :style="oppTrackStyle">
           <div
-            class="opp-card"
+            class="radar-card"
             v-for="(opp, idx) in carouselItems"
             :key="'opp-' + idx"
-            :class="[opp.impact, 'market-' + (opp.market || '').toLowerCase(), { 'is-prediction-market': opp.market === 'PredictionMarket' }]"
+            :class="[opp.impact, { 'is-prediction': opp.market === 'PredictionMarket' }]"
             @click="analyzeOpportunity(opp)"
           >
-            <div class="opp-top">
-              <span class="opp-symbol" :class="{ 'prediction-title': opp.market === 'PredictionMarket' }">
+            <!-- Card top: symbol + market -->
+            <div class="rc-head">
+              <span class="rc-symbol" :class="{ 'rc-prediction-title': opp.market === 'PredictionMarket' }">
                 {{ opp.market === 'PredictionMarket' ? (opp.name || opp.symbol) : opp.symbol }}
               </span>
-              <a-tag :color="getMarketTagColor(opp.market)" size="small" class="opp-market-tag">
+              <span class="rc-market" :class="'rc-market-' + (opp.market || '').toLowerCase()">
                 {{ getMarketLabel(opp.market) }}
-              </a-tag>
-            </div>
-            <div class="opp-price" v-if="opp.market !== 'PredictionMarket'">${{ formatOppPrice(opp.price) }}</div>
-            <div class="opp-price" v-else>{{ (opp.price || 0).toFixed(1) }}%</div>
-            <div class="opp-change" :class="opp.change_24h >= 0 ? 'up' : 'down'" v-if="opp.market !== 'PredictionMarket'">
-              {{ opp.change_24h >= 0 ? '+' : '' }}{{ (opp.change_24h || 0).toFixed(1) }}%
-            </div>
-            <div class="opp-change" v-else-if="opp.ai_analysis">
-              <a-tag :color="getRecommendationColor(opp.ai_analysis.recommendation)" size="small">
-                {{ getRecommendationLabel(opp.ai_analysis.recommendation) }}
-              </a-tag>
-              <span style="margin-left: 8px; font-size: 12px; color: rgba(0,0,0,0.65);">
-                机会评分: {{ opp.ai_analysis.opportunity_score.toFixed(0) }}
               </span>
             </div>
-            <div class="opp-signal" v-if="opp.market !== 'PredictionMarket'">
-              <a-tag :color="getSignalColor(opp.signal)" size="small">{{ getSignalLabel(opp.signal) }}</a-tag>
+            <!-- Metrics row (non-prediction) -->
+            <div class="rc-metrics" v-if="opp.market !== 'PredictionMarket'">
+              <div class="rc-metric">
+                <span class="rc-metric-label">{{ ($i18n && $i18n.locale === 'zh-CN') ? '当前价格' : 'Price' }}</span>
+                <span class="rc-metric-value">${{ formatOppPrice(opp.price) }}</span>
+              </div>
+              <div class="rc-metric">
+                <span class="rc-metric-label">{{ ($i18n && $i18n.locale === 'zh-CN') ? '24h涨跌' : '24h Change' }}</span>
+                <span class="rc-metric-value" :class="opp.change_24h >= 0 ? 'rc-up' : 'rc-down'">
+                  {{ opp.change_24h >= 0 ? '+' : '' }}{{ (opp.change_24h || 0).toFixed(2) }}%
+                </span>
+              </div>
+              <div class="rc-metric">
+                <span class="rc-metric-label">{{ ($i18n && $i18n.locale === 'zh-CN') ? '信号' : 'Signal' }}</span>
+                <span class="rc-metric-value rc-signal-val" :class="'rc-signal-' + (opp.signal || '')">
+                  {{ getSignalLabel(opp.signal) }}
+                </span>
+              </div>
             </div>
-            <div class="opp-reason">{{ getReasonText(opp) }}</div>
-            <div class="opp-actions">
-              <span class="opp-action" v-if="opp.market !== 'PredictionMarket'" @click.stop="analyzeOpportunity(opp)">
-                <a-icon type="thunderbolt" /> {{ $t('aiAssetAnalysis.opportunities.analyze') }}
-              </span>
-              <span class="opp-action" v-else @click.stop="analyzeOpportunity(opp)">
-                <a-icon type="link" /> {{ $t('polymarket.action.viewDetail') }}
-              </span>
-              <span class="opp-trade-btn" v-if="opp.market === 'Crypto'" @click.stop="openQuickTradeFromOpp(opp)">
+            <!-- Metrics row (prediction market) -->
+            <div class="rc-metrics" v-else>
+              <div class="rc-metric">
+                <span class="rc-metric-label">{{ ($i18n && $i18n.locale === 'zh-CN') ? '市场概率' : 'Probability' }}</span>
+                <span class="rc-metric-value">{{ (opp.price || 0).toFixed(1) }}%</span>
+              </div>
+              <div class="rc-metric" v-if="opp.ai_analysis">
+                <span class="rc-metric-label">{{ ($i18n && $i18n.locale === 'zh-CN') ? '机会评分' : 'Score' }}</span>
+                <span class="rc-metric-value rc-up">{{ opp.ai_analysis.opportunity_score.toFixed(0) }}</span>
+              </div>
+              <div class="rc-metric" v-if="opp.ai_analysis">
+                <span class="rc-metric-label">{{ ($i18n && $i18n.locale === 'zh-CN') ? '建议' : 'Rec.' }}</span>
+                <span class="rc-metric-value" :class="opp.ai_analysis.recommendation === 'YES' ? 'rc-up' : opp.ai_analysis.recommendation === 'NO' ? 'rc-down' : ''">
+                  {{ getRecommendationLabel(opp.ai_analysis.recommendation) }}
+                </span>
+              </div>
+            </div>
+            <!-- Card footer -->
+            <div class="rc-footer">
+              <span class="rc-reason">{{ getReasonText(opp) }}</span>
+              <span class="rc-cta" v-if="opp.market === 'Crypto'" @click.stop="openQuickTradeFromOpp(opp)">
                 <a-icon type="transaction" /> {{ $t('quickTrade.tradeNow') }}
               </span>
             </div>
@@ -354,142 +368,131 @@ export default {
 
 <style lang="less" scoped>
 .ai-asset-analysis-page {
-  padding: 16px;
+  padding: 20px;
   min-height: calc(100vh - 120px);
   background: #f0f2f5;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 
-  /* ==================== Trading Opportunities (Carousel) ==================== */
-  .opp-section {
-    margin-bottom: 12px;
+  /* ===== Radar Section ===== */
+  .radar-section {
+    margin-bottom: 20px;
 
-    .opp-header {
+    .radar-header {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: space-between;
-      margin-bottom: 8px;
-      padding: 0 4px;
+      margin-bottom: 14px;
 
-      .opp-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #1a1a2e;
+      .radar-header-left {
+        .radar-title {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a1a1a;
+          letter-spacing: -0.2px;
+        }
+        .radar-subtitle {
+          margin: 2px 0 0;
+          font-size: 12px;
+          color: #999;
+        }
       }
 
-      .opp-header-right {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .opp-update-hint {
+      .radar-refresh-btn {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        background: #fff;
+        color: #666;
         font-size: 12px;
-        color: #8c8c8c;
+        font-weight: 500;
+        &:hover { border-color: #6366f1; color: #6366f1; }
       }
     }
 
-    .opp-carousel-wrapper {
+    .radar-carousel {
       overflow: hidden;
       position: relative;
-      border-radius: 10px;
+      border-radius: 12px;
+      padding: 2px 0;
 
-      // Fade masks on left and right edges
       &::before,
       &::after {
         content: '';
         position: absolute;
         top: 0;
         bottom: 0;
-        width: 40px;
+        width: 50px;
         z-index: 2;
         pointer-events: none;
       }
-
-      &::before {
-        left: 0;
-        background: linear-gradient(to right, #f0f2f5, transparent);
-      }
-
-      &::after {
-        right: 0;
-        background: linear-gradient(to left, #f0f2f5, transparent);
-      }
+      &::before { left: 0; background: linear-gradient(to right, #f0f2f5, transparent); }
+      &::after  { right: 0; background: linear-gradient(to left, #f0f2f5, transparent); }
     }
 
-    .opp-track {
+    .radar-track {
       display: flex;
-      gap: 10px;
-      animation: opp-scroll-left 60s linear infinite;
+      gap: 12px;
+      animation: radar-scroll 60s linear infinite;
       width: max-content;
       padding: 4px 0;
-
-      &.paused {
-        animation-play-state: paused;
-      }
+      &.paused { animation-play-state: paused; }
     }
 
-    @keyframes opp-scroll-left {
-      0% {
-        transform: translateX(0);
-      }
-      100% {
-        transform: translateX(-50%);
-      }
+    @keyframes radar-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
     }
 
-    .opp-card {
-      width: 190px;
-      background: #fff;
-      border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    /* ----- Card (Light / default) ----- */
+    .radar-card {
+      width: 250px;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
       cursor: pointer;
-      transition: all 0.2s;
-      border-left: 3px solid #d9d9d9;
       flex-shrink: 0;
+      border: 1px solid #eaeaea;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
 
-      // 预测市场卡片更宽
-      &.is-prediction-market {
-        width: 280px;
-        min-height: 160px;
-      }
-
-      &.bullish {
-        border-left-color: #52c41a;
-      }
-
-      &.bearish {
-        border-left-color: #ff4d4f;
-      }
-
-      // 预测市场特殊样式
-      &.market-predictionmarket {
-        border-left-color: #13c2c2;
-        background: linear-gradient(135deg, #fff 0%, #f0f9ff 100%);
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(139, 92, 246, 0.02));
       }
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.1);
+        &::before { opacity: 1; }
       }
 
-      .opp-top {
+      &.is-prediction { width: 290px; }
+
+      .rc-head {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
-        margin-bottom: 6px;
+        margin-bottom: 12px;
         gap: 8px;
       }
 
-      .opp-symbol {
-        font-weight: 700;
-        font-size: 14px;
-        color: #1a1a2e;
-        flex: 1;
-        word-break: break-word;
-        line-height: 1.4;
+      .rc-symbol {
+        font-weight: 800;
+        font-size: 15px;
+        color: #111;
+        letter-spacing: -0.2px;
 
-        // 预测市场标题样式
-        &.prediction-title {
+        &.rc-prediction-title {
           font-size: 13px;
           font-weight: 600;
           line-height: 1.5;
@@ -497,105 +500,124 @@ export default {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          text-overflow: ellipsis;
         }
       }
 
-      .opp-market-tag {
-        font-size: 11px;
+      .rc-market {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        padding: 2px 7px;
+        border-radius: 5px;
         flex-shrink: 0;
-        margin-left: auto;
+        background: #f5f5f5;
+        color: #888;
+
+        &.rc-market-crypto   { color: #7c3aed; background: rgba(124, 58, 237, 0.08); }
+        &.rc-market-usstock  { color: #16a34a; background: rgba(22, 163, 74, 0.08); }
+        &.rc-market-forex    { color: #d97706; background: rgba(217, 119, 6, 0.08); }
+        &.rc-market-predictionmarket { color: #0891b2; background: rgba(8, 145, 178, 0.08); }
       }
 
-      .opp-price {
-        font-size: 13px;
-        color: #595959;
+      .rc-metrics {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
       }
 
-      .opp-change {
-        font-size: 15px;
-        font-weight: 600;
+      .rc-metric {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 7px;
+        border-radius: 8px;
+        background: #fafafa;
 
-        &.up {
-          color: #52c41a;
+        .rc-metric-label {
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: #999;
         }
 
-        &.down {
-          color: #ff4d4f;
+        .rc-metric-value {
+          font-size: 13px;
+          font-weight: 700;
+          color: #222;
+
+          &.rc-up   { color: #16a34a; }
+          &.rc-down { color: #dc2626; }
+
+          &.rc-signal-val { font-size: 11px; font-weight: 600; }
+          &.rc-signal-bullish_momentum { color: #0891b2; }
+          &.rc-signal-overbought       { color: #d97706; }
+          &.rc-signal-oversold         { color: #16a34a; }
+          &.rc-signal-bearish_momentum { color: #dc2626; }
         }
       }
 
-      .opp-signal {
-        margin-top: 4px;
+      .rc-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
       }
 
-      .opp-reason {
+      .rc-reason {
         font-size: 11px;
-        color: #8c8c8c;
-        margin-top: 4px;
+        color: #999;
         line-height: 1.4;
+        flex: 1;
         display: -webkit-box;
-        -webkit-line-clamp: 2;
+        -webkit-line-clamp: 1;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
 
-      .opp-actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 6px;
-        gap: 6px;
-      }
-
-      .opp-action {
-        font-size: 12px;
-        color: #1890ff;
-        font-weight: 500;
-        cursor: pointer;
-        &:hover { text-decoration: underline; }
-      }
-
-      .opp-trade-btn {
+      .rc-cta {
         font-size: 11px;
+        font-weight: 700;
         color: #fff;
-        background: linear-gradient(135deg, #1890ff, #722ed1);
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        padding: 4px 12px;
+        border-radius: 8px;
         white-space: nowrap;
+        cursor: pointer;
         transition: all 0.2s;
+        flex-shrink: 0;
         &:hover {
           transform: scale(1.05);
-          box-shadow: 0 2px 8px rgba(114, 46, 209, 0.3);
+          box-shadow: 0 2px 12px rgba(99, 102, 241, 0.35);
         }
       }
     }
   }
 
-  /* ==================== Floating Quick Trade Button ==================== */
+  /* ===== Floating QT Button ===== */
   .qt-floating-btn {
     position: fixed;
     right: 24px;
     bottom: 80px;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #1890ff, #722ed1);
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 22px;
     cursor: pointer;
-    box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
     z-index: 1000;
     transition: all 0.3s;
-    animation: qt-float-pulse 2s ease-in-out infinite;
+    animation: qt-float-pulse 2.5s ease-in-out infinite;
     &:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 24px rgba(114, 46, 209, 0.5);
+      transform: scale(1.08);
+      box-shadow: 0 6px 28px rgba(99, 102, 241, 0.5);
     }
   }
   @keyframes qt-float-pulse {
@@ -603,34 +625,29 @@ export default {
     50% { transform: translateY(-4px); }
   }
 
-  /* ==================== Workspace Card ==================== */
+  /* ===== Workspace Card ===== */
   .workspace-card {
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e8e8e8;
 
-    ::v-deep .ant-card-body {
-      padding: 0;
-    }
+    ::v-deep .ant-card-body { padding: 0; }
 
     .workspace-tabs {
       ::v-deep .ant-tabs-bar {
         margin-bottom: 0;
-        padding: 0 16px;
+        padding: 0 20px;
         border-bottom: 1px solid #f0f0f0;
       }
-
       ::v-deep .ant-tabs-tab {
         font-size: 15px;
+        font-weight: 600;
         padding: 14px 16px;
       }
     }
 
     .tab-body {
-      ::v-deep .ai-analysis-container.embedded {
-        border-radius: 0;
-        overflow: hidden;
-      }
-
+      ::v-deep .ai-analysis-container.embedded,
       ::v-deep .portfolio-container.embedded {
         border-radius: 0;
         overflow: hidden;
@@ -641,86 +658,74 @@ export default {
         text-align: center;
 
         .polymarket-placeholder {
-          .placeholder-icon {
-            font-size: 64px;
-            color: #1890ff;
-            margin-bottom: 24px;
-          }
-
-          h3 {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: rgba(0, 0, 0, 0.85);
-          }
-
-          p {
-            font-size: 14px;
-            color: rgba(0, 0, 0, 0.65);
-            margin-bottom: 24px;
-          }
+          .placeholder-icon { font-size: 64px; color: #6366f1; margin-bottom: 24px; }
+          h3 { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: rgba(0, 0, 0, 0.85); }
+          p  { font-size: 14px; color: rgba(0, 0, 0, 0.55); margin-bottom: 24px; }
         }
       }
     }
   }
 
-  /* ==================== Dark Theme ==================== */
+  /* ===== Dark Theme ===== */
   &.theme-dark {
     background: #141414;
 
-    .opp-section {
-      .opp-header .opp-title {
-        color: #e6edf3;
+    .radar-section {
+      .radar-header {
+        .radar-title { color: #e8e8e8; }
+        .radar-subtitle { color: #666; }
       }
-
-      .opp-header .opp-update-hint {
-        color: #8b949e;
-      }
-
-      .opp-carousel-wrapper {
-        &::before {
-          background: linear-gradient(to right, #141414, transparent);
-        }
-
-        &::after {
-          background: linear-gradient(to left, #141414, transparent);
-        }
-      }
-
-      .opp-card {
+      .radar-refresh-btn {
         background: #1c1c1c;
         border-color: #2a2a2a;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        color: #999;
+        &:hover { border-color: #6366f1; color: #a78bfa; }
+      }
+      .radar-carousel {
+        &::before { background: linear-gradient(to right, #141414, transparent); }
+        &::after  { background: linear-gradient(to left, #141414, transparent); }
+      }
 
-        // 预测市场暗色主题样式
-        &.market-predictionmarket {
-          background: linear-gradient(135deg, #1c1c1c 0%, #141414 100%);
-          border-left-color: #13c2c2;
-        }
+      .radar-card {
+        background: #1a1a1c;
+        border-color: rgba(255, 255, 255, 0.06);
 
-        .opp-symbol {
-          color: #e6edf3;
-        }
-
-        .opp-price {
-          color: #8b949e;
-        }
-
-        .opp-reason {
-          color: #8b949e;
-        }
-
-        .opp-action {
-          color: #58a6ff;
-        }
-
-        .opp-trade-btn {
-          background: linear-gradient(135deg, #58a6ff, #8957e5);
+        &::before {
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.03));
         }
 
         &:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+          border-color: rgba(99, 102, 241, 0.25);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.15);
         }
+
+        .rc-symbol { color: #f0f0f0; }
+
+        .rc-market {
+          background: rgba(255, 255, 255, 0.06);
+          color: #888;
+          &.rc-market-crypto   { color: #a78bfa; background: rgba(167, 139, 250, 0.12); }
+          &.rc-market-usstock  { color: #4ade80; background: rgba(74, 222, 128, 0.10); }
+          &.rc-market-forex    { color: #fbbf24; background: rgba(251, 191, 36, 0.10); }
+          &.rc-market-predictionmarket { color: #22d3ee; background: rgba(34, 211, 238, 0.10); }
+        }
+
+        .rc-metric {
+          background: rgba(255, 255, 255, 0.03);
+          .rc-metric-label { color: #666; }
+          .rc-metric-value {
+            color: #ddd;
+            &.rc-up   { color: #4ade80; }
+            &.rc-down { color: #f87171; }
+            &.rc-signal-bullish_momentum { color: #22d3ee; }
+            &.rc-signal-overbought       { color: #fbbf24; }
+            &.rc-signal-oversold         { color: #4ade80; }
+            &.rc-signal-bearish_momentum { color: #f87171; }
+          }
+        }
+
+        .rc-reason { color: #555; }
+        .rc-cta { color: #fff; }
       }
     }
 
@@ -729,40 +734,138 @@ export default {
       border-color: #2a2a2a;
 
       .workspace-tabs {
-        ::v-deep .ant-tabs-bar {
-          border-bottom-color: #2a2a2a;
+        ::v-deep .ant-tabs-bar { border-bottom-color: #2a2a2a; }
+        ::v-deep .ant-tabs-tab { color: #8b949e; &:hover { color: #c9d1d9; } }
+        ::v-deep .ant-tabs-tab-active { color: #a78bfa; }
+        ::v-deep .ant-tabs-ink-bar { background-color: #a78bfa; }
+      }
+
+      .polymarket-tab-content .polymarket-placeholder {
+        h3 { color: #d4d4d4; }
+        p  { color: #a3a3a3; }
+      }
+    }
+  }
+}
+
+/* ========== 移动端自适应 ========== */
+@media (max-width: 768px) {
+  .ai-asset-analysis-page {
+    padding: 8px;
+    min-height: auto;
+
+    .radar-section {
+      margin-bottom: 10px;
+
+      .radar-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+
+        .radar-header-left {
+          .radar-title { font-size: 15px; }
+          .radar-subtitle { font-size: 11px; }
         }
 
-        ::v-deep .ant-tabs-tab {
-          color: #8b949e;
-
-          &:hover {
-            color: #c9d1d9;
-          }
-        }
-
-        ::v-deep .ant-tabs-tab-active {
-          color: #58a6ff;
-        }
-
-        ::v-deep .ant-tabs-ink-bar {
-          background-color: #58a6ff;
+        .radar-refresh-btn {
+          align-self: flex-end;
         }
       }
 
-      .polymarket-tab-content {
-        .polymarket-placeholder {
-          h3 {
-            color: #d4d4d4;
-          }
+      .radar-carousel {
+        &::before,
+        &::after {
+          width: 28px;
+        }
+      }
 
-          p {
-            color: #a3a3a3;
+      .radar-card {
+        width: 210px;
+        padding: 12px;
+
+        &.is-prediction {
+          width: 248px;
+        }
+
+        .rc-symbol { font-size: 14px; }
+        .rc-metric { padding: 6px; }
+      }
+    }
+
+    .qt-floating-btn {
+      right: ~"max(8px, env(safe-area-inset-right, 0px))";
+      bottom: ~"max(68px, calc(52px + env(safe-area-inset-bottom, 0px)))";
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+    }
+
+    .workspace-card {
+      border-radius: 10px;
+
+      .workspace-tabs {
+        ::v-deep .ant-tabs-bar {
+          padding: 0 6px;
+        }
+
+        ::v-deep .ant-tabs-nav-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        ::v-deep .ant-tabs-tab {
+          font-size: 14px;
+          padding: 10px 8px;
+          margin-right: 2px;
+          white-space: nowrap;
+        }
+      }
+
+      .tab-body {
+        .polymarket-tab-content {
+          padding: 16px 8px;
+
+          .polymarket-placeholder {
+            .placeholder-icon { font-size: 48px; margin-bottom: 12px; }
+            h3 { font-size: 17px; }
+            p { font-size: 13px; }
           }
         }
       }
     }
+  }
+}
 
+@media (max-width: 480px) {
+  .ai-asset-analysis-page {
+    padding: 4px;
+
+    .radar-section .radar-card {
+      width: 188px;
+      padding: 10px;
+
+      &.is-prediction {
+        width: 220px;
+      }
+
+      .rc-metrics { gap: 3px; }
+      .rc-metric .rc-metric-value { font-size: 12px; }
+    }
+
+    .workspace-card {
+      .workspace-tabs {
+        ::v-deep .ant-tabs-bar {
+          padding: 0 4px;
+        }
+        ::v-deep .ant-tabs-tab {
+          font-size: 13px;
+          padding: 8px 6px;
+        }
+      }
+      .tab-body .polymarket-tab-content {
+        padding: 12px 6px;
+      }
+    }
   }
 }
 </style>

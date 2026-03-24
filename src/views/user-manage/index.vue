@@ -27,8 +27,8 @@
           <div class="toolbar-right">
             <a-input-search
               v-model="searchKeyword"
+              class="toolbar-search"
               :placeholder="$t('userManage.searchPlaceholder') || 'Search by username/email'"
-              style="width: 280px"
               allowClear
               @search="handleSearch"
               @pressEnter="handleSearch"
@@ -44,6 +44,7 @@
             :loading="loading"
             :pagination="pagination"
             :rowKey="record => record.id"
+            :scroll="{ x: 1280 }"
             @change="handleTableChange"
           >
             <!-- Status Column -->
@@ -188,7 +189,7 @@
               <a-icon type="reload" />
               {{ $t('common.refresh') || 'Refresh' }}
             </a-button>
-            <a-select v-model="strategyStatusFilter" style="width: 140px" @change="handleStrategyFilterChange">
+            <a-select v-model="strategyStatusFilter" class="toolbar-select" @change="handleStrategyFilterChange">
               <a-select-option value="all">{{ $t('systemOverview.filterAll') || 'All Status' }}</a-select-option>
               <a-select-option value="running">{{ $t('systemOverview.filterRunning') || 'Running' }}</a-select-option>
               <a-select-option value="stopped">{{ $t('systemOverview.filterStopped') || 'Stopped' }}</a-select-option>
@@ -197,8 +198,8 @@
           <div class="toolbar-right">
             <a-input-search
               v-model="strategySearchKeyword"
+              class="toolbar-search"
               :placeholder="$t('systemOverview.searchPlaceholder') || 'Search strategy/symbol/user'"
-              style="width: 280px"
               allowClear
               @search="handleStrategySearch"
               @pressEnter="handleStrategySearch"
@@ -361,7 +362,7 @@
               <a-icon type="reload" />
               {{ $t('common.refresh') || 'Refresh' }}
             </a-button>
-            <a-select v-model="orderStatusFilter" style="width: 140px" @change="handleOrderFilterChange">
+            <a-select v-model="orderStatusFilter" class="toolbar-select" @change="handleOrderFilterChange">
               <a-select-option value="all">{{ $t('adminOrders.filterAll') || 'All Status' }}</a-select-option>
               <a-select-option value="pending">{{ $t('adminOrders.filterPending') || 'Pending' }}</a-select-option>
               <a-select-option value="paid">{{ $t('adminOrders.filterPaid') || 'Paid' }}</a-select-option>
@@ -372,8 +373,8 @@
           <div class="toolbar-right">
             <a-input-search
               v-model="orderSearchKeyword"
+              class="toolbar-search"
               :placeholder="$t('adminOrders.searchPlaceholder') || 'Search by username/email'"
-              style="width: 280px"
               allowClear
               @search="handleOrderSearch"
               @pressEnter="handleOrderSearch"
@@ -516,8 +517,8 @@
           <div class="toolbar-right">
             <a-input-search
               v-model="aiStatsSearchKeyword"
+              class="toolbar-search"
               :placeholder="$t('adminAiStats.searchPlaceholder') || 'Search by username'"
-              style="width: 280px"
               allowClear
               @search="handleAiStatsSearch"
               @pressEnter="handleAiStatsSearch"
@@ -527,8 +528,8 @@
 
         <!-- Per-User AI Stats Table -->
         <a-card :bordered="false" class="user-table-card" style="margin-bottom: 20px;">
-          <h4 style="margin-bottom: 12px; color: #1e3a5f; font-weight: 600;">
-            <a-icon type="bar-chart" style="margin-right: 8px;" />
+          <h4 class="section-card-title">
+            <a-icon type="bar-chart" class="section-card-title-icon" />
             {{ $t('adminAiStats.userStatsTitle') || 'Per-User Statistics' }}
           </h4>
           <a-table
@@ -537,6 +538,7 @@
             :loading="aiStatsLoading"
             :pagination="aiStatsPagination"
             :rowKey="record => record.user_id"
+            :scroll="{ x: 960 }"
             @change="handleAiStatsTableChange"
           >
             <!-- User Column -->
@@ -582,8 +584,8 @@
 
         <!-- Recent Analysis Records -->
         <a-card :bordered="false" class="user-table-card">
-          <h4 style="margin-bottom: 12px; color: #1e3a5f; font-weight: 600;">
-            <a-icon type="history" style="margin-right: 8px;" />
+          <h4 class="section-card-title">
+            <a-icon type="history" class="section-card-title-icon" />
             {{ $t('adminAiStats.recentTitle') || 'Recent Analysis Records' }}
           </h4>
           <a-table
@@ -592,6 +594,7 @@
             :loading="aiStatsLoading"
             :pagination="false"
             :rowKey="record => record.id"
+            :scroll="{ x: 900 }"
             size="small"
           >
             <!-- User Column -->
@@ -624,6 +627,7 @@
     <!-- Create/Edit User Modal -->
     <a-modal
       v-model="modalVisible"
+      wrap-class-name="user-manage-modal"
       :title="isEdit ? ($t('userManage.editUser') || 'Edit User') : ($t('userManage.createUser') || 'Create User')"
       :confirmLoading="modalLoading"
       @ok="handleModalOk"
@@ -702,6 +706,7 @@
     <!-- Reset Password Modal -->
     <a-modal
       v-model="resetPasswordVisible"
+      wrap-class-name="user-manage-modal"
       :title="$t('userManage.resetPassword') || 'Reset Password'"
       :confirmLoading="resetPasswordLoading"
       @ok="handleResetPassword"
@@ -732,6 +737,7 @@
     <!-- Adjust Credits Modal -->
     <a-modal
       v-model="creditsModalVisible"
+      wrap-class-name="user-manage-modal"
       :title="($t('userManage.adjustCredits') || 'Adjust Credits') + (creditsEditingUser ? ` - ${creditsEditingUser.username}` : '')"
       :confirmLoading="creditsLoading"
       @ok="handleSetCredits"
@@ -762,6 +768,7 @@
     <!-- Set VIP Modal -->
     <a-modal
       v-model="vipModalVisible"
+      wrap-class-name="user-manage-modal"
       :title="($t('userManage.setVip') || 'Set VIP') + (vipEditingUser ? ` - ${vipEditingUser.username}` : '')"
       :confirmLoading="vipLoading"
       @ok="handleSetVip"
@@ -1782,21 +1789,60 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
 
     .toolbar-left {
       display: flex;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
     }
 
     .toolbar-right {
       display: flex;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
     }
+  }
+
+  .toolbar-search {
+    width: 280px;
+    max-width: 100%;
+  }
+
+  .toolbar-select {
+    width: 140px;
+    max-width: 100%;
+  }
+
+  .section-card-title {
+    margin-bottom: 12px;
+    color: #1e3a5f;
+    font-weight: 600;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    line-height: 1.4;
+  }
+
+  .section-card-title-icon {
+    flex-shrink: 0;
   }
 
   .user-table-card {
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    min-width: 0;
+    overflow: hidden;
+
+    /deep/ .ant-card-body {
+      padding: 20px 24px;
+    }
 
     .text-muted {
       color: #94a3b8;
@@ -2013,6 +2059,10 @@ export default {
         color: #e0e6ed !important;
       }
     }
+
+    .section-card-title {
+      color: #e0e6ed;
+    }
   }
 
   // Credits value style
@@ -2050,18 +2100,166 @@ export default {
       }
     }
   }
-}
 
-// Responsive
-@media (max-width: 1200px) {
-  .summary-cards {
-    grid-template-columns: repeat(2, 1fr) !important;
+  // —— 响应式 ——
+  @media (max-width: 1200px) {
+    .summary-cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 16px 12px;
+    min-height: calc(100vh - 100px);
+
+    .page-header {
+      margin-bottom: 16px;
+
+      .page-title {
+        font-size: 20px;
+
+        .anticon {
+          font-size: 22px;
+        }
+      }
+
+      .page-desc {
+        font-size: 13px;
+      }
+    }
+
+    .summary-cards {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+
+      .summary-card {
+        padding: 14px 16px;
+        gap: 12px;
+
+        .summary-icon {
+          width: 44px;
+          height: 44px;
+
+          .anticon {
+            font-size: 20px;
+          }
+        }
+
+        .summary-info .summary-value {
+          font-size: 18px;
+        }
+      }
+    }
+
+    .toolbar {
+      flex-direction: column;
+      align-items: stretch;
+
+      .toolbar-left,
+      .toolbar-right {
+        width: 100%;
+      }
+    }
+
+    .toolbar-search,
+    .toolbar-select {
+      width: 100% !important;
+    }
+
+    .manage-tabs {
+      /deep/ .ant-tabs-bar {
+        margin-bottom: 12px;
+      }
+
+      /deep/ .ant-tabs-nav-container {
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+
+      /deep/ .ant-tabs-nav-wrap {
+        margin-bottom: 0;
+      }
+
+      /deep/ .ant-tabs-tab {
+        padding: 10px 12px;
+        margin-right: 4px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+    }
+
+    .user-table-card /deep/ .ant-card-body {
+      padding: 12px 10px;
+    }
+
+    /deep/ .ant-table {
+      font-size: 12px;
+    }
+
+    /deep/ .ant-table-thead > tr > th,
+    /deep/ .ant-table-tbody > tr > td {
+      padding: 8px 6px;
+    }
+
+    /deep/ .ant-pagination {
+      margin: 12px 0 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px 8px;
+
+    .page-header .page-title {
+      font-size: 18px;
+    }
+
+    .toolbar .toolbar-left {
+      flex-direction: column;
+
+      .ant-btn {
+        width: 100%;
+      }
+    }
+
+    .summary-cards .summary-card .summary-sub {
+      white-space: normal;
+      line-height: 1.35;
+    }
+
+    /deep/ .ant-pagination-options {
+      display: none;
+    }
   }
 }
+</style>
 
-@media (max-width: 768px) {
-  .summary-cards {
-    grid-template-columns: 1fr !important;
+<style lang="less">
+/* Modal 挂载在 body 上，需非 scoped */
+@media (max-width: 576px) {
+  .user-manage-modal .ant-modal {
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto;
+    padding-bottom: 0;
+    top: 8px;
+  }
+
+  .user-manage-modal .ant-modal-content {
+    border-radius: 10px;
+  }
+
+  .user-manage-modal .ant-modal-body {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .user-manage-modal .ant-modal-header {
+    padding: 12px 16px;
+  }
+
+  .user-manage-modal .ant-modal-footer {
+    padding: 10px 16px;
   }
 }
 </style>

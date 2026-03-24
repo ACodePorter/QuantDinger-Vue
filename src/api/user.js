@@ -148,6 +148,17 @@ export function updateNotificationSettings (data) {
 }
 
 /**
+ * Send test notification using saved notification settings (call after PUT save).
+ */
+export function testNotificationSettings () {
+  return request({
+    url: '/api/users/notification-settings/test',
+    method: 'post',
+    data: {}
+  })
+}
+
+/**
  * Get current user's credits log
  * @param {Object} params - { page, page_size }
  */

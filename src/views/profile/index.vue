@@ -279,7 +279,7 @@
 
                 <!-- Time Column -->
                 <template slot="created_at" slot-scope="text">
-                  {{ formatTime(text) }}
+                  {{ formatCreditsLogTime(text) }}
                 </template>
               </a-table>
             </a-tab-pane>
@@ -462,7 +462,7 @@
                   style="margin-bottom: 16px"
                 />
                 <div style="margin-bottom: 16px; text-align: right;">
-                  <a-button type="primary" icon="plus" @click="showAddExchangeModal = true">
+                  <a-button type="primary" icon="plus" @click="openAddExchangeModal">
                     {{ $t('profile.exchange.addAccount') }}
                   </a-button>
                 </div>
@@ -471,6 +471,7 @@
                   :dataSource="exchangeCredentials"
                   :loading="exchangeLoading"
                   :rowKey="record => record.id"
+                  :locale="{ emptyText: $t('profile.exchange.noAccounts') || '暂无交易所账户，请点击上方按钮添加' }"
                   size="small"
                 >
                   <template slot="exchange_id" slot-scope="text">
@@ -495,9 +496,6 @@
                     </a-popconfirm>
                   </template>
                 </a-table>
-                <a-empty v-if="!exchangeLoading && exchangeCredentials.length === 0" style="margin-top: 20px">
-                  <span slot="description">{{ $t('profile.exchange.noAccounts') }}</span>
-                </a-empty>
               </div>
             </a-tab-pane>
 
@@ -509,6 +507,7 @@
                 :loading="referralLoading"
                 :pagination="referralPagination"
                 :rowKey="record => record.id"
+                :locale="{ emptyText: $t('profile.referral.noReferrals') || '暂无邀请记录' }"
                 size="small"
                 @change="handleReferralChange"
               >
@@ -528,23 +527,17 @@
                   {{ formatTime(text) }}
                 </template>
               </a-table>
-
-              <a-empty v-if="!referralLoading && (!referralData.list || referralData.list.length === 0)">
-                <span slot="description">{{ $t('profile.referral.noReferrals') || '暂无邀请记录' }}</span>
-                <a-button type="primary" @click="copyReferralLink">
-                  {{ $t('profile.referral.shareNow') || '立即分享邀请' }}
-                </a-button>
-              </a-empty>
             </a-tab-pane>
           </a-tabs>
         </a-card>
       </a-col>
     </a-row>
 
-    <!-- Add Exchange Account Modal -->
+    <!-- Add Exchange Account Modal（挂载到 body，暗黑样式用 wrap-class-name） -->
     <a-modal
       :title="$t('profile.exchange.addTitle')"
       :visible="showAddExchangeModal"
+      :wrap-class-name="exchangeModalWrapClass"
       :confirmLoading="savingExchange"
       @ok="handleSaveExchange"
       @cancel="showAddExchangeModal = false"
@@ -553,12 +546,14 @@
       :maskClosable="false"
       width="520px"
     >
-      <a-form :form="exchangeForm" layout="vertical">
+      <a-form :form="exchangeForm" layout="vertical" class="exchange-account-form">
         <!-- Exchange Type -->
         <a-form-item :label="$t('profile.exchange.selectExchange')">
           <a-select
             v-decorator="['exchange_id', { rules: [{ required: true, message: $t('profile.exchange.selectExchange') }] }]"
             :placeholder="$t('profile.exchange.selectExchange')"
+            :dropdown-class-name="isDarkTheme ? 'profile-exchange-select-dropdown-dark' : ''"
+            :get-popup-container="getExchangeSelectPopupContainer"
             @change="handleExchangeTypeChange"
           >
             <a-select-opt-group :label="$t('profile.exchange.typeCrypto')">
@@ -581,6 +576,35 @@
             v-decorator="['name']"
             :placeholder="$t('profile.exchange.accountNamePlaceholder')"
           />
+        </a-form-item>
+
+        <!-- 后端出网 IP：交易所 API 白名单应填此地址（非本机浏览器 IP） -->
+        <a-form-item v-if="addExchangeType === 'crypto'" :label="$t('profile.exchange.whitelistIpLabel')">
+          <div class="egress-ip-block">
+            <a-spin v-if="egressIpLoading" size="small" />
+            <template v-else>
+              <div class="egress-ip-line">
+                <span class="egress-ip-kind">{{ $t('profile.exchange.whitelistIpv4') }}</span>
+                <code class="egress-ip-value">{{ egressServerIpv4 || '—' }}</code>
+                <a-button type="link" size="small" class="egress-ip-action" @click="copyEgressIp('v4')" :disabled="!egressServerIpv4">
+                  {{ $t('profile.exchange.whitelistIpCopy') }}
+                </a-button>
+              </div>
+              <div class="egress-ip-line">
+                <span class="egress-ip-kind">{{ $t('profile.exchange.whitelistIpv6') }}</span>
+                <code class="egress-ip-value">{{ egressServerIpv6 || '—' }}</code>
+                <a-button type="link" size="small" class="egress-ip-action" @click="copyEgressIp('v6')" :disabled="!egressServerIpv6">
+                  {{ $t('profile.exchange.whitelistIpCopy') }}
+                </a-button>
+              </div>
+              <div class="egress-ip-row egress-ip-refresh-row">
+                <a-button type="link" size="small" class="egress-ip-action" @click="fetchEgressIp">
+                  {{ $t('profile.exchange.whitelistIpRefresh') }}
+                </a-button>
+              </div>
+            </template>
+          </div>
+          <div class="field-hint egress-ip-hint">{{ $t('profile.exchange.whitelistIpHint') }}</div>
         </a-form-item>
 
         <!-- Crypto fields -->
@@ -607,9 +631,10 @@
             />
           </a-form-item>
           <a-form-item v-if="addExchangeShowDemo">
-            <a-checkbox v-decorator="['enable_demo_trading', { valuePropName: 'checked', initialValue: false }]">
-              {{ $t('profile.exchange.demoTrading') }}
+            <a-checkbox v-decorator="['enable_demo_trading', { valuePropName: 'checked', initialValue: false }]" class="exchange-demo-checkbox">
+              <span class="exchange-demo-checkbox-label">{{ $t('profile.exchange.demoTrading') }}</span>
             </a-checkbox>
+            <div class="field-hint exchange-demo-hint">{{ $t('profile.exchange.demoTradingHint') }}</div>
           </a-form-item>
         </template>
 
@@ -715,9 +740,9 @@
 </template>
 
 <script>
-import { getProfile, updateProfile, getMyCreditsLog, getMyReferrals, getNotificationSettings, updateNotificationSettings } from '@/api/user'
+import { getProfile, updateProfile, getMyCreditsLog, getMyReferrals, getNotificationSettings, updateNotificationSettings, testNotificationSettings } from '@/api/user'
 import { getSettingsValues } from '@/api/settings'
-import { listExchangeCredentials, createExchangeCredential, deleteExchangeCredential } from '@/api/credentials'
+import { listExchangeCredentials, createExchangeCredential, deleteExchangeCredential, getCredentialsEgressIp } from '@/api/credentials'
 import { testExchangeConnection } from '@/api/strategy'
 import { baseMixin } from '@/store/app-mixin'
 
@@ -794,6 +819,9 @@ export default {
       exchangeTestResult: null,
       addExchangeType: '', // 'crypto' | 'ibkr' | 'mt5'
       selectedExchangeId: '',
+      egressServerIpv4: '',
+      egressServerIpv6: '',
+      egressIpLoading: false,
       cryptoExchangeList: [
         { id: 'binance', name: 'Binance' },
         { id: 'okx', name: 'OKX' },
@@ -810,6 +838,10 @@ export default {
   computed: {
     isDarkTheme () {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
+    },
+    exchangeModalWrapClass () {
+      const base = 'profile-exchange-modal'
+      return this.isDarkTheme ? `${base} ${base}--dark` : base
     },
     isVip () {
       if (!this.billing.vip_expires_at) return false
@@ -905,11 +937,15 @@ export default {
       return needs.includes(this.selectedExchangeId)
     },
     addExchangeShowDemo () {
-      // 目前仅 Binance 后端支持模拟盘 (demo-api.binance.com / demo-fapi.binance.com)
-      return this.selectedExchangeId === 'binance'
+      return this.addExchangeType === 'crypto' && !!this.selectedExchangeId
     }
   },
   watch: {
+    showAddExchangeModal (open) {
+      if (open) {
+        this.fetchEgressIp()
+      }
+    },
     activeTab (val) {
       if (val === 'credits' && this.creditsLog.length === 0) {
         this.loadCreditsLog()
@@ -1152,6 +1188,19 @@ export default {
       return date.toLocaleString()
     },
 
+    // Credits log time should follow backend returned wall-clock value.
+    // For ISO strings ending with 'Z', avoid browser timezone conversion.
+    formatCreditsLogTime (timestamp) {
+      if (!timestamp) return ''
+      if (typeof timestamp === 'string') {
+        const s = timestamp.trim()
+        if (s.endsWith('Z') && s.includes('T')) {
+          return s.replace('T', ' ').replace('Z', '')
+        }
+      }
+      return this.formatTime(timestamp)
+    },
+
     // Credits log methods
     async loadCreditsLog () {
       this.creditsLogLoading = true
@@ -1279,6 +1328,69 @@ export default {
         this.$message.error('Failed to load exchange accounts')
       } finally {
         this.exchangeLoading = false
+      }
+    },
+
+    getExchangeSelectPopupContainer () {
+      return document.body
+    },
+
+    openAddExchangeModal () {
+      this.showAddExchangeModal = true
+    },
+
+    async fetchEgressIp () {
+      this.egressIpLoading = true
+      this.egressServerIpv4 = ''
+      this.egressServerIpv6 = ''
+      try {
+        const res = await getCredentialsEgressIp()
+        if (res.code === 1 && res.data) {
+          const v4 = res.data.ipv4 != null ? String(res.data.ipv4).trim() : ''
+          const v6 = res.data.ipv6 != null ? String(res.data.ipv6).trim() : ''
+          this.egressServerIpv4 = v4
+          this.egressServerIpv6 = v6
+          if (!v4 && !v6 && res.data.ip) {
+            const legacy = String(res.data.ip).trim()
+            if (legacy.includes(':')) {
+              this.egressServerIpv6 = legacy
+            } else {
+              this.egressServerIpv4 = legacy
+            }
+          }
+        }
+      } catch (e) {
+        this.egressServerIpv4 = ''
+        this.egressServerIpv6 = ''
+      } finally {
+        this.egressIpLoading = false
+      }
+    },
+
+    copyEgressIp (kind) {
+      const ip = kind === 'v6' ? this.egressServerIpv6 : this.egressServerIpv4
+      if (!ip) return
+      const ok = () => this.$message.success(this.$t('profile.exchange.whitelistIpCopied'))
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ip).then(ok).catch(() => this._fallbackCopyText(ip, ok))
+      } else {
+        this._fallbackCopyText(ip, ok)
+      }
+    },
+
+    _fallbackCopyText (text, onOk) {
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        if (onOk) onOk()
+      } catch (e) {
+        this.$message.error(this.$t('profile.exchange.whitelistIpCopyFail'))
       }
     },
 
@@ -1419,6 +1531,25 @@ export default {
       }
     },
 
+    _mapNotifyTestError (channel, err) {
+      const e = (err || '').trim()
+      if (channel === 'email') {
+        if (e === 'missing_SMTP_HOST') {
+          return this.$t('profile.notifications.errSmtpHost') ||
+            'email：服务器未配置发信 SMTP（管理员在「系统设置 → 邮件」或环境变量 SMTP_HOST/SMTP_USER 等）'
+        }
+        if (e === 'missing_SMTP_FROM') {
+          return this.$t('profile.notifications.errSmtpFrom') ||
+            'email：未配置发件人 SMTP_FROM（或 SMTP_USER）'
+        }
+        if (e === 'missing_email_target') {
+          return this.$t('profile.notifications.errEmailTarget') ||
+            'email：未填写通知邮箱且账号无邮箱'
+        }
+      }
+      return e ? `${channel}: ${e}` : ''
+    },
+
     handleSaveNotifications () {
       this.notificationForm.validateFields(async (err, values) => {
         if (err) return
@@ -1473,10 +1604,21 @@ export default {
         this.$message.warning(this.$t('profile.notifications.fillEmail') || '请填写通知邮箱')
         return
       }
+      if (channels.includes('phone') && !values.phone) {
+        this.$message.warning(this.$t('profile.notifications.fillPhone') || '请填写手机号')
+        return
+      }
+      if (channels.includes('discord') && !values.discord_webhook) {
+        this.$message.warning(this.$t('profile.notifications.fillDiscord') || '请填写 Discord Webhook URL')
+        return
+      }
+      if (channels.includes('webhook') && !values.webhook_url) {
+        this.$message.warning(this.$t('profile.notifications.fillWebhook') || '请填写 Webhook URL')
+        return
+      }
 
       this.testingNotification = true
       try {
-        // First save settings, then test
         const saveRes = await updateNotificationSettings({
           default_channels: channels,
           telegram_bot_token: values.telegram_bot_token || '',
@@ -1493,11 +1635,29 @@ export default {
           return
         }
 
-        this.$message.info(this.$t('profile.notifications.testSent') || '测试通知已发送，请检查您的通知渠道')
-        // Note: Actual test notification would require a backend endpoint
-        // For now, we just show a success message after saving
+        const testRes = await testNotificationSettings()
+        if (testRes.code !== 1) {
+          this.$message.error(testRes.msg || (this.$t('profile.notifications.testFailed') || '测试通知发送失败'))
+          return
+        }
+
+        const results = (testRes.data && testRes.data.results) || {}
+        const failed = Object.keys(results).filter((k) => !results[k].ok)
+        if (failed.length === 0) {
+          this.$message.success(this.$t('profile.notifications.testSent') || '测试通知已发送，请检查各渠道')
+        } else {
+          const detail = failed.map((k) => {
+            const err = (results[k] && results[k].error) || ''
+            const hint = this._mapNotifyTestError(k, err)
+            return hint || (err ? `${k}: ${err}` : k)
+          }).join('；')
+          this.$message.warning(
+            (this.$t('profile.notifications.testPartial') || '部分渠道发送失败') + ` — ${detail}`,
+            8
+          )
+        }
       } catch (e) {
-        this.$message.error('发送测试通知失败')
+        this.$message.error(this.$t('profile.notifications.testFailed') || '发送测试通知失败')
       } finally {
         this.testingNotification = false
       }
@@ -2110,6 +2270,22 @@ export default {
       .amount-negative {
         color: #f5222d;
       }
+
+      // 消费记录 类型标签 - 暗黑模式增强对比度
+      .ant-tag {
+        border-width: 1px;
+        font-weight: 600;
+      }
+      .ant-tag-red { background: rgba(245,34,45,0.25); border-color: #f5222d; color: #ff7875; }
+      .ant-tag-green { background: rgba(82,196,26,0.25); border-color: #52c41a; color: #73d13d; }
+      .ant-tag-blue { background: rgba(24,144,255,0.25); border-color: #1890ff; color: #69c0ff; }
+      .ant-tag-orange { background: rgba(250,173,20,0.25); border-color: #faad14; color: #ffc53d; }
+      .ant-tag-gold { background: rgba(250,173,20,0.25); border-color: #faad14; color: #ffc53d; }
+      .ant-tag-cyan { background: rgba(19,194,194,0.25); border-color: #13c2c2; color: #5cdbd3; }
+      .ant-tag-purple { background: rgba(114,46,209,0.25); border-color: #722ed1; color: #b37feb; }
+      .ant-tag-volcano { background: rgba(250,84,28,0.25); border-color: #fa541c; color: #ff9c6e; }
+      .ant-tag-lime { background: rgba(160,212,104,0.25); border-color: #a0d911; color: #bae637; }
+      .ant-tag-default { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #c9d1d9; }
     }
 
     // 表单样式（通知设置、交易所配置等）
@@ -2684,6 +2860,271 @@ export default {
         }
       }
     }
+  }
+}
+</style>
+
+<style lang="less">
+/* 交易所添加弹窗挂载在 body 外，需非 scoped；与 profile 页暗黑主题同步 */
+@exchange-dark-bg: #1c1c1c;
+@exchange-dark-border: #2a2a2a;
+@exchange-dark-input: #141414;
+@exchange-dark-text: #c9d1d9;
+@exchange-dark-muted: #8b949e;
+@exchange-dark-title: #e0e6ed;
+
+.profile-exchange-modal .exchange-account-form {
+  .egress-ip-block {
+    width: 100%;
+  }
+
+  .egress-ip-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .egress-ip-refresh-row {
+    margin-top: 4px;
+  }
+
+  .egress-ip-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .egress-ip-kind {
+    flex: 0 0 auto;
+    min-width: 42px;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.55);
+  }
+
+  .egress-ip-value {
+    flex: 1 1 160px;
+    min-width: 0;
+    font-family: Consolas, ui-monospace, monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #d9d9d9;
+    background: #fafafa;
+    color: #262626;
+    word-break: break-all;
+  }
+
+  .exchange-demo-checkbox-label {
+    color: rgba(0, 0, 0, 0.85);
+  }
+
+  .exchange-demo-hint {
+    margin-top: 6px;
+  }
+}
+
+.profile-exchange-modal--dark {
+  .ant-modal-content {
+    background: @exchange-dark-bg;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  .ant-modal-header {
+    background: @exchange-dark-bg;
+    border-bottom: 1px solid @exchange-dark-border;
+  }
+
+  .ant-modal-title {
+    color: @exchange-dark-title;
+  }
+
+  .ant-modal-close {
+    color: @exchange-dark-muted;
+
+    &:hover {
+      color: @exchange-dark-text;
+    }
+  }
+
+  .ant-modal-body {
+    color: @exchange-dark-text;
+  }
+
+  .ant-modal-footer {
+    background: @exchange-dark-bg;
+    border-top: 1px solid @exchange-dark-border;
+  }
+
+  .exchange-account-form {
+    .ant-form-item-label > label {
+      color: @exchange-dark-text;
+    }
+
+    .ant-form-item-explain,
+    .ant-form-item-extra {
+      color: @exchange-dark-muted;
+    }
+
+    .ant-input,
+    .ant-input-password .ant-input,
+    .ant-input-number,
+    .ant-input-number-input {
+      background: @exchange-dark-input !important;
+      border-color: @exchange-dark-border !important;
+      color: @exchange-dark-text !important;
+    }
+
+    .ant-input-password-icon {
+      color: @exchange-dark-muted;
+    }
+
+    .ant-input-number-handler-wrap {
+      background: @exchange-dark-input;
+      border-left-color: @exchange-dark-border;
+    }
+
+    .ant-input-number-handler-down-inner,
+    .ant-input-number-handler-up-inner {
+      color: @exchange-dark-muted;
+    }
+
+    .ant-select-selector {
+      background: @exchange-dark-input !important;
+      border-color: @exchange-dark-border !important;
+      color: @exchange-dark-text !important;
+    }
+
+    .ant-select-selection-item,
+    .ant-select-selection-placeholder {
+      color: @exchange-dark-text !important;
+    }
+
+    /* ant-design-vue 1.x 闭合态下拉里选中文案 */
+    .ant-select-selection,
+    .ant-select-selection--single {
+      background: @exchange-dark-input !important;
+      border-color: @exchange-dark-border !important;
+    }
+
+    .ant-select-selection__rendered,
+    .ant-select-selection-selected-value,
+    .ant-select-selection-placeholder {
+      color: @exchange-dark-text !important;
+    }
+
+    .ant-select-arrow {
+      color: @exchange-dark-muted;
+    }
+
+    .ant-checkbox-wrapper {
+      color: @exchange-dark-text;
+
+      span {
+        color: @exchange-dark-text;
+      }
+    }
+
+    .exchange-demo-checkbox-label {
+      color: @exchange-dark-text !important;
+    }
+
+    .exchange-demo-hint,
+    .egress-ip-hint {
+      color: @exchange-dark-muted !important;
+    }
+
+    .egress-ip-value {
+      border-color: @exchange-dark-border !important;
+      background: @exchange-dark-input !important;
+      color: @exchange-dark-title !important;
+    }
+
+    a.egress-ip-action {
+      color: #58a6ff;
+    }
+
+    .egress-ip-kind {
+      color: @exchange-dark-muted !important;
+    }
+
+    .ant-alert {
+      background: rgba(250, 173, 20, 0.12);
+      border-color: rgba(250, 173, 20, 0.45);
+    }
+
+    .ant-alert-message {
+      color: #ffc53d;
+    }
+
+    .ant-alert-description {
+      color: @exchange-dark-muted;
+    }
+
+    .ant-alert-icon {
+      color: #faad14;
+    }
+
+    .field-hint {
+      color: @exchange-dark-muted;
+      margin-top: 6px;
+      font-size: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+
+      .anticon {
+        color: @exchange-dark-muted;
+        margin-top: 2px;
+      }
+    }
+
+    .test-result-msg {
+      color: @exchange-dark-text;
+
+      &.success {
+        color: #73d13d;
+      }
+
+      &.error {
+        color: #ff7875;
+      }
+    }
+  }
+}
+
+/* 交易所下拉（暗黑） */
+.profile-exchange-select-dropdown-dark.ant-select-dropdown {
+  background: @exchange-dark-bg;
+
+  .ant-select-dropdown-menu-item {
+    color: @exchange-dark-text;
+  }
+
+  .ant-select-dropdown-menu-item:hover {
+    background: #2a2a2a;
+  }
+
+  .ant-select-dropdown-menu-item-selected {
+    background: #2a2a2a !important;
+    color: @exchange-dark-title;
+    font-weight: 500;
+  }
+
+  .ant-select-dropdown-menu-item-group-title {
+    color: @exchange-dark-muted !important;
+    font-size: 12px;
+  }
+
+  .ant-select-dropdown-menu-item,
+  .ant-select-dropdown-menu-item-selected {
+    color: @exchange-dark-text !important;
+  }
+
+  .ant-empty-description {
+    color: @exchange-dark-muted;
   }
 }
 </style>

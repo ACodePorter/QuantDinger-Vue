@@ -224,6 +224,25 @@ body.realdark {
   }
   .ant-input::placeholder { color: #555 !important; }
   .ant-form-item-label > label { color: rgba(255, 255, 255, 0.85) !important; }
+  // 输入组件尾部图标（清空/密码眼睛/数字步进/选择器箭头）暗黑模式可读性
+  .ant-input-suffix .anticon,
+  .ant-input-clear-icon,
+  .ant-input-clear-icon .anticon,
+  .ant-input-number-handler-wrap,
+  .ant-input-number-handler-up-inner,
+  .ant-input-number-handler-down-inner,
+  .ant-select-arrow,
+  .ant-select-clear {
+    color: #8b949e !important;
+  }
+  .ant-input-suffix .anticon:hover,
+  .ant-input-clear-icon:hover,
+  .ant-input-number-handler:hover .ant-input-number-handler-up-inner,
+  .ant-input-number-handler:hover .ant-input-number-handler-down-inner,
+  .ant-select-arrow:hover,
+  .ant-select-clear:hover {
+    color: #58a6ff !important;
+  }
   // 按钮
   .ant-btn-default {
     background: #1c1c1c !important;

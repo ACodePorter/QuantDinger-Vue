@@ -287,9 +287,8 @@ class="analyze-button">
             <a-checkbox :checked="batchSelectedAll" :indeterminate="batchIndeterminate" @change="onBatchSelectAll" class="batch-all-cb">
               {{ $t('aiAssetAnalysis.batch.selectAll') }}
             </a-checkbox>
-            <a-button type="primary" size="small" icon="clock-circle" :disabled="batchSelectedKeys.length === 0" @click="openBatchScheduleModal">
-              {{ $t('aiAssetAnalysis.batch.schedule') }}
-              <span v-if="batchSelectedKeys.length > 0">({{ batchSelectedKeys.length }})</span>
+            <a-button type="primary" size="small" :disabled="batchSelectedKeys.length === 0" @click="openBatchScheduleModal">
+              {{ $t('aiAssetAnalysis.batch.schedule') }}<template v-if="batchSelectedKeys.length > 0"> {{ batchSelectedKeys.length }}</template>
             </a-button>
             <a-button size="small" @click="toggleBatchMode">{{ $t('common.cancel') }}</a-button>
           </div>
@@ -2115,9 +2114,19 @@ export default {
   background: transparent;
 }
 
+@media (max-width: 768px) {
+  .ai-analysis-container.embedded {
+    min-height: 0;
+  }
+}
+
 .ai-analysis-container.embedded .main-content-full {
   box-shadow: none;
   border-radius: 0;
+}
+
+.ai-analysis-container.embedded .top-index-bar {
+  margin-top: 6px;
 }
 
 // 全宽主内容
@@ -2233,26 +2242,48 @@ export default {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
 
   .heatmap-box {
     background: #fff;
-    border-radius: 8px;
-    padding: 12px;
-    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid #eaeef3;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
     .box-header {
       margin-bottom: 10px;
-      ::v-deep .ant-radio-group .ant-radio-button-wrapper {
-        font-size: 10px;
-        padding: 0 6px;
-        height: 22px;
-        line-height: 20px;
-        &.ant-radio-button-wrapper-checked {
-          background: var(--primary-color, #1890ff);
-          border-color: var(--primary-color, #1890ff);
-          color: #fff;
+      ::v-deep .ant-radio-group {
+        display: flex;
+        gap: 0;
+        background: #f4f5f7;
+        border-radius: 8px;
+        padding: 2px;
+
+        .ant-radio-button-wrapper {
+          font-size: 10px;
+          font-weight: 600;
+          padding: 0 8px;
+          height: 24px;
+          line-height: 22px;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: #8c8c8c;
+          box-shadow: none;
+          transition: all 0.2s;
+
+          &::before { display: none; }
+
+          &:hover { color: #555; }
+
+          &.ant-radio-button-wrapper-checked {
+            background: #fff;
+            border-color: transparent;
+            color: #111;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
         }
       }
     }
@@ -2264,9 +2295,11 @@ export default {
 
       .heat-cell {
         padding: 6px 4px;
-        border-radius: 4px;
+        border-radius: 6px;
         text-align: center;
         font-size: 9px;
+        transition: transform 0.15s;
+        &:hover { transform: scale(1.03); }
         .heat-name { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
         .heat-price { display: block; font-size: 9px; opacity: 0.8; margin-bottom: 1px; }
         .heat-val { font-weight: 700; font-size: 10px; }
@@ -2277,9 +2310,10 @@ export default {
   .calendar-box {
     flex: 1;
     background: #fff;
-    border-radius: 8px;
-    padding: 12px;
-    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid #eaeef3;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -2289,8 +2323,9 @@ export default {
       margin-bottom: 8px;
       .box-title {
         font-size: 12px;
-        color: #64748b;
-        font-weight: 600;
+        color: #555;
+        font-weight: 700;
+        letter-spacing: -0.1px;
         .anticon { margin-right: 6px; color: var(--primary-color, #1890ff); }
       }
     }
@@ -2299,8 +2334,8 @@ export default {
       flex: 1;
       overflow-y: auto;
 
-      &::-webkit-scrollbar { width: 4px; }
-      &::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+      &::-webkit-scrollbar { width: 3px; }
+      &::-webkit-scrollbar-thumb { background: #d4d8dd; border-radius: 2px; }
 
       .cal-item {
         display: flex;
@@ -2339,7 +2374,6 @@ export default {
   }
 }
 
-// 右侧面板：工具栏 + 分析结果
 // 中间分析面板
 .right-panel {
   flex: 1;
@@ -2348,17 +2382,18 @@ export default {
   min-width: 0;
   overflow: hidden;
   background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  border: 1px solid #eaeef3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
   .analysis-toolbar {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    border-bottom: 1px solid #f1f5f9;
-    background: #fafafa;
-    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #f0f2f5;
+    background: #fafbfc;
+    border-radius: 10px 10px 0 0;
 
     .symbol-selector {
       flex: 1;
@@ -2368,10 +2403,13 @@ export default {
     .analyze-button {
       background: var(--primary-color, #1890ff);
       border-color: var(--primary-color, #1890ff);
+      border-radius: 8px;
+      font-weight: 600;
     }
 
     .history-button {
       border-color: #d9d9d9;
+      border-radius: 8px;
     }
   }
 
@@ -2396,8 +2434,9 @@ export default {
   width: 320px;
   flex-shrink: 0;
   background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  border: 1px solid #eaeef3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2406,14 +2445,15 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
-    border-bottom: 1px solid #f1f5f9;
-    background: #fafafa;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0f2f5;
+    background: #fafbfc;
 
     .panel-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #64748b;
+      font-size: 13px;
+      font-weight: 700;
+      color: #333;
+      letter-spacing: -0.1px;
       .anticon { color: #facc15; margin-right: 6px; }
     }
   }
@@ -2421,10 +2461,10 @@ export default {
   .watchlist-list {
     flex: 1;
     overflow-y: auto;
-    padding: 8px;
+    padding: 6px 8px;
 
-    &::-webkit-scrollbar { width: 4px; }
-    &::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+    &::-webkit-scrollbar { width: 3px; }
+    &::-webkit-scrollbar-thumb { background: #d4d8dd; border-radius: 2px; }
 
     .watchlist-empty {
       text-align: center;
@@ -2447,6 +2487,10 @@ export default {
     height: auto;
     min-height: calc(100vh - 64px);
     overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .main-content-full {
@@ -2456,7 +2500,7 @@ export default {
 
   .top-index-bar {
     flex-wrap: wrap;
-    padding: 8px;
+    padding: 6px 8px;
 
     .indicator-box {
       min-width: 45px;
@@ -2466,19 +2510,20 @@ export default {
     .indices-marquee {
       order: 10;
       width: 100%;
-      margin-top: 8px;
+      margin-top: 6px;
     }
   }
 
   .main-body {
     flex-direction: column;
-    padding: 12px;
+    padding: 8px;
+    gap: 8px;
   }
 
   .left-panel {
     width: 100%;
     flex-direction: row;
-    gap: 12px;
+    gap: 8px;
 
     .heatmap-box, .calendar-box {
       flex: 1;
@@ -2512,95 +2557,268 @@ export default {
   }
 }
 
+/* 手机端：单列堆叠、避免热力图与日历并排过窄 */
+@media (max-width: 576px) {
+  .main-body {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+
+  .top-index-bar {
+    padding: 5px 6px;
+    gap: 6px;
+
+    .indicator-box {
+      padding: 2px 5px;
+      .ind-value { font-size: 11px; }
+    }
+    .indices-marquee .index-item {
+      font-size: 10px;
+      padding: 2px 5px;
+    }
+  }
+
+  .left-panel {
+    flex-direction: column;
+    gap: 6px;
+
+    .heatmap-box,
+    .calendar-box {
+      flex: none;
+      width: 100%;
+      min-width: 0;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    .calendar-box {
+      max-height: 220px;
+    }
+
+    .heatmap-box .box-header {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -2px;
+      padding: 0 2px 6px;
+
+      ::v-deep .ant-radio-group {
+        display: inline-flex;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+
+        .ant-radio-button-wrapper {
+          flex: 0 0 auto;
+        }
+      }
+    }
+  }
+
+  .right-panel {
+    border-radius: 8px;
+
+    .analysis-toolbar {
+      padding: 6px 8px;
+      gap: 6px;
+
+      ::v-deep .ant-btn-lg {
+        height: 36px;
+        padding: 0 10px;
+        font-size: 13px;
+      }
+
+      ::v-deep .symbol-selector .ant-select-selection--single {
+        height: 36px !important;
+      }
+
+      ::v-deep .symbol-selector .ant-select-selection__rendered {
+        line-height: 34px !important;
+      }
+    }
+
+    .analysis-main {
+      padding: 6px 8px;
+    }
+  }
+
+  .watchlist-panel {
+    max-height: ~"min(42vh, 320px)";
+    border-radius: 8px;
+
+    .panel-header {
+      padding: 8px 10px;
+    }
+
+    .watchlist-list {
+      padding: 4px 6px;
+    }
+  }
+
+  .batch-bar {
+    margin: 6px 6px 4px;
+    padding: 8px 8px;
+    gap: 6px;
+  }
+
+  .panel-summary {
+    flex-wrap: wrap;
+
+    .summary-chip {
+      flex: 1 1 22%;
+      min-width: 0;
+      padding: 5px 2px;
+    }
+
+    .sc-num { font-size: 12px; }
+    .sc-label { font-size: 8px; letter-spacing: 0.2px; }
+  }
+
+  .placeholder-hero .hero-body {
+    padding: 16px 10px;
+    max-width: 100%;
+  }
+
+  .hero-title {
+    font-size: 20px;
+  }
+
+  .hero-subtitle {
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+
+  .hero-stats {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 14px;
+
+    .hstat {
+      width: 100%;
+      max-width: none;
+      flex: none;
+      padding: 10px 10px;
+    }
+  }
+
+  .hero-cta {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+
+    .ant-btn {
+      width: 100%;
+      height: 40px;
+    }
+  }
+
+  .wl-card {
+    padding: 8px 10px;
+  }
+}
+
 /* Dark Theme — pure black / dark gray */
 .ai-analysis-container.theme-dark {
   background: #0a0a0a;
   color: #d4d4d4;
 
   .main-content-full {
-    background: #141414;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    background: #141416;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   .top-index-bar {
-    background: #141414;
-    border-bottom-color: #2a2a2a;
+    background: #141416;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
 
     .indicator-box {
-      background: #1c1c1c;
-      border-color: #2a2a2a;
-      .ind-label { color: #888; }
+      background: #1a1a1c;
+      border-color: rgba(255, 255, 255, 0.06);
+      .ind-label { color: #666; }
       .ind-value { color: #d4d4d4; }
     }
 
     .indices-marquee .index-item {
-      background: #1c1c1c;
-      border-color: #2a2a2a;
-      .idx-symbol { color: #888; }
+      background: #1a1a1c;
+      border-color: rgba(255, 255, 255, 0.06);
+      .idx-symbol { color: #777; }
       .idx-price { color: #d4d4d4; }
     }
 
     .refresh-btn {
-      color: #888;
+      color: #666;
       &:hover { color: #d4d4d4; }
     }
   }
 
   .watchlist-panel {
-    background: #1c1c1c;
-    border-color: #2a2a2a;
+    background: #1a1a1c;
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
     .panel-header {
-      background: #141414;
-      border-bottom-color: #2a2a2a;
-      .panel-title { color: #888; }
+      background: #141416;
+      border-bottom-color: rgba(255, 255, 255, 0.05);
+      .panel-title { color: #ccc; }
     }
     .panel-summary {
-      background: #141414;
-      border-bottom-color: #2a2a2a;
-      .summary-chip { border-right-color: #2a2a2a; }
+      background: #141416;
+      border-bottom-color: rgba(255, 255, 255, 0.05);
+      .summary-chip { border-right-color: rgba(255, 255, 255, 0.05); }
       .sc-num { color: #d4d4d4; }
       .sc-label { color: #666; }
     }
     .batch-bar {
-      background: rgba(255,255,255,0.04);
-      border-bottom-color: #2a2a2a;
+      background: #1c1c1c;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      margin: 8px 10px;
+      margin-bottom: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .batch-bar .batch-all-cb { color: #a0a0a8; }
+    .batch-bar .ant-btn:not(.ant-btn-primary) {
+      background: #2a2a2c;
+      border-color: #3a3a3c;
+      color: #b0b0b8;
+      &:hover { background: #333336; border-color: var(--primary-color, #1890ff); color: var(--primary-color, #1890ff); }
     }
 
     .watchlist-list {
+      &::-webkit-scrollbar-thumb { background: #333; }
+
       .wl-card {
-        &:hover { background: #252525; }
-        &.active { background: rgba(24, 144, 255, 0.08); border-color: #1890ff; }
-        .wl-symbol { color: #d4d4d4; }
-        .wl-market { color: #666; background: #2a2a2a; }
+        &:hover { background: #222224; border-color: rgba(255, 255, 255, 0.06); }
+        &.active { background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, transparent); border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, transparent); }
+        .wl-symbol { color: #e0e0e0; }
+        .wl-market { color: #666; background: rgba(255, 255, 255, 0.06); }
         .wl-price { color: #d4d4d4; }
         .wl-pnl-qty { color: #666; }
-        .wl-task-badge.paused { background: #2a2a2a; color: #666; }
-        .wl-task-next { color: #666; }
+        .wl-task-badge.paused { background: rgba(255, 255, 255, 0.05); color: #666; }
+        .wl-task-next { color: #555; }
       }
       .wl-card-hover-actions {
-        background: linear-gradient(90deg, transparent 0%, #252525 30%);
-        .wl-hover-btn { background: #1c1c1c; color: #888; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        .wl-hover-btn:hover { color: #1890ff; background: rgba(24,144,255,0.1); }
-        .wl-hover-btn.danger:hover { color: #dc2626; background: rgba(220,38,38,0.1); }
+        background: linear-gradient(90deg, transparent 0%, #222224 30%);
+        .wl-hover-btn { background: #1a1a1c; color: #888; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+        .wl-hover-btn:hover { color: var(--primary-color, #1890ff); background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent); }
+        .wl-hover-btn.danger:hover { color: #f87171; background: rgba(248, 113, 113, 0.1); }
       }
-      .wl-card.active .wl-card-hover-actions { background: linear-gradient(90deg, transparent 0%, rgba(24,144,255,0.06) 30%); }
-      .watchlist-empty { color: #666; }
-      .we-icon { color: #2a2a2a; }
+      .wl-card.active .wl-card-hover-actions { background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--primary-color, #1890ff) 6%, transparent) 30%); }
+      .watchlist-empty { color: #555; }
+      .we-icon { color: #333; }
     }
   }
 
   .placeholder-hero {
     .hero-bg-grid { background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); }
-    .hero-badge { background: rgba(24,144,255,0.10); border-color: rgba(24,144,255,0.20); }
-    .hero-title { color: #d4d4d4; }
-    .hero-subtitle, .hero-hint { color: #888; }
-    .hstat { background: #1c1c1c; border-color: #2a2a2a; box-shadow: none; }
-    .hstat:hover { border-color: #1890ff; box-shadow: 0 4px 16px rgba(24,144,255,0.12); }
-    .hstat-icon { background: linear-gradient(135deg, rgba(24,144,255,0.12) 0%, rgba(114,46,209,0.08) 100%); }
-    .hstat-val { color: #d4d4d4; }
+    .hero-badge { background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent); border-color: color-mix(in srgb, var(--primary-color, #1890ff) 25%, transparent); color: var(--primary-color, #1890ff); }
+    .hero-title { color: #e0e0e0; }
+    .hero-subtitle, .hero-hint { color: #777; }
+    .hstat { background: #1a1a1c; border-color: rgba(255,255,255,0.06); box-shadow: none; }
+    .hstat:hover { border-color: color-mix(in srgb, var(--primary-color, #1890ff) 35%, transparent); box-shadow: 0 4px 16px color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent); }
+    .hstat-icon { background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent); color: var(--primary-color, #1890ff); }
+    .hstat-val { color: #ddd; }
     .hstat-label { color: #666; }
-    .hero-cta .ant-btn-primary { box-shadow: 0 4px 14px rgba(24,144,255,0.35); }
+    .hero-cta .ant-btn-primary { box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-color, #1890ff) 35%, transparent); }
   }
 
   .watchlist-bar-legacy {
@@ -2618,44 +2836,61 @@ export default {
 
   .left-panel {
     .heatmap-box {
-      background: #1c1c1c;
-      border-color: #2a2a2a;
+      background: #1a1a1c;
+      border-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
-      ::v-deep .ant-radio-group .ant-radio-button-wrapper {
-        background: #141414;
-        border-color: #2a2a2a;
-        color: #888;
-        &:hover { color: #d4d4d4; }
+      ::v-deep .ant-radio-group {
+        background: #111113;
+
+        .ant-radio-button-wrapper {
+          background: transparent;
+          border-color: transparent;
+          color: #666;
+          &:hover { color: #aaa; }
+          &.ant-radio-button-wrapper-checked {
+            background: #2a2a2c;
+            color: #e8e8e8;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+          }
+        }
       }
     }
 
     .calendar-box {
-      background: #1c1c1c;
-      border-color: #2a2a2a;
+      background: #1a1a1c;
+      border-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
       .box-title { color: #888; }
       .cal-item {
-        border-bottom-color: #2a2a2a;
-        .cal-date { color: #666; }
-        .cal-time { color: #888; }
-        .cal-name { color: #d4d4d4; }
+        border-bottom-color: rgba(255, 255, 255, 0.05);
+        .cal-date { color: #555; }
+        .cal-time { color: #777; }
+        .cal-name { color: #ccc; }
       }
-      .cal-empty { color: #666; }
+      .cal-empty { color: #555; }
+
+      .calendar-list {
+        &::-webkit-scrollbar-thumb { background: #333; }
+      }
     }
   }
 
   .right-panel {
-    background: #1c1c1c;
-    border-color: #2a2a2a;
+    background: #1a1a1c;
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
     .analysis-toolbar {
-      background: #141414;
-      border-bottom-color: #2a2a2a;
+      background: #141416;
+      border-bottom-color: rgba(255, 255, 255, 0.05);
 
       .history-button {
-        background: #1c1c1c;
-        border-color: #2a2a2a;
-        color: #d4d4d4;
+        background: #222224;
+        border-color: rgba(255, 255, 255, 0.08);
+        color: #ccc;
+        &:hover { border-color: color-mix(in srgb, var(--primary-color, #1890ff) 45%, transparent); color: var(--primary-color, #1890ff); }
       }
     }
   }
@@ -2667,17 +2902,28 @@ export default {
     &:hover { border-color: #1890ff; color: #1890ff; }
   }
 
-  .wl-change.up { background: rgba(22,163,74,0.15); }
-  .wl-change.down { background: rgba(220,38,38,0.12); }
+  .wl-change.up { background: rgba(74,222,128,0.10); }
+  .wl-change.down { background: rgba(248,113,113,0.10); }
 
   .panel-header-icon { color: #666; }
-  .panel-header-icon:hover { color: #1890ff; background: rgba(24,144,255,0.08); }
+  .panel-header-icon:hover { color: var(--primary-color, #1890ff); background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent); }
 
-  .panel-summary { background: #141414; }
+  .panel-summary { background: #141416; }
 
   .batch-bar {
-    background: rgba(255,255,255,0.03) !important;
-    border-bottom-color: #2a2a2a !important;
+    background: #1c1c1c !important;
+    border: 1px solid #2a2a2a !important;
+    border-radius: 10px;
+    margin: 8px 10px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .batch-bar .batch-all-cb { color: #a0a0a8; }
+  .batch-bar .ant-btn:not(.ant-btn-primary) {
+    background: #2a2a2c !important;
+    border-color: #3a3a3c !important;
+    color: #b0b0b8 !important;
+    &:hover { background: #333336 !important; border-color: var(--primary-color, #1890ff) !important; color: var(--primary-color, #1890ff) !important; }
   }
 
   .watchlist-bar-compat {
@@ -2956,11 +3202,40 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: linear-gradient(90deg, #eff6ff, #f0f5ff);
-  border-bottom: 1px solid #dbeafe;
+  padding: 10px 12px;
+  margin: 8px 10px;
+  margin-bottom: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  flex-wrap: wrap;
 }
-.batch-all-cb { font-size: 12px; }
+.batch-all-cb {
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  margin-right: 4px;
+}
+.batch-bar .ant-btn {
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  height: 28px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.batch-bar .ant-btn-primary {
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
+  &:hover { filter: brightness(1.05); }
+}
+.batch-bar .ant-btn:not(.ant-btn-primary) {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
+  &:hover { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+}
 
 /* ===== Watchlist Card (wl-card) ===== */
 .wl-card {
@@ -2968,16 +3243,18 @@ export default {
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
-  margin-bottom: 2px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 3px;
   border: 1px solid transparent;
 }
 .wl-card:hover {
-  background: #f8fafc;
+  background: #f5f7fa;
+  border-color: #e8ecf1;
 }
 .wl-card.active {
-  background: linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%);
-  border-color: #91d5ff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color, #1890ff) 6%, #fff) 0%, color-mix(in srgb, var(--primary-color, #1890ff) 4%, #fff) 100%);
+  border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent);
 }
 .wl-card-cb {
   position: absolute;
@@ -3199,7 +3476,41 @@ export default {
 }
 .task-item-actions {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+
+  .ant-btn {
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    height: 28px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+    border-width: 1px;
+
+    &.ant-btn-primary {
+      background: var(--primary-color, #1890ff);
+      border-color: var(--primary-color, #1890ff);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      &:hover { filter: brightness(1.05); box-shadow: 0 2px 6px color-mix(in srgb, var(--primary-color, #1890ff) 25%, transparent); }
+    }
+    &.ant-btn-default {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #475569;
+      &:hover { background: #f1f5f9; border-color: #cbd5e1; color: #334155; }
+    }
+    &.ant-btn-danger {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #dc2626;
+      &:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+    }
+  }
 }
 
 /* Add Stock Modal */
@@ -3442,6 +3753,11 @@ export default {
   .task-item-name { color: #d4d4d4; }
   .task-item-meta { color: #888; }
   .task-drawer-empty { color: #666; }
+  .task-item-actions .ant-btn {
+    &.ant-btn-primary { background: var(--primary-color, #1890ff); border-color: var(--primary-color, #1890ff); &:hover { filter: brightness(1.1); } }
+    &.ant-btn-default { background: #2a2a2c; border-color: #3a3a3c; color: #b0b0b8; &:hover { background: #333336; border-color: var(--primary-color, #1890ff); color: var(--primary-color, #1890ff); } }
+    &.ant-btn-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.25); color: #f87171; &:hover { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.4); color: #fca5a5; } }
+  }
   .ant-btn-default { background: #1c1c1c; border-color: #2a2a2a; color: #d4d4d4; &:hover { border-color: #1890ff; color: #1890ff; } }
   .ant-btn-danger { background: transparent; }
   .ant-popover-inner { background: #1c1c1c; }

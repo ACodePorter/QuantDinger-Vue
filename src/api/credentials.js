@@ -4,7 +4,8 @@ const api = {
   list: '/api/credentials/list',
   get: '/api/credentials/get',
   create: '/api/credentials/create',
-  delete: '/api/credentials/delete'
+  delete: '/api/credentials/delete',
+  egressIp: '/api/credentials/egress-ip'
 }
 
 export function listExchangeCredentials (params = {}) {
@@ -36,5 +37,13 @@ export function deleteExchangeCredential (id, params = {}) {
     url: api.delete,
     method: 'delete',
     params: { id, ...params }
+  })
+}
+
+/** Server egress IP (for exchange API key IP whitelist). */
+export function getCredentialsEgressIp () {
+  return request({
+    url: api.egressIp,
+    method: 'get'
   })
 }

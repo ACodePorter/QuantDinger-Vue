@@ -79,7 +79,7 @@
                     </a-col>
                   </a-row>
                   <div v-if="openrouterBalance.is_free_tier" class="free-tier-badge">
-                    <a-tag color="blue">Free Tier</a-tag>
+                    <a-tag color="blue">{{ $t('settings.freeTier') }}</a-tag>
                   </div>
                 </div>
                 <div v-else class="balance-empty">
@@ -808,6 +808,21 @@ export default {
 
       /deep/ .ant-select-arrow {
         color: #8b949e;
+      }
+
+      // Input trailing icons in dark mode (eye/clear/spinner) should stay readable
+      /deep/ .ant-input-suffix .anticon,
+      /deep/ .ant-input-clear-icon,
+      /deep/ .ant-input-clear-icon .anticon,
+      /deep/ .ant-input-number-handler-wrap {
+        color: #8b949e;
+      }
+
+      /deep/ .ant-input-suffix .anticon:hover,
+      /deep/ .ant-input-clear-icon:hover,
+      /deep/ .ant-input-number-handler:hover .ant-input-number-handler-up-inner,
+      /deep/ .ant-input-number-handler:hover .ant-input-number-handler-down-inner {
+        color: #58a6ff;
       }
 
       .field-default {
