@@ -219,6 +219,14 @@
                                 @click.stop="handlePublishIndicator(indicator)"
                               />
                             </a-tooltip>
+                            <!-- 创建策略 -->
+                            <a-tooltip :title="$t('dashboard.indicator.action.createStrategy')">
+                              <a-icon
+                                type="rocket"
+                                class="action-icon create-strategy-icon"
+                                @click.stop="handleCreateStrategyFromIndicator(indicator)"
+                              />
+                            </a-tooltip>
                           </div>
                         </div>
                         <span class="card-desc">{{ indicator.description || '' }}</span>
@@ -392,16 +400,7 @@
         @cancel="showIndicatorEditor = false; editingIndicator = null"
       />
 
-      <!-- 回测弹窗 -->
-      <backtest-modal
-        :visible="showBacktestModal"
-        :userId="userId"
-        :indicator="backtestIndicator"
-        :symbol="selectedSymbol"
-        :market="selectedMarket"
-        :timeframe="selectedTimeframe"
-        @cancel="showBacktestModal = false; backtestIndicator = null"
-      />
+      <!-- 回测已移至 /backtest-center -->
 
       <!-- 指标参数配置弹窗 -->
       <a-modal
@@ -457,26 +456,6 @@
           <a-empty v-else :description="$t('dashboard.indicator.paramsConfig.noParams')" />
         </div>
       </a-modal>
-
-      <!-- 回测记录抽屉 -->
-      <backtest-history-drawer
-        :visible="showBacktestHistoryDrawer"
-        :userId="userId"
-        :indicatorId="backtestHistoryIndicator ? backtestHistoryIndicator.id : null"
-        :symbol="selectedSymbol"
-        :market="selectedMarket"
-        :timeframe="selectedTimeframe"
-        :isMobile="isMobile"
-        @cancel="showBacktestHistoryDrawer = false; backtestHistoryIndicator = null"
-        @view="handleViewBacktestRun"
-      />
-
-      <!-- 回测记录详情 -->
-      <backtest-run-viewer
-        :visible="showBacktestRunViewer"
-        :run="selectedBacktestRun"
-        @cancel="showBacktestRunViewer = false; selectedBacktestRun = null"
-      />
 
       <!-- 发布到社区弹窗 -->
       <a-modal
@@ -693,9 +672,6 @@ import { getWatchlist, addWatchlist, searchSymbols, getHotSymbols, getMarketType
 import { getUserInfo } from '@/api/login'
 import IndicatorEditor from '@/views/indicator-analysis/components/IndicatorEditor.vue'
 import KlineChart from '@/views/indicator-analysis/components/KlineChart.vue'
-import BacktestModal from '@/views/indicator-analysis/components/BacktestModal.vue'
-import BacktestHistoryDrawer from '@/views/indicator-analysis/components/BacktestHistoryDrawer.vue'
-import BacktestRunViewer from '@/views/indicator-analysis/components/BacktestRunViewer.vue'
 import QuickTradePanel from '@/components/QuickTradePanel/QuickTradePanel'
 
 export default {
@@ -703,9 +679,6 @@ export default {
   components: {
     IndicatorEditor,
     KlineChart,
-    BacktestModal,
-    BacktestHistoryDrawer,
-    BacktestRunViewer,
     QuickTradePanel
   },
   computed: {
@@ -1717,31 +1690,39 @@ export default {
       })
     }
 
-    // 打开回测弹窗（策略 = 指标信号 + 回测参数配置）
     const handleOpenBacktest = (indicator) => {
-      backtestIndicator.value = { ...indicator }
-      showBacktestModal.value = true
+      proxy.$router.push({
+        path: '/backtest-center',
+        query: { tab: 'indicator', indicator_id: String(indicator.id) }
+      })
     }
 
     const handleOpenBacktestHistory = (indicator) => {
-      backtestHistoryIndicator.value = { ...indicator }
-      showBacktestHistoryDrawer.value = true
+      proxy.$router.push({
+        path: '/backtest-center',
+        query: { tab: 'indicator', indicator_id: String(indicator.id), view: 'history' }
+      })
     }
 
     const handleViewBacktestRun = (run) => {
-      selectedBacktestRun.value = run
-      showBacktestRunViewer.value = true
+      // kept for compatibility; now handled by backtest center
     }
 
     // 发布指标到社区
     const handlePublishIndicator = (indicator) => {
       publishIndicator.value = { ...indicator }
-      // 设置表单初始值
       publishPricingType.value = indicator.pricing_type || 'free'
       publishPrice.value = indicator.price || 10
       publishDescription.value = indicator.description || ''
       publishVipFree.value = !!indicator.vip_free
       showPublishModal.value = true
+    }
+
+    const handleCreateStrategyFromIndicator = (indicator) => {
+      proxy.$router.push({
+        path: '/trading-assistant',
+        query: { mode: 'create', indicator_id: String(indicator.id) }
+      })
     }
 
     // 确认发布
@@ -2134,6 +2115,7 @@ getMarketColor,
       publishVipFree,
       publishRules,
       handlePublishIndicator,
+      handleCreateStrategyFromIndicator,
       handleConfirmPublish,
       handleUnpublish,
       // 暴露给回测弹窗使用的选中值
@@ -2668,6 +2650,13 @@ getMarketColor,
       &:hover {
         color: #73d13d;
       }
+    }
+  }
+
+  &.create-strategy-icon {
+    color: #fa8c16;
+    &:hover {
+      color: #ffa940;
     }
   }
 

@@ -7,16 +7,52 @@ export const asyncRouterMap = [
     name: 'index',
     component: BasicLayout,
     meta: { title: 'menu.home' },
-    redirect: '/dashboard',
+    redirect: '/ai-asset-analysis',
     children: [
-      // 仪表盘
+      // 1. AI资产分析（首页）
+      {
+        path: '/ai-asset-analysis',
+        name: 'AIAssetAnalysis',
+        component: () => import('@/views/ai-asset-analysis'),
+        meta: { title: 'menu.dashboard.aiAssetAnalysis', keepAlive: false, icon: 'appstore', permission: ['dashboard'] }
+      },
+      // 2. 指标分析
+      {
+        path: '/indicator-analysis',
+        name: 'Indicator',
+        component: () => import('@/views/indicator-analysis'),
+        meta: { title: 'menu.dashboard.indicator', keepAlive: true, icon: 'line-chart', permission: ['dashboard'] }
+      },
+      // 3. 指标市场
+      {
+        path: '/indicator-community',
+        name: 'IndicatorCommunity',
+        component: () => import('@/views/indicator-community'),
+        meta: { title: 'menu.dashboard.community', keepAlive: false, icon: 'shop', permission: ['dashboard'] }
+      },
+      // 4. 回测中心
+      {
+        path: '/backtest-center',
+        name: 'BacktestCenter',
+        component: () => import('@/views/backtest-center'),
+        meta: { title: 'menu.dashboard.backtestCenter', keepAlive: false, icon: 'experiment', permission: ['dashboard'] }
+      },
+      // 5. 交易助手（含实盘概览 = 原仪表盘）
+      {
+        path: '/trading-assistant',
+        name: 'TradingAssistant',
+        component: () => import('@/views/trading-assistant'),
+        meta: { title: 'menu.dashboard.tradingAssistant', keepAlive: true, icon: 'robot', permission: ['dashboard'] }
+      },
+      // 原仪表盘路由保留兼容，重定向到交易助手
       {
         path: '/dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/dashboard'),
-        meta: { title: 'menu.dashboard', keepAlive: true, icon: 'dashboard', permission: ['dashboard'] }
+        redirect: '/trading-assistant?tab=overview',
+        hidden: true,
+        meta: { title: 'menu.dashboard', keepAlive: false, icon: 'dashboard', permission: ['dashboard'] }
       },
-      // AI 分析
+      // AI 分析（隐藏）
       {
         path: '/ai-analysis/:pageNo([1-9]\\d*)?',
         name: 'Analysis',
@@ -24,35 +60,7 @@ export const asyncRouterMap = [
         hidden: true,
         meta: { title: 'menu.dashboard.analysis', keepAlive: false, icon: 'thunderbolt', permission: ['dashboard'] }
       },
-      // AI资产分析（统一入口）
-      {
-        path: '/ai-asset-analysis',
-        name: 'AIAssetAnalysis',
-        component: () => import('@/views/ai-asset-analysis'),
-        meta: { title: 'menu.dashboard.aiAssetAnalysis', keepAlive: false, icon: 'appstore', permission: ['dashboard'] }
-      },
-      // 指标分析
-      {
-        path: '/indicator-analysis',
-        name: 'Indicator',
-        component: () => import('@/views/indicator-analysis'),
-        meta: { title: 'menu.dashboard.indicator', keepAlive: true, icon: 'line-chart', permission: ['dashboard'] }
-      },
-      // 指标市场（放在指标分析下面）
-      {
-        path: '/indicator-community',
-        name: 'IndicatorCommunity',
-        component: () => import('@/views/indicator-community'),
-        meta: { title: 'menu.dashboard.community', keepAlive: false, icon: 'shop', permission: ['dashboard'] }
-      },
-      // 交易助手
-      {
-        path: '/trading-assistant',
-        name: 'TradingAssistant',
-        component: () => import('@/views/trading-assistant'),
-        meta: { title: 'menu.dashboard.tradingAssistant', keepAlive: true, icon: 'robot', permission: ['dashboard'] }
-      },
-      // 资产监测
+      // 资产监测（隐藏）
       {
         path: '/portfolio',
         name: 'Portfolio',

@@ -18,7 +18,11 @@ const api = {
   positions: '/api/strategies/positions',
   equityCurve: '/api/strategies/equityCurve',
   notifications: '/api/strategies/notifications',
-  unreadNotificationCount: '/api/strategies/notifications/unread-count'
+  unreadNotificationCount: '/api/strategies/notifications/unread-count',
+  verifyCode: '/api/strategies/verify-code',
+  aiGenerate: '/api/strategies/ai-generate',
+  performance: '/api/strategies/performance',
+  logs: '/api/strategies/logs'
 }
 
 /**
@@ -244,5 +248,49 @@ export function getUnreadNotificationCount () {
   return request({
     url: api.unreadNotificationCount,
     method: 'get'
+  })
+}
+
+/**
+ * Verify strategy script code
+ */
+export function verifyStrategyCode (data) {
+  return request({
+    url: api.verifyCode,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * AI generate strategy code
+ */
+export function aiGenerateStrategy (data) {
+  return request({
+    url: api.aiGenerate,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * Get strategy performance metrics
+ */
+export function getStrategyPerformance (id) {
+  return request({
+    url: api.performance,
+    method: 'get',
+    params: { id }
+  })
+}
+
+/**
+ * Get strategy running logs
+ */
+export function getStrategyLogs (id, params = {}) {
+  return request({
+    url: api.logs,
+    method: 'get',
+    params: { id, ...params }
   })
 }
