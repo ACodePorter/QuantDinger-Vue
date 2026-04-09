@@ -118,6 +118,42 @@ body.realdark .basic-layout-wrapper .custom-menu-footer {
   opacity: 0.75;
 }
 
+/* ========== Modal.confirm（退出登录等全局确认框）：暗黑下文字/背景 ========== */
+body.dark .ant-modal-confirm,
+body.realdark .ant-modal-confirm {
+  .ant-modal-content {
+    background: #1f1f1f !important;
+  }
+  .ant-modal-body {
+    background: #1f1f1f !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+  }
+  .ant-modal-confirm-title {
+    color: rgba(255, 255, 255, 0.85) !important;
+  }
+  .ant-modal-confirm-content {
+    color: rgba(255, 255, 255, 0.65) !important;
+  }
+  .ant-btn {
+    background: #2a2a2a !important;
+    border-color: #434343 !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    &:hover {
+      border-color: #1890ff !important;
+      color: #1890ff !important;
+    }
+  }
+  .ant-btn-primary {
+    background: #1890ff !important;
+    border-color: #1890ff !important;
+    color: #fff !important;
+    &:hover {
+      background: #40a9ff !important;
+      border-color: #40a9ff !important;
+    }
+  }
+}
+
 /* ========== USDT / 充值支付弹窗：暗黑下避免黑字顺色 ========== */
 body.dark .ant-modal-wrap [class*='usdt'],
 body.realdark .ant-modal-wrap [class*='usdt'],

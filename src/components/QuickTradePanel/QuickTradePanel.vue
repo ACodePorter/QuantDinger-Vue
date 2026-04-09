@@ -1,370 +1,375 @@
 <template>
   <div class="quick-trade-panel-root">
-  <a-drawer
-    :title="null"
-    :width="400"
-    :visible="visible"
-    :closable="false"
-    :bodyStyle="{ padding: 0 }"
-    :maskStyle="{ background: 'rgba(0,0,0,0.45)' }"
-    @close="handleClose"
-    class="quick-trade-drawer"
-    :class="{ 'theme-dark': isDark }"
-  >
-    <!-- Header -->
-    <div class="qt-header">
-      <div class="qt-header-left">
-        <a-icon type="thunderbolt" theme="filled" class="qt-icon" />
-        <span class="qt-header-title">{{ $t('quickTrade.title') }}</span>
+    <component
+      :is="embedded ? 'div' : 'a-drawer'"
+      v-bind="containerProps"
+      @close="handleClose"
+      class="quick-trade-shell"
+      :class="[embedded ? 'quick-trade-embedded' : 'quick-trade-drawer', { 'theme-dark': isDark, 'qt-embedded-ide': embedded && embeddedIde }]"
+    >
+      <!-- Header (hidden in embedded mode since parent tab already shows title) -->
+      <div v-if="!embedded" class="qt-header">
+        <div class="qt-header-left">
+          <a-icon type="thunderbolt" theme="filled" class="qt-icon" />
+          <span class="qt-header-title">{{ $t('quickTrade.title') }}</span>
+        </div>
+        <a-icon type="close" class="qt-close" @click="handleClose" />
       </div>
-      <a-icon type="close" class="qt-close" @click="handleClose" />
-    </div>
 
-    <!-- Symbol & Price Bar -->
-    <div class="qt-symbol-bar">
-      <div class="qt-symbol-selector">
-        <a-select
-          v-model="currentSymbol"
-          show-search
-          :placeholder="$t('quickTrade.selectSymbol')"
-          style="width: 100%"
-          :filter-option="false"
-          :not-found-content="symbolSearching ? null : undefined"
-          @search="handleSymbolSearch"
-          @change="handleSymbolChange"
-          @focus="handleSymbolFocus"
-          :loading="symbolSearching"
-        >
-          <a-icon slot="suffixIcon" type="search" style="color: #999" />
-          <a-select-option
-            v-for="item in symbolSuggestions"
-            :key="item.value"
-            :value="item.value"
+      <!-- Symbol & Price Bar -->
+      <div class="qt-symbol-bar">
+        <div class="qt-symbol-selector">
+          <a-select
+            v-model="currentSymbol"
+            show-search
+            :placeholder="$t('quickTrade.selectSymbol')"
+            style="width: 100%"
+            :filter-option="false"
+            :not-found-content="symbolSearching ? null : undefined"
+            @search="handleSymbolSearch"
+            @change="handleSymbolChange"
+            @focus="handleSymbolFocus"
+            :loading="symbolSearching"
           >
-            <div class="qt-symbol-option">
-              <span class="qt-symbol-option-name">{{ item.symbol }}</span>
-              <span v-if="item.name" class="qt-symbol-option-desc">{{ item.name }}</span>
-            </div>
-          </a-select-option>
-        </a-select>
-      </div>
-      <div class="qt-price-display" :class="priceChangeClass">
-        <span class="qt-current-price">${{ formatPrice(currentPrice) }}</span>
-      </div>
-    </div>
-
-    <!-- Credential Selector -->
-    <div class="qt-section">
-      <div class="qt-label">{{ $t('quickTrade.exchange') }} <span class="qt-crypto-hint">{{ $t('quickTrade.cryptoOnly') }}</span></div>
-      <a-select
-        v-model="selectedCredentialId"
-        :placeholder="$t('quickTrade.selectExchange')"
-        style="width: 100%"
-        @change="onCredentialChange"
-        :loading="credLoading"
-        :notFoundContent="$t('quickTrade.noExchange')"
-      >
-        <a-select-option v-for="c in credentials" :key="c.id" :value="c.id">
-          <span style="text-transform: capitalize;">{{ c.exchange_id || c.name }}</span>
-          <a-tag v-if="c.enable_demo_trading" color="orange" size="small" style="margin-left: 6px;">{{ $t('quickTrade.testnetTag') }}</a-tag>
-          <a-tag v-if="c.market_type" size="small" style="margin-left: 6px;">{{ c.market_type }}</a-tag>
-        </a-select-option>
-      </a-select>
-      <div v-if="!credLoading && credentials.length === 0" class="qt-no-cred-actions">
-        <a-button type="primary" block size="small" @click="showAddExchangeModal = true">
-          <a-icon type="plus" /> {{ $t('quickTrade.addAccountInline') }}
-        </a-button>
-      </div>
-      <div class="qt-manage-link">
-        <a @click.prevent="showAddExchangeModal = true">
-          <a-icon type="plus-circle" style="margin-right: 4px;" />{{ $t('quickTrade.addAccountInline') }}
-        </a>
-        <span class="qt-manage-sep">·</span>
-        <router-link to="/profile?tab=exchange">
-          <a-icon type="setting" style="margin-right: 4px;" />{{ $t('profile.exchange.goToManage') }}
-        </router-link>
-      </div>
-      <!-- Balance（含 0 与加载态，避免 Bitget 等解析为 0 时整块消失） -->
-      <div class="qt-balance" v-if="selectedCredentialId">
-        <template v-if="balanceLoading">
-          <a-spin size="small" />
-          <span class="qt-balance-label qt-balance-loading-text">{{ $t('quickTrade.available') }}…</span>
-        </template>
-        <template v-else-if="balance.error">
-          <span class="qt-balance-label">{{ $t('quickTrade.available') }}:</span>
-          <span class="qt-balance-error" :title="balance.error">—</span>
-        </template>
-        <template v-else>
-          <span class="qt-balance-label">{{ $t('quickTrade.available') }}:</span>
-          <span class="qt-balance-value">${{ formatPrice(balance.available) }}</span>
-        </template>
-      </div>
-    </div>
-
-    <!-- Direction Toggle -->
-    <div class="qt-section">
-      <div class="qt-direction-toggle">
-        <div
-          class="qt-dir-btn qt-dir-long"
-          :class="{ active: side === 'buy' }"
-          @click="setTradeSide('buy')"
-        >
-          <a-icon type="arrow-up" /> {{ $t('quickTrade.long') }}
-        </div>
-        <div
-          class="qt-dir-btn qt-dir-short"
-          :class="{ active: side === 'sell', 'qt-dir-disabled': !isSwapMode }"
-          @click="setTradeSide('sell')"
-        >
-          <a-icon type="arrow-down" /> {{ $t('quickTrade.short') }}
-        </div>
-      </div>
-      <div v-if="!isSwapMode" class="qt-hint-text qt-hint-inline">{{ $t('quickTrade.shortDisabledSpot') }}</div>
-    </div>
-
-    <!-- Order Type -->
-    <div class="qt-section">
-      <a-radio-group v-model="orderType" button-style="solid" size="small" style="width: 100%;">
-        <a-radio-button value="market" style="width: 50%; text-align: center;">
-          {{ $t('quickTrade.market') }}
-        </a-radio-button>
-        <a-radio-button value="limit" style="width: 50%; text-align: center;">
-          {{ $t('quickTrade.limit') }}
-        </a-radio-button>
-      </a-radio-group>
-    </div>
-
-    <!-- Limit Price -->
-    <div class="qt-section" v-if="orderType === 'limit'">
-      <div class="qt-label">{{ $t('quickTrade.limitPrice') }}</div>
-      <a-input-number
-        v-model="limitPrice"
-        :min="0"
-        :step="priceStep"
-        :precision="pricePrecision"
-        style="width: 100%"
-        :placeholder="$t('quickTrade.enterPrice')"
-      />
-    </div>
-
-    <!-- Amount (USDT) -->
-    <div class="qt-section qt-amount-block">
-      <div class="qt-label">{{ $t('quickTrade.amount') }} (USDT)</div>
-      <a-input-number
-        v-model="amount"
-        :min="1"
-        :step="10"
-        :precision="2"
-        style="width: 100%"
-        :placeholder="$t('quickTrade.enterAmount')"
-      />
-      <div class="qt-quick-amounts">
-        <a-button
-          v-for="pct in quickAmountPcts"
-          :key="pct"
-          size="small"
-          @click="setAmountByPercent(pct)"
-          :disabled="balance.available <= 0"
-        >
-          {{ pct }}%
-        </a-button>
-      </div>
-    </div>
-
-    <!-- Leverage & margin (合约：杠杆>1；1×=现货) -->
-    <div class="qt-section qt-card qt-mode-card">
-      <template v-if="isSwapMode">
-        <div class="qt-section-title-row">
-          <span class="qt-section-title">{{ $t('quickTrade.leverage') }}</span>
-          <span class="qt-badge-contract">{{ $t('quickTrade.contractBadge') }}</span>
-        </div>
-        <div class="qt-leverage-row">
-          <a-slider
-            v-model="leverage"
-            :min="1"
-            :max="125"
-            :marks="leverageMarks"
-            :tipFormatter="v => v + 'x'"
-            style="flex: 1; margin-right: 12px;"
-          />
-          <a-input-number
-            v-model="leverage"
-            :min="1"
-            :max="125"
-            :formatter="v => `${v}x`"
-            :parser="v => String(v).replace('x', '')"
-            class="qt-leverage-input"
-          />
-        </div>
-        <div class="qt-label qt-label-spaced">{{ $t('quickTrade.marginMode') }}</div>
-        <a-radio-group v-model="marginMode" size="small" button-style="solid" class="qt-margin-radio">
-          <a-radio-button value="cross">{{ $t('quickTrade.crossMargin') }}</a-radio-button>
-          <a-radio-button value="isolated">{{ $t('quickTrade.isolatedMargin') }}</a-radio-button>
-        </a-radio-group>
-        <div class="qt-hint-text">{{ $t('quickTrade.marginModeHint') }}</div>
-      </template>
-      <div v-else class="qt-spot-banner">
-        <a-icon type="wallet" class="qt-spot-banner-icon" />
-        <div class="qt-spot-banner-text">
-          <div class="qt-spot-banner-title">{{ $t('quickTrade.spotModeTitle') }}</div>
-          <div class="qt-hint-text">{{ $t('quickTrade.spotModeHint') }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TP / SL (optional, always expanded) -->
-    <div class="qt-section qt-card qt-tpsl-card">
-      <div class="qt-section-title-row">
-        <span class="qt-section-title">{{ $t('quickTrade.tpsl') }}</span>
-        <span class="qt-optional-tag">{{ $t('quickTrade.optional') }}</span>
-      </div>
-      <div class="qt-tpsl-row">
-        <div class="qt-tpsl-item">
-          <span class="qt-label qt-tp-label">{{ $t('quickTrade.tp') }}</span>
-          <a-input-number
-            v-model="tpPrice"
-            :min="0"
-            :step="priceStep"
-            :precision="pricePrecision"
-            class="qt-input-full"
-            :placeholder="$t('quickTrade.tpPlaceholder')" />
-        </div>
-        <div class="qt-tpsl-item">
-          <span class="qt-label qt-sl-label">{{ $t('quickTrade.sl') }}</span>
-          <a-input-number
-            v-model="slPrice"
-            :min="0"
-            :step="priceStep"
-            :precision="pricePrecision"
-            class="qt-input-full"
-            :placeholder="$t('quickTrade.slPlaceholder')" />
-        </div>
-      </div>
-      <div class="qt-hint-text qt-tpsl-record-hint">{{ $t('quickTrade.tpslRecordOnlyHint') }}</div>
-    </div>
-
-    <!-- Submit Button -->
-    <div class="qt-submit-section">
-      <a-button
-        :type="side === 'buy' ? 'primary' : 'danger'"
-        size="large"
-        block
-        :loading="submitting"
-        :disabled="!canSubmit"
-        @click="handleSubmit"
-        class="qt-submit-btn"
-        :class="[side === 'buy' ? 'qt-btn-long' : 'qt-btn-short']"
-      >
-        <a-icon :type="side === 'buy' ? 'arrow-up' : 'arrow-down'" />
-        {{ side === 'buy' ? $t('quickTrade.buyLong') : $t('quickTrade.sellShort') }}
-        {{ symbol }}
-      </a-button>
-    </div>
-
-    <!-- Current Positions (all legs for selected symbol) -->
-    <div class="qt-position-section">
-      <div class="qt-section-header">
-        <a-icon type="wallet" /> {{ $t('quickTrade.currentPosition') }}
-        <span v-if="currentPositions.length > 1" class="qt-position-count">({{ currentPositions.length }})</span>
-      </div>
-      <template v-if="currentPositions.length > 0">
-        <div v-if="isSwapMode" class="qt-close-scope qt-close-scope-global">
-          <div class="qt-label qt-label-close-scope">{{ $t('quickTrade.closeScopeLabel') }}</div>
-          <a-radio-group v-model="closeScope" size="small" class="qt-close-scope-radio">
-            <a-radio-button value="full">{{ $t('quickTrade.closeScopeFull') }}</a-radio-button>
-            <a-radio-button value="system_tracked">{{ $t('quickTrade.closeScopeSystem') }}</a-radio-button>
-          </a-radio-group>
-          <div class="qt-hint-text">{{ $t('quickTrade.closeScopeSystemHint') }}</div>
-        </div>
-        <div
-          v-for="(pos, idx) in currentPositions"
-          :key="'pos-' + idx + '-' + (pos.side || '') + '-' + String(pos.size || '')"
-          class="qt-position-card"
-          :class="pos.side"
-        >
-          <div class="qt-pos-row">
-            <span>{{ $t('quickTrade.side') }}</span>
-            <a-tag :color="pos.side === 'long' ? '#52c41a' : '#f5222d'" size="small">
-              {{ pos.side === 'long' ? $t('quickTrade.long') : $t('quickTrade.short') }}
-            </a-tag>
-          </div>
-          <div class="qt-pos-row">
-            <span>{{ $t('quickTrade.posSize') }}</span>
-            <span>{{ pos.size }}</span>
-          </div>
-          <div class="qt-pos-row">
-            <span>{{ $t('quickTrade.entryPrice') }}</span>
-            <span>${{ formatPrice(pos.entry_price) }}</span>
-          </div>
-          <div class="qt-pos-row" v-if="pos.mark_price">
-            <span>{{ $t('quickTrade.markPrice') }}</span>
-            <span>${{ formatPrice(pos.mark_price) }}</span>
-          </div>
-          <div class="qt-pos-row" v-if="pos.leverage && pos.leverage > 1">
-            <span>{{ $t('quickTrade.leverage') }}</span>
-            <span>{{ pos.leverage }}x</span>
-          </div>
-          <div class="qt-pos-row">
-            <span>{{ $t('quickTrade.unrealizedPnl') }}</span>
-            <span :class="pos.unrealized_pnl >= 0 ? 'qt-green' : 'qt-red'">
-              ${{ formatPrice(pos.unrealized_pnl) }}
-            </span>
-          </div>
-          <a-button
-            type="danger"
-            size="small"
-            block
-            ghost
-            @click="handleClosePosition(pos)"
-            :loading="closingPositionSide === pos.side"
-            style="margin-top: 8px;"
-          >
-            {{ $t('quickTrade.closePosition') }}
-          </a-button>
-        </div>
-      </template>
-      <div v-else class="qt-position-empty">
-        <a-icon type="inbox" class="qt-empty-icon" />
-        <span class="qt-empty-desc">{{ $t('quickTrade.noPositionHint') }}</span>
-      </div>
-    </div>
-
-    <!-- Recent Trades -->
-    <div class="qt-history-section" v-if="recentTrades.length > 0">
-      <a-collapse :bordered="false" :activeKey="historyCollapsed ? [] : ['history']" @change="handleHistoryCollapse">
-        <a-collapse-panel key="history" :showArrow="false" :style="collapseStyle">
-          <template slot="header">
-            <div class="qt-section-header" style="margin: 0; padding: 0;">
-              <a-icon type="history" /> {{ $t('quickTrade.recentTrades') }}
-              <span class="qt-history-count">({{ recentTrades.length }})</span>
-            </div>
-          </template>
-          <div class="qt-trade-list">
-            <div class="qt-trade-item" v-for="t in recentTrades" :key="t.id">
-              <div class="qt-trade-main">
-                <a-tag :color="t.side === 'buy' ? '#52c41a' : '#f5222d'" size="small">
-                  {{ t.side === 'buy' ? 'LONG' : 'SHORT' }}
-                </a-tag>
-                <span class="qt-trade-symbol">{{ t.symbol }}</span>
-                <span class="qt-trade-amount">${{ formatPrice(t.amount) }}</span>
+            <a-icon slot="suffixIcon" type="search" style="color: #999" />
+            <a-select-option
+              v-for="item in symbolSuggestions"
+              :key="item.value"
+              :value="item.value"
+            >
+              <div class="qt-symbol-option">
+                <span class="qt-symbol-option-name">{{ item.symbol }}</span>
+                <span v-if="item.name" class="qt-symbol-option-desc">{{ item.name }}</span>
               </div>
-              <div class="qt-trade-meta">
-                <a-tag :color="t.status === 'filled' ? '#52c41a' : t.status === 'failed' ? '#f5222d' : '#faad14'" size="small">
-                  {{ t.status }}
-                </a-tag>
-                <span class="qt-trade-time">{{ formatTime(t.created_at) }}</span>
+            </a-select-option>
+          </a-select>
+        </div>
+        <div class="qt-price-display" :class="priceChangeClass">
+          <span class="qt-current-price">${{ formatPrice(currentPrice) }}</span>
+        </div>
+      </div>
+
+      <div :class="['qt-embedded-split', { 'qt-embedded-split--cols': embedded }]">
+        <div class="qt-embedded-col qt-embedded-col-left">
+
+          <!-- Credential Selector -->
+          <div class="qt-section">
+            <div class="qt-label">{{ $t('quickTrade.exchange') }} <span class="qt-crypto-hint">{{ $t('quickTrade.cryptoOnly') }}</span></div>
+            <a-select
+              v-model="selectedCredentialId"
+              :placeholder="$t('quickTrade.selectExchange')"
+              style="width: 100%"
+              @change="onCredentialChange"
+              :loading="credLoading"
+              :notFoundContent="$t('quickTrade.noExchange')"
+            >
+              <a-select-option v-for="c in credentials" :key="c.id" :value="c.id">
+                <span style="text-transform: capitalize;">{{ c.exchange_id || c.name }}</span>
+                <a-tag v-if="c.enable_demo_trading" color="orange" size="small" style="margin-left: 6px;">{{ $t('quickTrade.testnetTag') }}</a-tag>
+                <a-tag v-if="c.market_type" size="small" style="margin-left: 6px;">{{ c.market_type }}</a-tag>
+              </a-select-option>
+            </a-select>
+            <div v-if="!credLoading && credentials.length === 0" class="qt-no-cred-actions">
+              <a-button type="primary" block size="small" @click="showAddExchangeModal = true">
+                <a-icon type="plus" /> {{ $t('quickTrade.addAccountInline') }}
+              </a-button>
+            </div>
+            <div class="qt-manage-link">
+              <a @click.prevent="showAddExchangeModal = true">
+                <a-icon type="plus-circle" style="margin-right: 4px;" />{{ $t('quickTrade.addAccountInline') }}
+              </a>
+              <span class="qt-manage-sep">·</span>
+              <router-link to="/profile?tab=exchange">
+                <a-icon type="setting" style="margin-right: 4px;" />{{ $t('profile.exchange.goToManage') }}
+              </router-link>
+            </div>
+            <!-- Balance（含 0 与加载态，避免 Bitget 等解析为 0 时整块消失） -->
+            <div class="qt-balance" v-if="selectedCredentialId">
+              <template v-if="balanceLoading">
+                <a-spin size="small" />
+                <span class="qt-balance-label qt-balance-loading-text">{{ $t('quickTrade.available') }}…</span>
+              </template>
+              <template v-else-if="balance.error">
+                <span class="qt-balance-label">{{ $t('quickTrade.available') }}:</span>
+                <span class="qt-balance-error" :title="balance.error">—</span>
+              </template>
+              <template v-else>
+                <span class="qt-balance-label">{{ $t('quickTrade.available') }}:</span>
+                <span class="qt-balance-value">${{ formatPrice(balance.available) }}</span>
+              </template>
+            </div>
+          </div>
+
+          <!-- Direction Toggle -->
+          <div class="qt-section">
+            <div class="qt-direction-toggle">
+              <div
+                class="qt-dir-btn qt-dir-long"
+                :class="{ active: side === 'buy' }"
+                @click="setTradeSide('buy')"
+              >
+                <a-icon type="arrow-up" /> {{ $t('quickTrade.long') }}
+              </div>
+              <div
+                class="qt-dir-btn qt-dir-short"
+                :class="{ active: side === 'sell', 'qt-dir-disabled': !isSwapMode }"
+                @click="setTradeSide('sell')"
+              >
+                <a-icon type="arrow-down" /> {{ $t('quickTrade.short') }}
+              </div>
+            </div>
+            <div v-if="!isSwapMode" class="qt-hint-text qt-hint-inline">{{ $t('quickTrade.shortDisabledSpot') }}</div>
+          </div>
+
+          <!-- Order Type -->
+          <div class="qt-section">
+            <a-radio-group v-model="orderType" button-style="solid" size="small" style="width: 100%;">
+              <a-radio-button value="market" style="width: 50%; text-align: center;">
+                {{ $t('quickTrade.market') }}
+              </a-radio-button>
+              <a-radio-button value="limit" style="width: 50%; text-align: center;">
+                {{ $t('quickTrade.limit') }}
+              </a-radio-button>
+            </a-radio-group>
+          </div>
+
+          <!-- Limit Price -->
+          <div class="qt-section" v-if="orderType === 'limit'">
+            <div class="qt-label">{{ $t('quickTrade.limitPrice') }}</div>
+            <a-input-number
+              v-model="limitPrice"
+              :min="0"
+              :step="priceStep"
+              :precision="pricePrecision"
+              style="width: 100%"
+              :placeholder="$t('quickTrade.enterPrice')"
+            />
+          </div>
+
+          <!-- Amount (USDT) -->
+          <div class="qt-section qt-amount-block">
+            <div class="qt-label">{{ $t('quickTrade.amount') }} (USDT)</div>
+            <a-input-number
+              v-model="amount"
+              :min="1"
+              :step="10"
+              :precision="2"
+              style="width: 100%"
+              :placeholder="$t('quickTrade.enterAmount')"
+            />
+            <div class="qt-quick-amounts">
+              <a-button
+                v-for="pct in quickAmountPcts"
+                :key="pct"
+                size="small"
+                @click="setAmountByPercent(pct)"
+                :disabled="balance.available <= 0"
+              >
+                {{ pct }}%
+              </a-button>
+            </div>
+          </div>
+
+          <!-- Leverage & margin (合约：杠杆>1；1×=现货) -->
+          <div class="qt-section qt-card qt-mode-card">
+            <template v-if="isSwapMode">
+              <div class="qt-section-title-row">
+                <span class="qt-section-title">{{ $t('quickTrade.leverage') }}</span>
+                <span class="qt-badge-contract">{{ $t('quickTrade.contractBadge') }}</span>
+              </div>
+              <div class="qt-leverage-row">
+                <a-slider
+                  v-model="leverage"
+                  :min="1"
+                  :max="125"
+                  :marks="leverageMarks"
+                  :tipFormatter="v => v + 'x'"
+                  style="flex: 1; margin-right: 12px;"
+                />
+                <a-input-number
+                  v-model="leverage"
+                  :min="1"
+                  :max="125"
+                  :formatter="v => `${v}x`"
+                  :parser="v => String(v).replace('x', '')"
+                  class="qt-leverage-input"
+                />
+              </div>
+              <div class="qt-label qt-label-spaced">{{ $t('quickTrade.marginMode') }}</div>
+              <a-radio-group v-model="marginMode" size="small" button-style="solid" class="qt-margin-radio">
+                <a-radio-button value="cross">{{ $t('quickTrade.crossMargin') }}</a-radio-button>
+                <a-radio-button value="isolated">{{ $t('quickTrade.isolatedMargin') }}</a-radio-button>
+              </a-radio-group>
+              <div class="qt-hint-text">{{ $t('quickTrade.marginModeHint') }}</div>
+            </template>
+            <div v-else class="qt-spot-banner">
+              <a-icon type="wallet" class="qt-spot-banner-icon" />
+              <div class="qt-spot-banner-text">
+                <div class="qt-spot-banner-title">{{ $t('quickTrade.spotModeTitle') }}</div>
+                <div class="qt-hint-text">{{ $t('quickTrade.spotModeHint') }}</div>
               </div>
             </div>
           </div>
-        </a-collapse-panel>
-      </a-collapse>
-    </div>
 
-  </a-drawer>
-  <exchange-account-modal
-    :visible.sync="showAddExchangeModal"
-    @success="onExchangeAccountSaved"
-  />
+          <!-- TP / SL (optional, always expanded) -->
+          <div class="qt-section qt-card qt-tpsl-card">
+            <div class="qt-section-title-row">
+              <span class="qt-section-title">{{ $t('quickTrade.tpsl') }}</span>
+              <span class="qt-optional-tag">{{ $t('quickTrade.optional') }}</span>
+            </div>
+            <div class="qt-tpsl-row">
+              <div class="qt-tpsl-item">
+                <span class="qt-label qt-tp-label">{{ $t('quickTrade.tp') }}</span>
+                <a-input-number
+                  v-model="tpPrice"
+                  :min="0"
+                  :step="priceStep"
+                  :precision="pricePrecision"
+                  class="qt-input-full"
+                  :placeholder="$t('quickTrade.tpPlaceholder')" />
+              </div>
+              <div class="qt-tpsl-item">
+                <span class="qt-label qt-sl-label">{{ $t('quickTrade.sl') }}</span>
+                <a-input-number
+                  v-model="slPrice"
+                  :min="0"
+                  :step="priceStep"
+                  :precision="pricePrecision"
+                  class="qt-input-full"
+                  :placeholder="$t('quickTrade.slPlaceholder')" />
+              </div>
+            </div>
+            <div class="qt-hint-text qt-tpsl-record-hint">{{ $t('quickTrade.tpslRecordOnlyHint') }}</div>
+          </div>
+
+          <!-- Submit Button (embedded: half-width inside left col) -->
+          <div class="qt-submit-section qt-submit-section--embedded-left">
+            <a-button
+              :type="side === 'buy' ? 'primary' : 'danger'"
+              size="large"
+              block
+              :loading="submitting"
+              :disabled="!canSubmit"
+              @click="handleSubmit"
+              class="qt-submit-btn"
+              :class="[side === 'buy' ? 'qt-btn-long' : 'qt-btn-short']"
+            >
+              <a-icon :type="side === 'buy' ? 'arrow-up' : 'arrow-down'" />
+              {{ side === 'buy' ? $t('quickTrade.buyLong') : $t('quickTrade.sellShort') }}
+              {{ symbol }}
+            </a-button>
+          </div>
+
+        </div>
+        <div class="qt-embedded-col qt-embedded-col-right">
+
+          <!-- Current Positions -->
+          <div class="qt-position-section">
+            <div class="qt-section-header">
+              <a-icon type="wallet" /> {{ $t('quickTrade.currentPosition') }}
+              <span v-if="currentPositions.length > 1" class="qt-position-count">({{ currentPositions.length }})</span>
+            </div>
+            <template v-if="currentPositions.length > 0">
+              <div v-if="isSwapMode" class="qt-close-scope qt-close-scope-global">
+                <div class="qt-label qt-label-close-scope">{{ $t('quickTrade.closeScopeLabel') }}</div>
+                <a-radio-group v-model="closeScope" size="small" class="qt-close-scope-radio">
+                  <a-radio-button value="full">{{ $t('quickTrade.closeScopeFull') }}</a-radio-button>
+                  <a-radio-button value="system_tracked">{{ $t('quickTrade.closeScopeSystem') }}</a-radio-button>
+                </a-radio-group>
+                <div class="qt-hint-text">{{ $t('quickTrade.closeScopeSystemHint') }}</div>
+              </div>
+              <div
+                v-for="(pos, idx) in currentPositions"
+                :key="'pos-' + idx + '-' + (pos.side || '') + '-' + String(pos.size || '')"
+                class="qt-position-card"
+                :class="pos.side"
+              >
+                <div class="qt-pos-row">
+                  <span>{{ $t('quickTrade.side') }}</span>
+                  <a-tag :color="pos.side === 'long' ? '#52c41a' : '#f5222d'" size="small">
+                    {{ pos.side === 'long' ? $t('quickTrade.long') : $t('quickTrade.short') }}
+                  </a-tag>
+                </div>
+                <div class="qt-pos-row">
+                  <span>{{ $t('quickTrade.posSize') }}</span>
+                  <span>{{ pos.size }}</span>
+                </div>
+                <div class="qt-pos-row">
+                  <span>{{ $t('quickTrade.entryPrice') }}</span>
+                  <span>${{ formatPrice(pos.entry_price) }}</span>
+                </div>
+                <div class="qt-pos-row" v-if="pos.mark_price">
+                  <span>{{ $t('quickTrade.markPrice') }}</span>
+                  <span>${{ formatPrice(pos.mark_price) }}</span>
+                </div>
+                <div class="qt-pos-row" v-if="pos.leverage && pos.leverage > 1">
+                  <span>{{ $t('quickTrade.leverage') }}</span>
+                  <span>{{ pos.leverage }}x</span>
+                </div>
+                <div class="qt-pos-row">
+                  <span>{{ $t('quickTrade.unrealizedPnl') }}</span>
+                  <span :class="pos.unrealized_pnl >= 0 ? 'qt-green' : 'qt-red'">
+                    ${{ formatPrice(pos.unrealized_pnl) }}
+                  </span>
+                </div>
+                <a-button
+                  type="danger"
+                  size="small"
+                  block
+                  ghost
+                  @click="handleClosePosition(pos)"
+                  :loading="closingPositionSide === pos.side"
+                  style="margin-top: 8px;"
+                >
+                  {{ $t('quickTrade.closePosition') }}
+                </a-button>
+              </div>
+            </template>
+            <div v-else class="qt-position-empty">
+              <a-icon type="inbox" class="qt-empty-icon" />
+              <span class="qt-empty-desc">{{ $t('quickTrade.noPositionHint') }}</span>
+            </div>
+          </div>
+
+          <!-- Recent Trades -->
+          <div class="qt-history-section" v-if="recentTrades.length > 0">
+            <a-collapse :bordered="false" :activeKey="historyCollapsed ? [] : ['history']" @change="handleHistoryCollapse">
+              <a-collapse-panel key="history" :showArrow="false" :style="collapseStyle">
+                <template slot="header">
+                  <div class="qt-section-header" style="margin: 0; padding: 0;">
+                    <a-icon type="history" /> {{ $t('quickTrade.recentTrades') }}
+                    <span class="qt-history-count">({{ recentTrades.length }})</span>
+                  </div>
+                </template>
+                <div class="qt-trade-list">
+                  <div class="qt-trade-item" v-for="t in recentTrades" :key="t.id">
+                    <div class="qt-trade-main">
+                      <a-tag :color="t.side === 'buy' ? '#52c41a' : '#f5222d'" size="small">
+                        {{ t.side === 'buy' ? 'LONG' : 'SHORT' }}
+                      </a-tag>
+                      <span class="qt-trade-symbol">{{ t.symbol }}</span>
+                      <span class="qt-trade-amount">${{ formatPrice(t.amount) }}</span>
+                    </div>
+                    <div class="qt-trade-meta">
+                      <a-tag :color="t.status === 'filled' ? '#52c41a' : t.status === 'failed' ? '#f5222d' : '#faad14'" size="small">
+                        {{ t.status }}
+                      </a-tag>
+                      <span class="qt-trade-time">{{ formatTime(t.created_at) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </a-collapse-panel>
+            </a-collapse>
+          </div>
+
+        </div>
+      </div>
+
+    </component>
+    <exchange-account-modal
+      :visible.sync="showAddExchangeModal"
+      @success="onExchangeAccountSaved"
+    />
   </div>
 </template>
 
@@ -386,7 +391,10 @@ export default {
     presetSide: { type: String, default: '' }, // 'buy' or 'sell' — pre-filled from AI signal
     presetPrice: { type: Number, default: 0 },
     source: { type: String, default: 'manual' }, // ai_radar / ai_analysis / indicator / manual
-    marketType: { type: String, default: 'swap' } // swap / spot
+    marketType: { type: String, default: 'swap' }, // swap / spot
+    embedded: { type: Boolean, default: false },
+    /** 指标 IDE 右侧浮动面板：更紧凑的分区与卡片样式 */
+    embeddedIde: { type: Boolean, default: false }
   },
   data () {
     return {
@@ -461,10 +469,30 @@ export default {
     },
     collapseStyle () {
       return { background: 'transparent', borderRadius: '4px', border: 0, overflow: 'hidden' }
+    },
+    containerProps () {
+      if (this.embedded) return {}
+      return {
+        title: null,
+        width: 400,
+        visible: this.visible,
+        closable: false,
+        bodyStyle: { padding: 0 },
+        maskStyle: { background: 'rgba(0,0,0,0.45)' }
+      }
     }
   },
   watch: {
     visible (val) {
+      /* 嵌入指标 IDE：右侧抽屉用 v-if 挂载/销毁；Tab 场景已移除 */
+      if (this.embedded) {
+        if (val) {
+          this.init()
+        } else {
+          this.stopPolling()
+        }
+        return
+      }
       if (val) {
         this.init()
       } else {
@@ -513,6 +541,13 @@ export default {
           this.loadPosition()
         }
       })
+    }
+  },
+  mounted () {
+    if (this.embedded) {
+      if (this.visible) this.init()
+    } else if (this.visible) {
+      this.init()
     }
   },
   methods: {
@@ -945,6 +980,207 @@ export default {
     flex-direction: column;
     height: 100%;
     overflow-y: auto;
+  }
+}
+
+/* Drawer / default: wrapper is transparent; columns flatten into normal flow */
+.qt-embedded-split:not(.qt-embedded-split--cols) {
+  display: contents;
+}
+.qt-embedded-split:not(.qt-embedded-split--cols) .qt-embedded-col-left,
+.qt-embedded-split:not(.qt-embedded-split--cols) .qt-embedded-col-right {
+  display: contents;
+}
+/* IDE tab: left / right columns */
+.qt-embedded-split--cols {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 0 6px;
+}
+.qt-embedded-split--cols .qt-embedded-col-left,
+.qt-embedded-split--cols .qt-embedded-col-right {
+  flex: 1;
+  min-width: 0;
+}
+.qt-embedded-split--cols .qt-embedded-col-right {
+  border-left: 1px solid #f0f0f0;
+  padding-left: 14px;
+  padding-right: 4px;
+  margin-left: 2px;
+}
+.qt-embedded-split--cols .qt-section {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.quick-trade-embedded {
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  /* 与 Tab 内容区留出边距，避免左右贴边 */
+  .qt-embedded-split--cols {
+    padding: 8px 18px 12px;
+  }
+  .qt-symbol-bar {
+    padding: 8px 18px;
+    background: transparent;
+    flex-direction: row;
+    align-items: center;
+    .qt-symbol-selector { flex: 1; }
+    .qt-price-display { margin-left: 12px; }
+  }
+  .qt-section { padding: 6px 0; }
+  .qt-card { margin-left: 0; margin-right: 0; padding: 10px 12px; border-radius: 8px; }
+  .qt-mode-card,
+  .qt-tpsl-card {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .qt-mode-card { margin-top: 8px; }
+  .qt-tpsl-card { margin-top: 8px; }
+
+  /* ---- 杠杆卡片：内部元素纵向间距 ---- */
+  .qt-mode-card .qt-section-title-row {
+    margin-bottom: 14px;
+  }
+  .qt-mode-card .qt-leverage-row {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+  .qt-mode-card .qt-label-spaced {
+    margin-top: 18px;
+    margin-bottom: 10px;
+  }
+  .qt-mode-card .qt-margin-radio {
+    margin-top: 6px;
+  }
+  .qt-mode-card .qt-hint-text {
+    margin-top: 14px;
+  }
+
+  /* ---- 止盈止损卡片：内部元素纵向间距 ---- */
+  .qt-tpsl-card .qt-section-title-row {
+    margin-bottom: 14px;
+  }
+  .qt-tpsl-card .qt-tpsl-row {
+    gap: 16px;
+  }
+  .qt-tpsl-card .qt-tpsl-item .qt-label {
+    display: block;
+    margin-bottom: 10px;
+  }
+  .qt-tpsl-card .qt-tpsl-record-hint {
+    margin-top: 16px;
+  }
+
+  /* ---- 提交按钮：嵌入左列内半宽 ---- */
+  .qt-submit-section--embedded-left {
+    padding: 12px 0 4px;
+    .qt-submit-btn { height: 40px; font-size: 14px; border-radius: 8px; }
+  }
+
+  /* ---- 右列：持仓 + 交易记录 ---- */
+  .qt-position-section { padding: 0 0 10px; }
+  .qt-history-section { padding: 0 0 10px; }
+
+  .qt-direction-toggle .qt-dir-btn { padding: 8px; font-size: 13px; border-radius: 6px; }
+  .qt-quick-amounts { margin-top: 6px; margin-bottom: 2px; }
+  .qt-amount-block { padding-bottom: 6px; }
+  .qt-manage-link { font-size: 11px; }
+}
+
+/* 指标 IDE 浮动闪电交易：分区更清晰 */
+.quick-trade-embedded.qt-embedded-ide {
+  /* 与父级 ide-quick-panel-body 的 12px 横向留白一致，覆盖通用 embedded 的 18px */
+  .qt-embedded-split--cols {
+    padding: 0 12px 12px;
+    gap: 14px;
+  }
+  .qt-embedded-split--cols .qt-embedded-col-left,
+  .qt-embedded-split--cols .qt-embedded-col-right {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  .qt-embedded-split--cols .qt-section {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .qt-symbol-bar {
+    margin: 0 14px 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    /deep/ .ant-select-selection {
+      border-radius: 8px;
+      border-color: #e2e8f0;
+    }
+    .qt-current-price {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+  }
+  .qt-section:not(.qt-card) {
+    padding: 10px 14px;
+    margin: 0 14px 8px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  }
+  .qt-card {
+    margin-left: 14px;
+    margin-right: 14px;
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .qt-mode-card,
+  .qt-tpsl-card {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+  .qt-submit-section--embedded-left {
+    padding: 8px 14px 4px;
+    margin: 0 14px;
+  }
+  .qt-position-section {
+    margin: 0 14px;
+    padding: 12px 14px 10px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-sizing: border-box;
+  }
+  .qt-history-section {
+    margin: 0 14px 8px;
+    padding: 8px 14px 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-sizing: border-box;
+  }
+  .qt-position-empty {
+    border-radius: 10px;
+  }
+  .qt-position-card {
+    border-radius: 10px;
   }
 }
 
@@ -1431,7 +1667,42 @@ export default {
 }
 
 /* ======== Dark Theme ======== */
-.theme-dark {
+  .theme-dark {
+  .qt-embedded-split--cols .qt-embedded-col-right {
+    border-left-color: #303030;
+  }
+  &.quick-trade-embedded {
+    background: transparent;
+    border-color: transparent;
+    .qt-symbol-bar {
+      background: transparent;
+    }
+  }
+  &.quick-trade-embedded.qt-embedded-ide {
+    .qt-symbol-bar {
+      background: linear-gradient(135deg, #262626 0%, #1c1c1c 100%);
+      border-color: #363636;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      /deep/ .ant-select-selection {
+        border-color: #434343;
+      }
+    }
+    .qt-section:not(.qt-card) {
+      background: #1f1f1f;
+      border-color: #363636;
+      box-shadow: none;
+    }
+    .qt-card {
+      background: #1f1f1f;
+      border-color: #404040;
+      box-shadow: none;
+    }
+    .qt-position-section,
+    .qt-history-section {
+      background: #1f1f1f;
+      border-color: #363636;
+    }
+  }
   .qt-header {
     border-bottom-color: #303030;
     .qt-icon { color: #a3a3a3; }

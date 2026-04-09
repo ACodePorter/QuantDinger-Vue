@@ -770,10 +770,10 @@ export default {
   },
   methods: {
     goToStrategyManagement () {
-      this.$router.push('/trading-assistant?tab=strategy')
+      this.$router.push('/strategy-live')
     },
     goToStrategyCreate () {
-      this.$router.push('/trading-assistant?tab=strategy&mode=create')
+      this.$router.push({ path: '/strategy-live', query: { mode: 'create' } })
     },
     async fetchData () {
       try {

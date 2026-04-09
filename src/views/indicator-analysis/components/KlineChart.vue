@@ -136,10 +136,18 @@ export default {
     // 图表实例
     const chartRef = shallowRef(null)
     const chartTheme = ref(props.theme || 'light')
+    /** 父容器高度变化（如指标 IDE 拖拽分割条）不会触发 window.resize，需 ResizeObserver 调 chart.resize */
+    let chartResizeObserver = null
+    let chartResizeRafId = null
 
     // 实时更新设置
     const realtimeTimer = ref(null)
     const realtimeInterval = ref(5000)
+    /** 避免实时请求堆叠（上一轮未完成又触发下一轮会加重闪烁） */
+    const realtimeFetchInFlight = ref(false)
+    let realtimeChartRafId = null
+    /** 价格条节流：避免父组件因 price-change 频繁重绘 */
+    const lastPriceEmitSig = ref('')
 
     // 指标刷新锁：避免实时定时器触发时 updateIndicators 重入（Python 指标可能较慢）
     const indicatorsUpdating = ref(false)
@@ -179,8 +187,7 @@ export default {
       { name: 'parallelStraightLine', title: proxy.$t('dashboard.indicator.drawing.parallelLine'), icon: 'menu' },
       { name: 'priceLine', title: proxy.$t('dashboard.indicator.drawing.priceLine'), icon: 'dollar' },
       { name: 'priceChannelLine', title: proxy.$t('dashboard.indicator.drawing.priceChannel'), icon: 'border' },
-      { name: 'fibonacciLine', title: proxy.$t('dashboard.indicator.drawing.fibonacciLine'), icon: 'rise' },
-      { name: 'measure', title: proxy.$t('dashboard.indicator.drawing.measure'), icon: 'drag' }
+      { name: 'fibonacciLine', title: proxy.$t('dashboard.indicator.drawing.fibonacciLine'), icon: 'rise' }
     ])
 
     // 指标按钮定义
@@ -1285,7 +1292,7 @@ registerOverlay({
       // 【关键修改2】彻底禁止该 Overlay 响应任何鼠标事件
       // 这样鼠标放上去也不会有蓝色的选中框
       lock: true,
-      needDefaultPointFigure: false,
+      needDefaultPointFigure: true,
       needDefaultXAxisFigure: false,
       needDefaultYAxisFigure: false,
 
@@ -1578,19 +1585,58 @@ registerOverlay({
         .sort((a, b) => a.timestamp - b.timestamp)
     }
 
-    const updatePricePanel = (data) => {
-      if (data.length > 0) {
-        const last = data[data.length - 1]
-        if (data.length > 1) {
-          const prev = data[data.length - 2]
-          const price = last.close.toFixed(2)
-          const change = ((last.close - prev.close) / prev.close) * 100
-          emit('price-change', { price, change })
-        } else {
-          const price = last.close.toFixed(2)
-          emit('price-change', { price, change: 0 })
-        }
+    /** 用于判断合并后的 K 线与合并前是否一致，避免无意义的 updateData */
+    const klineBarSnapshotKey = (b) => {
+      if (!b) return ''
+      const q = (x) => (Number(x) || 0).toFixed(6)
+      return [q(b.open), q(b.high), q(b.low), q(b.close), q(b.volume)].join('|')
+    }
+
+    const flushRealtimeChartBar = (bar) => {
+      if (!chartRef.value || typeof chartRef.value.updateData !== 'function') return
+      try {
+        chartRef.value.updateData(bar)
+      } catch (e) {
+        try {
+          chartRef.value.applyNewData(klineData.value)
+        } catch (_) {}
       }
+    }
+
+    const scheduleRealtimeChartBarUpdate = (bar) => {
+      if (realtimeChartRafId != null) {
+        cancelAnimationFrame(realtimeChartRafId)
+      }
+      realtimeChartRafId = requestAnimationFrame(() => {
+        realtimeChartRafId = null
+        flushRealtimeChartBar(bar)
+      })
+    }
+
+    /**
+     * @param {Array} data 内部格式 K 线
+     * @param {{ force?: boolean }} options force=true 时总是向父组件发价格（换标的/全量加载）
+     */
+    const updatePricePanel = (data, options = {}) => {
+      const force = !!(options && options.force)
+      if (!data || data.length === 0) return
+      const last = data[data.length - 1]
+      let sig
+      let payload
+      if (data.length > 1) {
+        const prev = data[data.length - 2]
+        const price = last.close.toFixed(2)
+        const change = ((last.close - prev.close) / prev.close) * 100
+        sig = `${price}|${change.toFixed(3)}`
+        payload = { price, change }
+      } else {
+        const price = last.close.toFixed(2)
+        sig = `${price}|0`
+        payload = { price, change: 0 }
+      }
+      if (!force && sig === lastPriceEmitSig.value) return
+      lastPriceEmitSig.value = sig
+      emit('price-change', payload)
     }
 
     // 将 KLineChart 格式的数据转换为内部格式（用于 isSameTimeframe 等函数）
@@ -1700,7 +1746,7 @@ registerOverlay({
         klineData.value = formattedData
         hasMoreHistory.value = true
         const internalData = convertToInternalFormat(formattedData)
-        updatePricePanel(internalData)
+        updatePricePanel(internalData, { force: true })
 
         nextTick(() => {
           if (!chartRef.value) {
@@ -1977,6 +2023,10 @@ registerOverlay({
       if (!props.symbol || !klineData.value || klineData.value.length === 0) {
         return // 如果没有现有数据，不进行增量更新
       }
+      if (realtimeFetchInFlight.value) {
+        return
+      }
+      realtimeFetchInFlight.value = true
 
       try {
         // 只获取最新的5根K线用于更新
@@ -2011,7 +2061,7 @@ registerOverlay({
               const existingLast = existingData[existingData.length - 1]
               const newLast = newData[newData.length - 1]
 
-              existingData[existingData.length - 1] = {
+              const mergedLast = {
                 timestamp: existingLast.timestamp, // 保持原有时间戳（毫秒）
                 open: existingLast.open, // 开盘价保持不变
                 high: Math.max(existingLast.high, newLast.high), // 最高价取最大值
@@ -2019,24 +2069,33 @@ registerOverlay({
                 close: newLast.close, // 收盘价更新为最新价格
                 volume: newLast.volume // 成交量使用API返回的最新值（已是该周期的总成交量）
               }
+              // 与当前最后一根在显示精度下无变化则跳过（减少无意义重绘与父组件刷新）
+              if (klineBarSnapshotKey(mergedLast) === klineBarSnapshotKey(existingLast)) {
+                return
+              }
+              existingData[existingData.length - 1] = mergedLast
               klineData.value = existingData
 
-              // 更新价格面板（使用内部格式）
+              // 更新价格面板（使用内部格式；实时路径节流 emit）
               const internalData = convertToInternalFormat(klineData.value)
               updatePricePanel(internalData)
 
-              // 更新 KLineChart - 使用 updateData 方法保持滚动位置
+              // 合并到下一帧再 updateData，避免同一宏任务内多次改动与库内部重入
+              const last = existingData[existingData.length - 1]
+              const bar = {
+                timestamp: last.timestamp,
+                open: last.open,
+                high: last.high,
+                low: last.low,
+                close: last.close,
+                volume: last.volume != null ? last.volume : 0
+              }
               if (chartRef.value && typeof chartRef.value.updateData === 'function') {
-                // 更新最后一根K线数据，保持滚动位置
-                // updateData 只需要一个参数：要更新的数据对象（v9.8.0+ 不再接受 callback 参数）
-                const lastIndex = klineData.value.length - 1
-                chartRef.value.updateData(existingData[lastIndex])
-                // 指标计算节流：默认 10 秒刷新一次（避免 1 秒频率下 CPU 拉满）
-                maybeUpdateIndicators(false)
+                scheduleRealtimeChartBarUpdate(bar)
               } else if (chartRef.value) {
-                // 降级方案：使用 applyNewData（会重置滚动位置）
-                chartRef.value.applyNewData(klineData.value)
-                maybeUpdateIndicators(false)
+                try {
+                  chartRef.value.applyNewData(klineData.value)
+                } catch (_) {}
               }
             } else if (lastNewTime > lastExistingTime) {
               // 新的时间段，追加新数据
@@ -2059,7 +2118,7 @@ registerOverlay({
 
                 // 更新价格面板（使用内部格式）
                 const internalData = convertToInternalFormat(klineData.value)
-                updatePricePanel(internalData)
+                updatePricePanel(internalData, { force: true })
 
                 // 更新 KLineChart - 使用 applyMoreData 保持滚动位置
                 if (chartRef.value && typeof chartRef.value.applyMoreData === 'function') {
@@ -2079,6 +2138,8 @@ registerOverlay({
         }
       } catch (err) {
         // 增量更新失败时静默处理，不影响现有数据
+      } finally {
+        realtimeFetchInFlight.value = false
       }
     }
 
@@ -2100,10 +2161,9 @@ registerOverlay({
         '1D': 600000, // 日线，每10分钟更新
         '1W': 1800000 // 周线，每30分钟更新
       }
-      // UI体验优先：允许高频刷新以便观察“价格/K线/指标”同步效果。
-      // 这里将刷新间隔上限限制为 1 秒；若指标计算较慢，updateIndicators 内部会用锁避免重入。
+      // 过短的轮询会叠请求、放大闪烁；最短约 2s，长周期用较大 base（并封顶避免过久不更新）
       const base = intervalMap[props.timeframe] || 10000
-      realtimeInterval.value = Math.min(base, 1000)
+      realtimeInterval.value = Math.min(Math.max(base, 2000), 15000)
 
       // 如果启用了实时更新且有选中的标的
       if (props.realtimeEnabled && props.symbol && klineData.value.length > 0) {
@@ -2227,8 +2287,12 @@ registerOverlay({
               }
               const expectedOverlayName = toolMap[activeDrawingTool.value]
 
+              // 测量工具需要等待第二个点完成，不能在 created 阶段就退出绘制模式
+              if (expectedOverlayName === 'priceRangeMeasure') {
+                return
+              }
               // 如果覆盖物名称匹配，或者是通过 overrideOverlay 创建的自定义覆盖物
-              if (!overlay.name || overlay.name === expectedOverlayName || expectedOverlayName === 'priceRangeMeasure') {
+              if (!overlay.name || overlay.name === expectedOverlayName) {
                 addedDrawingOverlayIds.value.push(overlay.id)
                 // 重置激活状态
                 activeDrawingTool.value = null
@@ -2248,6 +2312,12 @@ registerOverlay({
             try {
               chartRef.value.subscribeAction('onOverlayComplete', (overlay) => {
                 if (activeDrawingTool.value && overlay && overlay.id) {
+                  if (activeDrawingTool.value === 'measure') {
+                    const points = overlay.points || []
+                    if (points.length < 2 || !points[0] || !points[1]) {
+                      return
+                    }
+                  }
                   addedDrawingOverlayIds.value.push(overlay.id)
                   activeDrawingTool.value = null
                   // 退出绘制模式 - 不调用 overrideOverlay(null)，因为会导致错误
@@ -2455,6 +2525,10 @@ registerOverlay({
             upColor: isDark ? '#0ecb81' : '#13c2c2',
             downColor: isDark ? '#f6465d' : '#fa541c',
             noChangeColor: theme.borderColor
+          },
+          // 若使用面积图类型，关闭末端点动画可减少实时跳动观感
+          area: {
+            point: { animation: false, animationDuration: 0 }
           }
         },
         indicator: {
@@ -3567,10 +3641,42 @@ registerOverlay({
           }
         }, 300)
       })
+
+      nextTick(() => {
+        const el = document.getElementById('kline-chart-container')
+        if (!el || typeof ResizeObserver === 'undefined') return
+        chartResizeObserver = new ResizeObserver(() => {
+          if (chartResizeRafId != null) cancelAnimationFrame(chartResizeRafId)
+          chartResizeRafId = requestAnimationFrame(() => {
+            chartResizeRafId = null
+            if (chartRef.value && typeof chartRef.value.resize === 'function') {
+              chartRef.value.resize()
+            } else {
+              const c = document.getElementById('kline-chart-container')
+              if (c && c.clientWidth > 0 && c.clientHeight > 0) {
+                initChart()
+              }
+            }
+          })
+        })
+        chartResizeObserver.observe(el)
+      })
     })
 
     onBeforeUnmount(() => {
       stopRealtime()
+      if (realtimeChartRafId != null) {
+        cancelAnimationFrame(realtimeChartRafId)
+        realtimeChartRafId = null
+      }
+      if (chartResizeRafId != null) {
+        cancelAnimationFrame(chartResizeRafId)
+        chartResizeRafId = null
+      }
+      if (chartResizeObserver) {
+        chartResizeObserver.disconnect()
+        chartResizeObserver = null
+      }
       if (chartRef.value) {
         chartRef.value.destroy()
         chartRef.value = null
@@ -3611,7 +3717,8 @@ registerOverlay({
       drawingTools,
       activeDrawingTool,
       selectDrawingTool,
-      clearAllDrawings
+      clearAllDrawings,
+      addedSignalOverlayIds
     }
   }
 }

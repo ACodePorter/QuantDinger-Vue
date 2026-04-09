@@ -376,7 +376,7 @@ export default {
 
     goToUse () {
       this.$emit('close')
-      this.$router.push('/indicator-analysis')
+      this.$router.push('/indicator-ide')
     },
 
     formatDate (dateStr) {

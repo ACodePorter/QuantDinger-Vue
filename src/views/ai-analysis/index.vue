@@ -243,6 +243,8 @@ class="analyze-button">
               :error="analysisError"
               :error-tone="analysisErrorTone"
               @retry="startFastAnalysis"
+              @generate-strategy="handleGenerateStrategy"
+              @go-backtest="handleGoBacktest"
             />
           </div>
         </div>
@@ -311,17 +313,34 @@ class="analyze-button">
                 @click.native.stop
               />
               <div class="wl-card-body" :class="{ 'with-cb': batchMode }">
-                <!-- 主信息行 -->
+                <!-- 主信息行：代码 + 价格/涨跌 -->
                 <div class="wl-row-main">
-                  <span class="wl-symbol">{{ stock.symbol }}</span>
-                  <span class="wl-market">{{ getMarketName(stock.market) }}</span>
-                  <span class="wl-spacer"></span>
-                  <template v-if="watchlistPrices[`${stock.market}:${stock.symbol}`]">
+                  <div class="wl-info-left">
+                    <div class="wl-symbol-line">
+                      <span class="wl-symbol">{{ stock.symbol }}</span>
+                      <span class="wl-market">{{ getMarketName(stock.market) }}</span>
+                    </div>
+                    <div class="wl-name" v-if="stock.name && stock.name !== stock.symbol">{{ stock.name }}</div>
+                  </div>
+                  <div class="wl-sparkline-wrap" v-if="watchlistPrices[`${stock.market}:${stock.symbol}`]">
+                    <svg class="wl-sparkline" viewBox="0 0 60 20" preserveAspectRatio="none">
+                      <polyline
+                        :points="getSparklinePoints(stock)"
+                        fill="none"
+                        :stroke="(watchlistPrices[`${stock.market}:${stock.symbol}`]?.change || 0) >= 0 ? '#10b981' : '#ef4444'"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <span v-else class="wl-spacer"></span>
+                  <div class="wl-info-right" v-if="watchlistPrices[`${stock.market}:${stock.symbol}`]">
                     <span class="wl-price">{{ formatPrice(watchlistPrices[`${stock.market}:${stock.symbol}`].price) }}</span>
                     <span class="wl-change" :class="(watchlistPrices[`${stock.market}:${stock.symbol}`]?.change || 0) >= 0 ? 'up' : 'down'">
                       {{ (watchlistPrices[`${stock.market}:${stock.symbol}`]?.change || 0) >= 0 ? '+' : '' }}{{ formatNum(watchlistPrices[`${stock.market}:${stock.symbol}`]?.change) }}%
                     </span>
-                  </template>
+                  </div>
                 </div>
                 <!-- 持仓/盈亏行（仅有持仓时） -->
                 <div class="wl-row-pnl" v-if="positionSummaryMap[`${stock.market}:${stock.symbol}`]">
@@ -1470,6 +1489,36 @@ export default {
       if (val < 25) return 'medium'
       return 'high'
     },
+    getSparklinePoints (stock) {
+      const key = `${stock.market}:${stock.symbol}`
+      const pd = this.watchlistPrices[key]
+      if (!pd || !pd.price) return '0,10 60,10'
+      const change = pd.change || 0
+      const endPrice = pd.price
+      const startPrice = endPrice / (1 + change / 100)
+      const numPts = 20
+      const w = 60
+      const h = 20
+      const seed = stock.symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+      const priceDiff = Math.abs(endPrice - startPrice)
+      const minAmplitude = endPrice * 0.003
+      const amplitude = Math.max(priceDiff, minAmplitude)
+      const prices = []
+      for (let i = 0; i <= numPts; i++) {
+        const t = i / numPts
+        const base = startPrice + (endPrice - startPrice) * t
+        const noise = (Math.sin(i * 2.7 + seed) + Math.sin(i * 1.3 + seed * 0.3)) * amplitude * 0.25
+        prices.push(base + noise)
+      }
+      const min = Math.min(...prices)
+      const max = Math.max(...prices)
+      const range = max - min || 1
+      return prices.map((p, i) => {
+        const x = (i / numPts) * w
+        const y = h - ((p - min) / range) * (h - 4) - 2
+        return `${x.toFixed(1)},${y.toFixed(1)}`
+      }).join(' ')
+    },
     formatNum (num, digits = 2) {
       if (num === undefined || num === null || isNaN(num)) return '--'
       return Number(num).toFixed(digits)
@@ -1568,6 +1617,32 @@ export default {
       } catch (e) {
         // 静默失败，积分以接口返回为准
       }
+    },
+    handleGenerateStrategy (result) {
+      const market = result.market || (this.selectedSymbol ? this.selectedSymbol.split(':')[0] : '')
+      const symbol = result.symbol || (this.selectedSymbol ? this.selectedSymbol.split(':')[1] : '')
+      const decision = result.decision || 'HOLD'
+      const tp = result.trading_plan || {}
+      const query = {
+        mode: 'create',
+        market,
+        symbol,
+        from_analysis: '1',
+        decision,
+        entry_price: tp.entry_price || tp.entryPrice || '',
+        stop_loss: tp.stop_loss || tp.stopLoss || '',
+        take_profit: tp.take_profit || tp.takeProfit || ''
+      }
+      Object.keys(query).forEach(k => { if (!query[k] && query[k] !== 0) delete query[k] })
+      this.$router.push({ path: '/strategy-live', query })
+    },
+    handleGoBacktest (result) {
+      const market = result.market || (this.selectedSymbol ? this.selectedSymbol.split(':')[0] : '')
+      const symbol = result.symbol || (this.selectedSymbol ? this.selectedSymbol.split(':')[1] : '')
+      this.$router.push({
+        path: '/indicator-ide',
+        query: { market, symbol }
+      })
     },
     async startFastAnalysis () {
       if (this.analyzing) return
@@ -2509,6 +2584,8 @@ export default {
 .watchlist-panel {
   width: 320px;
   flex-shrink: 0;
+  align-self: flex-start;
+  max-height: calc(100vh - 200px);
   background: #fff;
   border-radius: 10px;
   border: 1px solid #eaeef3;
@@ -2866,6 +2943,7 @@ export default {
         &:hover { background: #222224; border-color: rgba(255, 255, 255, 0.06); }
         &.active { background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, transparent); border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, transparent); }
         .wl-symbol { color: #e0e0e0; }
+        .wl-name { color: #666; }
         .wl-market { color: #666; background: rgba(255, 255, 255, 0.06); }
         .wl-price { color: #d4d4d4; }
         .wl-pnl-qty { color: #666; }
@@ -3350,8 +3428,35 @@ export default {
 }
 .wl-row-main {
   display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.wl-info-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wl-symbol-line {
+  display: flex;
   align-items: baseline;
   gap: 5px;
+}
+.wl-name {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+  margin-top: 1px;
+}
+.wl-info-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .wl-symbol {
   font-size: 13px;
@@ -3367,6 +3472,18 @@ export default {
   border-radius: 3px;
 }
 .wl-spacer { flex: 1; }
+.wl-sparkline-wrap {
+  flex: 1;
+  min-width: 40px;
+  max-width: 80px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  .wl-sparkline {
+    width: 100%;
+    height: 20px;
+  }
+}
 .wl-price {
   font-size: 12px;
   font-weight: 600;
@@ -3375,7 +3492,7 @@ export default {
 }
 .wl-change {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   font-family: 'SF Mono', Monaco, monospace;
   padding: 1px 5px;
   border-radius: 4px;

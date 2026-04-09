@@ -28,6 +28,7 @@
         <span v-if="selectedRowKeys.length" class="selected-tip">
           {{ $t('dashboard.indicator.backtest.historySelectedCount', { count: selectedRowKeys.length }) }}
         </span>
+        <span class="row-click-hint">{{ $t('dashboard.indicator.backtest.historyRowClickHint') }}</span>
       </div>
       <div class="toolbar-right">
         <a-input
@@ -58,7 +59,8 @@
       size="small"
       :pagination="{ pageSize: 15, size: 'small' }"
       rowKey="id"
-      :scroll="{ x: 1120 }"
+      :scroll="{ x: 980 }"
+      :customRow="customRowProps"
       :rowSelection="{ selectedRowKeys: selectedRowKeys, onChange: onRowSelectionChange }"
     >
       <template slot="symbol" slot-scope="text, record">
@@ -91,17 +93,16 @@
         </a-tag>
       </template>
       <template slot="actions" slot-scope="text, record">
-        <a-button type="link" size="small" :loading="detailLoadingId === record.id" @click="viewRun(record)">
-          {{ $t('dashboard.indicator.backtest.historyView') }}
-        </a-button>
-        <a-button
-          type="link"
-          size="small"
-          :loading="analyzingRunId === record.id"
-          @click="handleAIAnalyze(record)"
-        >
-          {{ $t('dashboard.indicator.backtest.historyAISuggestShort') }}
-        </a-button>
+        <span @click.stop>
+          <a-button
+            type="link"
+            size="small"
+            :loading="analyzingRunId === record.id"
+            @click="handleAIAnalyze(record)"
+          >
+            {{ $t('dashboard.indicator.backtest.historyAISuggestShort') }}
+          </a-button>
+        </span>
       </template>
     </a-table>
 
@@ -240,6 +241,24 @@ export default {
     }
   },
   methods: {
+    customRowProps (record) {
+      return {
+        class: 'backtest-history-row--clickable',
+        on: {
+          click: (e) => {
+            const el = e && e.target
+            if (!el || !el.closest) return
+            if (el.closest('button, a, .ant-checkbox-wrapper, .ant-table-selection-column')) return
+            if (this.detailLoadingId) return
+            this.onRowClick(record)
+          }
+        }
+      }
+    },
+    onRowClick (record) {
+      if (!record || !record.id) return
+      this.viewRun(record)
+    },
     onRowSelectionChange (keys) {
       this.selectedRowKeys = keys || []
     },
@@ -268,7 +287,7 @@ export default {
         { title: this.$t('dashboard.indicator.backtest.totalReturn') || 'Return', dataIndex: 'total_return', key: 'total_return', width: 100, scopedSlots: { customRender: 'returnPct' } },
         { title: this.$t('dashboard.indicator.backtest.historyStatus'), dataIndex: 'status', key: 'status', width: 80, scopedSlots: { customRender: 'status' } },
         { title: this.$t('dashboard.indicator.backtest.historyCreatedAt'), dataIndex: 'created_at', key: 'created_at', width: 180, scopedSlots: { customRender: 'createdAt' } },
-        { title: '', key: 'actions', width: 180, scopedSlots: { customRender: 'actions' } }
+        { title: '', key: 'actions', width: 120, scopedSlots: { customRender: 'actions' } }
       ]
       this.columns = columns
     },
@@ -528,11 +547,22 @@ export default {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
   }
 }
 .selected-tip {
   font-size: 12px;
   color: #8c8c8c;
+}
+.row-click-hint {
+  font-size: 12px;
+  color: #8c8c8c;
+  width: 100%;
+  flex-basis: 100%;
+  margin-top: 2px;
+}
+/deep/ .ant-table-tbody > tr.backtest-history-row--clickable:hover > td {
+  background: #fafafa;
 }
 .ai-modal-content {
   display: flex;
@@ -666,6 +696,10 @@ export default {
   .ant-drawer-body {
     background: #1f1f1f;
     color: rgba(255, 255, 255, 0.85);
+  }
+
+  .row-click-hint {
+    color: rgba(255, 255, 255, 0.45);
   }
 
   .drawer-toolbar {

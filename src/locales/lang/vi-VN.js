@@ -31,6 +31,14 @@ const locale = {
 
   'menu.dashboard.tradingAssistant': 'Trợ lý giao dịch',
 
+  'menu.dashboard.backtestCenter': 'Trung tâm Backtest',
+
+  'menu.dashboard.indicatorIde': 'Indicator IDE',
+
+  'menu.dashboard.strategyScripts': 'Python Scripts',
+
+  'menu.dashboard.tradingBot': 'Trading Bot',
+
   'menu.dashboard.aiTradingAssistant': 'Trợ lý giao dịch AI',
   'menu.dashboard.signalRobot': 'Robot tín hiệu',
   'menu.dashboard.monitor': 'Giám sát Trang',

@@ -420,12 +420,12 @@ export default {
     },
 
     goToCreate () {
-      this.$router.push('/indicator-analysis')
+      this.$router.push('/indicator-ide')
     },
 
     goToUse () {
       this.showMyPurchases = false
-      this.$router.push('/indicator-analysis')
+      this.$router.push('/indicator-ide')
     },
 
     formatDate (dateStr) {

@@ -23,32 +23,79 @@ export const asyncRouterMap = [
         component: () => import('@/views/indicator-community'),
         meta: { title: 'menu.dashboard.community', keepAlive: false, icon: 'shop', permission: ['dashboard'] }
       },
-      // 3. K 线图表与运行指标（原「指标分析」）
+      // 3. 指标 IDE（图表 + 代码编辑 + 回测一体化）
+      {
+        path: '/indicator-ide',
+        name: 'IndicatorIDE',
+        component: () => import('@/views/indicator-ide'),
+        meta: { title: 'menu.dashboard.indicatorIde', keepAlive: true, icon: 'code', permission: ['dashboard'] }
+      },
+      // 4. 策略与实盘（指标信号策略：创建 / 管理 / 与实盘联动；不含 Python 脚本策略）
+      {
+        path: '/strategy-live',
+        name: 'StrategyLive',
+        component: () => import('@/views/trading-assistant'),
+        meta: {
+          title: 'menu.dashboard.tradingAssistant',
+          keepAlive: true,
+          icon: 'deployment-unit',
+          permission: ['dashboard'],
+          indicatorSignalOnly: true
+        }
+      },
+      // Python 脚本策略（无侧栏入口，从「交易机器人」进入）
+      {
+        path: '/strategy-script',
+        name: 'StrategyScript',
+        component: () => import('@/views/trading-assistant'),
+        hidden: true,
+        meta: {
+          title: 'menu.dashboard.tradingBot',
+          keepAlive: false,
+          scriptStrategiesOnly: true
+        }
+      },
+      {
+        path: '/strategy-scripts',
+        redirect: '/strategy-live',
+        hidden: true
+      },
+      // 5. 交易机器人（实盘运维监控）
+      {
+        path: '/trading-bot',
+        name: 'TradingBot',
+        component: () => import('@/views/trading-bot'),
+        meta: { title: 'menu.dashboard.tradingBot', keepAlive: true, icon: 'robot', permission: ['dashboard'] }
+      },
+      // 旧路由兼容：图表与指标 → 指标 IDE
       {
         path: '/indicator-analysis',
         name: 'Indicator',
-        component: () => import('@/views/indicator-analysis'),
-        meta: { title: 'menu.dashboard.indicator', keepAlive: true, icon: 'line-chart', permission: ['dashboard'] }
+        redirect: '/indicator-ide',
+        hidden: true,
+        meta: { title: 'menu.dashboard.indicator', keepAlive: false, icon: 'line-chart', permission: ['dashboard'] }
       },
-      // 4. 回测中心
+      // 旧路由兼容：回测中心 → 指标 IDE
       {
         path: '/backtest-center',
         name: 'BacktestCenter',
-        component: () => import('@/views/backtest-center'),
+        redirect: '/indicator-ide',
+        hidden: true,
         meta: { title: 'menu.dashboard.backtestCenter', keepAlive: false, icon: 'experiment', permission: ['dashboard'] }
       },
-      // 5. 交易助手（含实盘概览 = 原仪表盘）
+      // 旧路由兼容：交易助手 → 策略与实盘
       {
         path: '/trading-assistant',
         name: 'TradingAssistant',
-        component: () => import('@/views/trading-assistant'),
-        meta: { title: 'menu.dashboard.tradingAssistant', keepAlive: true, icon: 'robot', permission: ['dashboard'] }
+        redirect: '/strategy-live',
+        hidden: true,
+        meta: { title: 'menu.dashboard.tradingAssistant', keepAlive: false, icon: 'deployment-unit', permission: ['dashboard'] }
       },
       // 原仪表盘路由保留兼容，重定向到交易助手
       {
         path: '/dashboard',
         name: 'Dashboard',
-        redirect: '/trading-assistant?tab=overview',
+        redirect: '/trading-bot',
         hidden: true,
         meta: { title: 'menu.dashboard', keepAlive: false, icon: 'dashboard', permission: ['dashboard'] }
       },

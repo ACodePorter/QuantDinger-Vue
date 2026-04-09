@@ -8,6 +8,7 @@
     <div class="mode-cards">
       <!-- Signal Strategy Card -->
       <div
+        v-if="variant !== 'script'"
         class="mode-card"
         :class="{ selected: selected === 'signal' }"
         @click="$emit('select', 'signal')"
@@ -34,6 +35,7 @@
 
       <!-- Script Strategy Card -->
       <div
+        v-if="variant !== 'signal'"
         class="mode-card"
         :class="{ selected: selected === 'script' }"
         @click="$emit('select', 'script')"
@@ -59,8 +61,8 @@
       </div>
     </div>
 
-    <!-- Template Quick-start -->
-    <div class="template-quick-start">
+    <!-- Template Quick-start（仅脚本模式） -->
+    <div v-if="variant === 'all' || variant === 'script'" class="template-quick-start">
       <a-divider>
         <span class="divider-text">{{ $t('trading-assistant.fromTemplate') }}</span>
       </a-divider>
@@ -86,7 +88,13 @@ export default {
   name: 'StrategyTypeSelector',
   props: {
     selected: { type: String, default: '' },
-    isDark: { type: Boolean, default: false }
+    isDark: { type: Boolean, default: false },
+    /** all | signal | script — 用于拆分入口页 */
+    variant: {
+      type: String,
+      default: 'all',
+      validator: (v) => ['all', 'signal', 'script'].includes(v)
+    }
   },
   data () {
     return {

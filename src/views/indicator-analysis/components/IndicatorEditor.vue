@@ -14,6 +14,7 @@
       :centered="false"
       :style="isMobile ? { top: 0, paddingBottom: 0 } : { top: '2%' }"
       class="indicator-editor-modal"
+      :wrap-class-name="isDark ? 'ide-modal-wrap--dark' : ''"
     >
       <div class="editor-content">
         <a-row :gutter="16" class="editor-layout" :class="{ 'mobile-layout': isMobile }">
@@ -59,27 +60,47 @@
                   </a-col>
                   <!-- 右：AI 生成 -->
                   <a-col :xs="24" :sm="24" :md="6" class="ai-pane">
-                    <div class="ai-panel">
+                    <div class="ai-panel" :class="{ 'ai-panel--generating': aiGenerating }">
                       <div class="ai-panel-title">
                         <a-icon type="robot" />
                         <span>{{ $t('dashboard.indicator.editor.aiGenerate') }}</span>
                       </div>
-                      <a-textarea
-                        v-model="aiPrompt"
-                        :placeholder="$t('dashboard.indicator.editor.aiPromptPlaceholder')"
-                        :rows="12"
-                        :auto-size="{ minRows: 12, maxRows: 20 }"
-                      />
-                      <a-button
-                        type="primary"
-                        block
-                        @click="handleAIGenerate"
-                        :loading="aiGenerating"
-                        size="large"
-                        style="margin-top: 10px;"
-                      >
-                        {{ $t('dashboard.indicator.editor.aiGenerateBtn') }}
-                      </a-button>
+                      <template v-if="aiGenerating">
+                        <div class="ai-gen-loading">
+                          <div class="ai-gen-loading-icon">
+                            <a-icon type="loading" spin style="font-size:28px; color:#1890ff;" />
+                          </div>
+                          <div class="ai-gen-loading-title">{{ $t('dashboard.indicator.editor.aiGenerateBtn') }}</div>
+                          <div class="ai-gen-loading-dots">
+                            <span class="dot dot1"></span>
+                            <span class="dot dot2"></span>
+                            <span class="dot dot3"></span>
+                          </div>
+                          <ul class="ai-gen-tips">
+                            <li v-for="(tip, idx) in aiTips" :key="idx" :class="{ 'active': aiTipIndex === idx }">
+                              <a-icon type="bulb" style="margin-right: 4px;" />{{ tip }}
+                            </li>
+                          </ul>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <a-textarea
+                          v-model="aiPrompt"
+                          :placeholder="$t('dashboard.indicator.editor.aiPromptPlaceholder')"
+                          :rows="12"
+                          :auto-size="{ minRows: 12, maxRows: 20 }"
+                        />
+                        <a-button
+                          type="primary"
+                          block
+                          @click="handleAIGenerate"
+                          :loading="aiGenerating"
+                          size="large"
+                          style="margin-top: 10px;"
+                        >
+                          {{ $t('dashboard.indicator.editor.aiGenerateBtn') }}
+                        </a-button>
+                      </template>
                     </div>
                   </a-col>
                 </a-row>
@@ -131,6 +152,10 @@ export default {
     userId: {
       type: Number,
       default: null
+    },
+    isDark: {
+      type: Boolean,
+      default: false
     }
   },
   data () {
@@ -140,27 +165,32 @@ export default {
       aiPrompt: '',
       aiGenerating: false,
       verifying: false,
-      isMobile: false
+      isMobile: false,
+      aiTipIndex: 0,
+      aiTipTimer: null,
+      aiTips: [
+        '正在分析您的需求，构建最优指标逻辑…',
+        'AI 会自动添加 @strategy 注解，用于风控参数自动填充',
+        '生成的代码会包含买卖信号，可直接用于回测',
+        '指标代码自带策略配置，创建实盘策略时无需重复设置',
+        '支持 SMA、EMA、RSI、MACD、布林带等多种技术指标',
+        '边缘触发信号避免重复开仓，提升策略稳定性'
+      ]
     }
   },
   computed: {},
   watch: {
     visible (val) {
       if (val) {
-        // Modal 打开时，等待 DOM 更新后初始化编辑器
         this.$nextTick(() => {
-          // 延迟一下确保 Modal 完全渲染，表单字段已注册
           setTimeout(() => {
             if (!this.codeEditor && this.$refs.codeEditorContainer) {
               this.initCodeEditor()
             }
-
-            // 初始化表单数据
             this.initFormData()
           }, 200)
         })
       } else {
-        // Modal 关闭时，刷新编辑器以确保下次打开时正确显示
         if (this.codeEditor) {
           this.codeEditor.refresh()
         }
@@ -169,7 +199,6 @@ export default {
     indicator: {
       handler (val) {
         if (val && this.visible) {
-          // 当 indicator 变化且弹窗可见时，等待一下再更新表单数据
           this.$nextTick(() => {
             setTimeout(() => {
               this.initFormData()
@@ -178,6 +207,19 @@ export default {
         }
       },
       deep: true
+    },
+    aiGenerating (val) {
+      if (val) {
+        this.aiTipIndex = 0
+        this.aiTipTimer = setInterval(() => {
+          this.aiTipIndex = (this.aiTipIndex + 1) % this.aiTips.length
+        }, 3000)
+      } else {
+        if (this.aiTipTimer) {
+          clearInterval(this.aiTipTimer)
+          this.aiTipTimer = null
+        }
+      }
     }
   },
   mounted () {
@@ -195,6 +237,7 @@ export default {
     }
   },
   beforeDestroy () {
+    if (this.aiTipTimer) clearInterval(this.aiTipTimer)
     window.removeEventListener('resize', this.checkMobile)
     if (this.codeEditor) {
       try {
@@ -1175,6 +1218,132 @@ export default {
       height: 40px;
       margin: 0;
     }
+  }
+}
+
+// ===== AI Generating Animation =====
+.ai-gen-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 24px 12px;
+  text-align: center;
+}
+.ai-gen-loading-icon {
+  margin-bottom: 16px;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+.ai-gen-loading-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 12px;
+}
+.ai-gen-loading-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1890ff;
+    animation: dot-bounce 1.4s ease-in-out infinite;
+    &.dot1 { animation-delay: 0s; }
+    &.dot2 { animation-delay: 0.2s; }
+    &.dot3 { animation-delay: 0.4s; }
+  }
+}
+.ai-gen-tips {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  li {
+    font-size: 12px;
+    color: #8c8c8c;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.4s ease;
+    opacity: 0;
+    transform: translateY(6px);
+    max-height: 0;
+    overflow: hidden;
+    &.active {
+      opacity: 1;
+      transform: translateY(0);
+      max-height: 60px;
+      background: rgba(24, 144, 255, 0.06);
+      color: #595959;
+    }
+  }
+}
+.ai-panel--generating {
+  border-color: #91d5ff;
+  background: linear-gradient(135deg, #f0f9ff 0%, #fafafa 100%);
+}
+@keyframes pulse-glow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.85; }
+}
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+</style>
+
+<style lang="less">
+// ===== Dark mode for IndicatorEditor modal =====
+.ide-modal-wrap--dark {
+  .editor-content {
+    background: #1f1f1f;
+    color: rgba(255,255,255,0.85);
+  }
+  .section-header {
+    border-bottom-color: #303030;
+    .section-title { color: rgba(255,255,255,0.88); }
+  }
+  .section-actions :deep(.ant-btn-link) {
+    color: #177ddc;
+    &:hover { color: #58a6ff; }
+  }
+  .code-editor-container {
+    border-color: #434343;
+    &:hover { border-color: #177ddc; }
+    &:focus-within { border-color: #177ddc; box-shadow: 0 0 0 2px rgba(23, 125, 220, 0.2); }
+    :deep(.CodeMirror) { background: #1a1a1a; }
+    :deep(.CodeMirror-lines) { background: #141414; }
+    :deep(.CodeMirror-gutters) { background: linear-gradient(to right, #1a1a1a, #181818); border-right-color: #303030; }
+    :deep(.CodeMirror-linenumber) { color: rgba(255,255,255,0.25); }
+    :deep(.CodeMirror-selected) { background: rgba(23, 125, 220, 0.25); }
+    :deep(.CodeMirror-cursor) { border-left-color: #177ddc; }
+  }
+  .ai-panel {
+    background: #181818;
+    border-color: #303030;
+  }
+  .ai-panel--generating {
+    border-color: rgba(23, 125, 220, 0.4);
+    background: linear-gradient(135deg, rgba(23, 125, 220, 0.08) 0%, #181818 100%);
+  }
+  .ai-panel-title { color: rgba(255,255,255,0.88); }
+  .ai-gen-loading-title { color: #58a6ff; }
+  .ai-gen-loading-dots .dot { background: #58a6ff; }
+  .ai-gen-tips li {
+    color: rgba(255,255,255,0.35);
+    &.active {
+      color: rgba(255,255,255,0.65);
+      background: rgba(23, 125, 220, 0.1);
+    }
+  }
+  .ant-alert-info {
+    background: rgba(23, 125, 220, 0.1);
+    border-color: rgba(23, 125, 220, 0.3);
+    .ant-alert-message { color: rgba(255,255,255,0.85); }
+    .ant-alert-description { color: rgba(255,255,255,0.65); }
+    .ant-alert-icon { color: #177ddc; }
   }
 }
 </style>

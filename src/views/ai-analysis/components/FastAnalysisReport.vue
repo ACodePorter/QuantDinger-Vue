@@ -127,6 +127,44 @@
         </div>
       </div>
 
+      <!-- Golden Path: Next Step Actions -->
+      <div class="golden-path-bar" v-if="result && !result.error">
+        <div class="gp-label">
+          <a-icon type="thunderbolt" />
+          <span>{{ $t('fastAnalysis.nextStep') || '下一步' }}</span>
+        </div>
+        <div class="gp-actions">
+          <a-button type="primary" size="small" @click="$emit('generate-strategy', result)">
+            <a-icon type="robot" />
+            {{ $t('fastAnalysis.generateStrategy') || '生成策略' }}
+          </a-button>
+          <a-button size="small" @click="$emit('go-backtest', result)">
+            <a-icon type="experiment" />
+            {{ $t('fastAnalysis.goBacktest') || '回测验证' }}
+          </a-button>
+        </div>
+      </div>
+
+      <!-- Historical Accuracy Strip -->
+      <div v-if="performanceStats && performanceStats.total_analyses" class="performance-strip">
+        <div class="perf-item">
+          <span class="perf-value">{{ performanceStats.total_analyses }}</span>
+          <span class="perf-label">{{ $t('fastAnalysis.totalAnalyses') || '历史分析' }}</span>
+        </div>
+        <div class="perf-item" v-if="performanceStats.accuracy_rate != null">
+          <span class="perf-value" :class="performanceStats.accuracy_rate >= 50 ? 'positive' : 'negative'">{{ formatNumber(performanceStats.accuracy_rate, 1) }}%</span>
+          <span class="perf-label">{{ $t('fastAnalysis.accuracyRate') || '准确率' }}</span>
+        </div>
+        <div class="perf-item" v-if="performanceStats.avg_confidence != null">
+          <span class="perf-value">{{ formatNumber(performanceStats.avg_confidence, 0) }}</span>
+          <span class="perf-label">{{ $t('fastAnalysis.avgConfidence') || '平均置信' }}</span>
+        </div>
+        <div class="perf-item" v-if="performanceStats.avg_return != null">
+          <span class="perf-value" :class="performanceStats.avg_return >= 0 ? 'positive' : 'negative'">{{ formatNumber(performanceStats.avg_return, 2) }}%</span>
+          <span class="perf-label">{{ $t('fastAnalysis.avgReturn') || '平均收益' }}</span>
+        </div>
+      </div>
+
       <!-- Price Info Row -->
       <div class="price-info-row" :class="{ 'hold-mode': isHoldDecision }">
         <div class="price-card current">
@@ -162,248 +200,241 @@
         </template>
       </div>
 
-      <!-- 多周期趋势预判 -->
+      <!-- 多周期趋势预判 (Collapsible) -->
       <div v-if="trendOutlookBlocks.length || trendOutlookSummaryText" class="trend-outlook-card">
-        <div class="trend-outlook-header">
+        <div class="trend-outlook-header section-clickable" @click="toggleSection('trendOutlook')">
           <a-icon type="calendar" />
           <span>{{ $t('fastAnalysis.trendOutlookTitle') }}</span>
+          <a-icon type="right" class="section-toggle-arrow" :class="{ open: !sectionCollapsed.trendOutlook }" />
         </div>
-        <div v-if="trendOutlookSummaryText" class="trend-outlook-summary">
-          {{ trendOutlookSummaryText }}
-        </div>
-        <div v-if="trendOutlookBlocks.length" class="trend-outlook-grid">
-          <div
-            v-for="row in trendOutlookBlocks"
-            :key="row.key"
-            class="trend-outlook-item"
-          >
-            <div class="to-label">{{ row.label }}</div>
-            <div class="to-trend" :class="outlookTrendClass(row.trend)">
-              {{ formatOutlookTrend(row.trend) }}
-            </div>
-            <div class="to-meta">
-              <span class="to-score">{{ row.score != null ? row.score : '--' }}</span>
-              <span class="to-str">{{ row.strength || '--' }}</span>
+        <div v-show="!sectionCollapsed.trendOutlook">
+          <div v-if="trendOutlookSummaryText" class="trend-outlook-summary">
+            {{ trendOutlookSummaryText }}
+          </div>
+          <div v-if="trendOutlookBlocks.length" class="trend-outlook-grid">
+            <div v-for="row in trendOutlookBlocks" :key="row.key" class="trend-outlook-item">
+              <div class="to-label">{{ row.label }}</div>
+              <div class="to-trend" :class="outlookTrendClass(row.trend)">
+                {{ formatOutlookTrend(row.trend) }}
+              </div>
+              <div class="to-meta">
+                <span class="to-score">{{ row.score != null ? row.score : '--' }}</span>
+                <span class="to-str">{{ row.strength || '--' }}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Scores Row -->
-      <div class="scores-row">
-        <div class="score-item">
-          <div class="score-header">
-            <a-icon type="line-chart" />
-            <span>{{ $t('fastAnalysis.technical') }}</span>
-          </div>
-          <a-progress
-            :percent="result.scores?.technical || 50"
-            :strokeColor="getScoreColor(result.scores?.technical)"
-            :showInfo="false"
-          />
-          <div class="score-value">{{ result.scores?.technical || 50 }}</div>
+      <!-- Scores (Collapsible) -->
+      <div class="report-section">
+        <div class="report-section-header" @click="toggleSection('scores')">
+          <span class="rsh-title"><a-icon type="dashboard" /> {{ $t('fastAnalysis.scoresTitle') || '四维评分' }}</span>
+          <a-icon type="right" class="section-toggle-arrow" :class="{ open: !sectionCollapsed.scores }" />
         </div>
-        <div class="score-item">
-          <div class="score-header">
-            <a-icon type="bank" />
-            <span>{{ $t('fastAnalysis.fundamental') }}</span>
-          </div>
-          <a-progress
-            :percent="result.scores?.fundamental || 50"
-            :strokeColor="getScoreColor(result.scores?.fundamental)"
-            :showInfo="false"
-          />
-          <div class="score-value">{{ result.scores?.fundamental || 50 }}</div>
-        </div>
-        <div class="score-item">
-          <div class="score-header">
-            <a-icon type="heart" />
-            <span>{{ $t('fastAnalysis.sentiment') }}</span>
-          </div>
-          <a-progress
-            :percent="result.scores?.sentiment || 50"
-            :strokeColor="getScoreColor(result.scores?.sentiment)"
-            :showInfo="false"
-          />
-          <div class="score-value">{{ result.scores?.sentiment || 50 }}</div>
-        </div>
-        <div class="score-item overall">
-          <div class="score-header">
-            <a-icon type="dashboard" />
-            <span>{{ $t('fastAnalysis.overall') }}</span>
-          </div>
-          <a-progress
-            :percent="result.scores?.overall || 50"
-            :strokeColor="getScoreColor(result.scores?.overall)"
-            :showInfo="false"
-          />
-          <div class="score-value">{{ result.scores?.overall || 50 }}</div>
-        </div>
-      </div>
-
-      <!-- Detailed Analysis Sections -->
-      <div class="detailed-analysis" v-if="result.detailed_analysis">
-        <!-- Technical Analysis -->
-        <div class="analysis-card technical" v-if="result.detailed_analysis.technical">
-          <div class="analysis-card-header">
-            <a-icon type="line-chart" />
-            <span>{{ $t('fastAnalysis.technicalAnalysis') }}</span>
-            <a-tag :color="getScoreTagColor(result.scores?.technical)">
-              {{ result.scores?.technical || 50 }}分
-            </a-tag>
-          </div>
-          <div class="analysis-card-content">
-            {{ result.detailed_analysis.technical }}
-          </div>
-        </div>
-
-        <!-- Fundamental Analysis -->
-        <div class="analysis-card fundamental" v-if="result.detailed_analysis.fundamental">
-          <div class="analysis-card-header">
-            <a-icon type="bank" />
-            <span>{{ $t('fastAnalysis.fundamentalAnalysis') }}</span>
-            <a-tag :color="getScoreTagColor(result.scores?.fundamental)">
-              {{ result.scores?.fundamental || 50 }}分
-            </a-tag>
-          </div>
-          <div class="analysis-card-content">
-            {{ result.detailed_analysis.fundamental }}
-          </div>
-        </div>
-
-        <!-- Sentiment Analysis -->
-        <div class="analysis-card sentiment" v-if="result.detailed_analysis.sentiment">
-          <div class="analysis-card-header">
-            <a-icon type="heart" />
-            <span>{{ $t('fastAnalysis.sentimentAnalysis') }}</span>
-            <a-tag :color="getScoreTagColor(result.scores?.sentiment)">
-              {{ result.scores?.sentiment || 50 }}分
-            </a-tag>
-          </div>
-          <div class="analysis-card-content">
-            {{ result.detailed_analysis.sentiment }}
+        <div v-show="!sectionCollapsed.scores">
+          <div class="scores-row">
+            <div class="score-item">
+              <div class="score-header">
+                <a-icon type="line-chart" />
+                <span>{{ $t('fastAnalysis.technical') }}</span>
+              </div>
+              <a-progress :percent="result.scores?.technical || 50" :strokeColor="getScoreColor(result.scores?.technical)" :showInfo="false" />
+              <div class="score-value">{{ result.scores?.technical || 50 }}</div>
+            </div>
+            <div class="score-item">
+              <div class="score-header">
+                <a-icon type="bank" />
+                <span>{{ $t('fastAnalysis.fundamental') }}</span>
+              </div>
+              <a-progress :percent="result.scores?.fundamental || 50" :strokeColor="getScoreColor(result.scores?.fundamental)" :showInfo="false" />
+              <div class="score-value">{{ result.scores?.fundamental || 50 }}</div>
+            </div>
+            <div class="score-item">
+              <div class="score-header">
+                <a-icon type="heart" />
+                <span>{{ $t('fastAnalysis.sentiment') }}</span>
+              </div>
+              <a-progress :percent="result.scores?.sentiment || 50" :strokeColor="getScoreColor(result.scores?.sentiment)" :showInfo="false" />
+              <div class="score-value">{{ result.scores?.sentiment || 50 }}</div>
+            </div>
+            <div class="score-item overall">
+              <div class="score-header">
+                <a-icon type="dashboard" />
+                <span>{{ $t('fastAnalysis.overall') }}</span>
+              </div>
+              <a-progress :percent="result.scores?.overall || 50" :strokeColor="getScoreColor(result.scores?.overall)" :showInfo="false" />
+              <div class="score-value">{{ result.scores?.overall || 50 }}</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Reasons & Risks -->
-      <div class="analysis-details">
-        <div class="detail-section reasons">
-          <div class="section-title">
-            <a-icon type="bulb" theme="twoTone" twoToneColor="#52c41a" />
-            <span>{{ $t('fastAnalysis.keyReasons') }}</span>
-          </div>
-          <ul class="detail-list">
-            <li v-for="(reason, idx) in result.reasons" :key="'r-'+idx">
-              {{ reason }}
-            </li>
-          </ul>
+      <!-- Detailed Analysis (Collapsible) -->
+      <div class="report-section" v-if="result.detailed_analysis">
+        <div class="report-section-header" @click="toggleSection('detailedAnalysis')">
+          <span class="rsh-title"><a-icon type="file-text" /> {{ $t('fastAnalysis.detailedAnalysisTitle') || '详细分析' }}</span>
+          <a-icon type="right" class="section-toggle-arrow" :class="{ open: !sectionCollapsed.detailedAnalysis }" />
         </div>
-        <div class="detail-section risks">
-          <div class="section-title">
-            <a-icon type="warning" theme="twoTone" twoToneColor="#faad14" />
-            <span>{{ $t('fastAnalysis.risks') }}</span>
+        <div v-show="!sectionCollapsed.detailedAnalysis">
+          <div class="detailed-analysis">
+            <div class="analysis-card technical" v-if="result.detailed_analysis.technical">
+              <div class="analysis-card-header">
+                <a-icon type="line-chart" />
+                <span>{{ $t('fastAnalysis.technicalAnalysis') }}</span>
+                <a-tag :color="getScoreTagColor(result.scores?.technical)">{{ result.scores?.technical || 50 }}分</a-tag>
+              </div>
+              <div class="analysis-card-content">{{ result.detailed_analysis.technical }}</div>
+            </div>
+            <div class="analysis-card fundamental" v-if="result.detailed_analysis.fundamental">
+              <div class="analysis-card-header">
+                <a-icon type="bank" />
+                <span>{{ $t('fastAnalysis.fundamentalAnalysis') }}</span>
+                <a-tag :color="getScoreTagColor(result.scores?.fundamental)">{{ result.scores?.fundamental || 50 }}分</a-tag>
+              </div>
+              <div class="analysis-card-content">{{ result.detailed_analysis.fundamental }}</div>
+            </div>
+            <div class="analysis-card sentiment" v-if="result.detailed_analysis.sentiment">
+              <div class="analysis-card-header">
+                <a-icon type="heart" />
+                <span>{{ $t('fastAnalysis.sentimentAnalysis') }}</span>
+                <a-tag :color="getScoreTagColor(result.scores?.sentiment)">{{ result.scores?.sentiment || 50 }}分</a-tag>
+              </div>
+              <div class="analysis-card-content">{{ result.detailed_analysis.sentiment }}</div>
+            </div>
           </div>
-          <ul class="detail-list">
-            <li v-for="(risk, idx) in result.risks" :key="'k-'+idx">
-              {{ risk }}
-            </li>
-          </ul>
         </div>
       </div>
 
-      <!-- Technical Indicators -->
-      <div class="indicators-section" v-if="result.indicators && Object.keys(result.indicators).length > 0">
-        <div class="section-title">
-          <a-icon type="stock" />
-          <span>{{ $t('fastAnalysis.indicators') }}</span>
-          <a-tag color="blue" class="indicators-pro-badge">{{ $t('fastAnalysis.indicatorsProBadge') }}</a-tag>
+      <!-- Reasons & Risks (Collapsible) -->
+      <div class="report-section">
+        <div class="report-section-header" @click="toggleSection('reasonsRisks')">
+          <span class="rsh-title"><a-icon type="bulb" /> {{ $t('fastAnalysis.reasonsAndRisks') || '关键理由与风险' }}</span>
+          <a-icon type="right" class="section-toggle-arrow" :class="{ open: !sectionCollapsed.reasonsRisks }" />
         </div>
-        <div class="indicators-methodology">
-          <a-icon type="experiment" />
-          <span>{{ $t('fastAnalysis.indicatorsProSubtitle') }}</span>
-        </div>
-        <div class="indicators-grid">
-          <div class="indicator-item" v-if="result.indicators.rsi">
-            <div class="indicator-name">RSI (14)</div>
-            <div class="indicator-value" :class="getRsiClass(result.indicators.rsi.value)">
-              {{ formatNumber(result.indicators.rsi.value, 1) }}
+        <div v-show="!sectionCollapsed.reasonsRisks">
+          <div class="analysis-details">
+            <div class="detail-section reasons">
+              <div class="section-title">
+                <a-icon type="bulb" theme="twoTone" twoToneColor="#52c41a" />
+                <span>{{ $t('fastAnalysis.keyReasons') }}</span>
+              </div>
+              <ul class="detail-list">
+                <li v-for="(reason, idx) in result.reasons" :key="'r-'+idx">{{ reason }}</li>
+              </ul>
             </div>
-            <div class="indicator-signal">{{ translateSignal(result.indicators.rsi.signal) }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.macd">
-            <div class="indicator-name">MACD (12,26,9)</div>
-            <div class="indicator-value" :class="result.indicators.macd.signal === 'bullish' ? 'bullish' : (result.indicators.macd.signal === 'bearish' ? 'bearish' : '')">
-              {{ translateTrend(result.indicators.macd.trend) }}
-            </div>
-            <div class="indicator-signal">{{ translateSignal(result.indicators.macd.signal) }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.moving_averages">
-            <div class="indicator-name">{{ $t('fastAnalysis.maTrend') }}</div>
-            <div class="indicator-value" :class="getMaTrendClass(result.indicators.moving_averages.trend)">
-              {{ translateTrend(result.indicators.moving_averages.trend) }}
-            </div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.volatility && result.indicators.volatility.atr != null">
-            <div class="indicator-name">ATR (14)</div>
-            <div class="indicator-value" :class="getVolatilityClass(result.indicators.volatility.level)">
-              ${{ formatPrice(result.indicators.volatility.atr) }}
-            </div>
-            <div class="indicator-signal">{{ $t('fastAnalysis.atrTrueRange') }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.bollinger && result.indicators.bollinger.BB_width != null">
-            <div class="indicator-name">{{ $t('fastAnalysis.bbWidth') }}</div>
-            <div class="indicator-value">{{ formatNumber(result.indicators.bollinger.BB_width, 2) }}%</div>
-            <div class="indicator-signal">{{ $t('fastAnalysis.bbWidthHint') }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.price_position != null">
-            <div class="indicator-name">{{ $t('fastAnalysis.rangePct20') }}</div>
-            <div class="indicator-value">{{ formatNumber(result.indicators.price_position, 1) }}%</div>
-            <div class="indicator-signal">{{ $t('fastAnalysis.rangePct20Hint') }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.volume_ratio != null">
-            <div class="indicator-name">{{ $t('fastAnalysis.volumeRatio') }}</div>
-            <div class="indicator-value" :class="volumeRatioClass(result.indicators.volume_ratio)">
-              {{ formatNumber(result.indicators.volume_ratio, 2) }}×
-            </div>
-            <div class="indicator-signal">{{ $t('fastAnalysis.volumeRatioHint') }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.levels">
-            <div class="indicator-name">{{ $t('fastAnalysis.support') }}</div>
-            <div class="indicator-value">${{ formatPrice(result.indicators.levels.support) }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.levels">
-            <div class="indicator-name">{{ $t('fastAnalysis.resistance') }}</div>
-            <div class="indicator-value">${{ formatPrice(result.indicators.levels.resistance) }}</div>
-          </div>
-          <div class="indicator-item" v-if="result.indicators.volatility">
-            <div class="indicator-name">{{ $t('fastAnalysis.volatility') }}</div>
-            <div class="indicator-value" :class="getVolatilityClass(result.indicators.volatility.level)">
-              {{ translateVolatility(result.indicators.volatility.level) }} ({{ result.indicators.volatility.pct }}%)
+            <div class="detail-section risks">
+              <div class="section-title">
+                <a-icon type="warning" theme="twoTone" twoToneColor="#faad14" />
+                <span>{{ $t('fastAnalysis.risks') }}</span>
+              </div>
+              <ul class="detail-list">
+                <li v-for="(risk, idx) in result.risks" :key="'k-'+idx">{{ risk }}</li>
+              </ul>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- 机构风参数表：展示后端已计算的扩展字段 -->
-        <div v-if="professionalIndicatorRows.length" class="indicators-pro-wrap">
-          <div class="indicators-pro-title">
-            <a-icon type="deployment-unit" />
-            {{ ($i18n && $i18n.locale === 'zh-CN') ? '量化参数明细' : 'Quant Parameters' }}
+      <!-- Technical Indicators (Collapsible, default collapsed) -->
+      <div class="report-section" v-if="result.indicators && Object.keys(result.indicators).length > 0">
+        <div class="report-section-header" @click="toggleSection('indicators')">
+          <span class="rsh-title">
+            <a-icon type="stock" />
+            {{ $t('fastAnalysis.indicators') }}
+            <a-tag color="blue" class="indicators-pro-badge">{{ $t('fastAnalysis.indicatorsProBadge') }}</a-tag>
+          </span>
+          <a-icon type="right" class="section-toggle-arrow" :class="{ open: !sectionCollapsed.indicators }" />
+        </div>
+        <div v-show="!sectionCollapsed.indicators">
+          <div class="indicators-section">
+            <div class="indicators-methodology">
+              <a-icon type="experiment" />
+              <span>{{ $t('fastAnalysis.indicatorsProSubtitle') }}</span>
+            </div>
+            <div class="indicators-grid">
+              <div class="indicator-item" v-if="result.indicators.rsi">
+                <div class="indicator-name">RSI (14)</div>
+                <div class="indicator-value" :class="getRsiClass(result.indicators.rsi.value)">
+                  {{ formatNumber(result.indicators.rsi.value, 1) }}
+                </div>
+                <div class="indicator-signal">{{ translateSignal(result.indicators.rsi.signal) }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.macd">
+                <div class="indicator-name">MACD (12,26,9)</div>
+                <div class="indicator-value" :class="result.indicators.macd.signal === 'bullish' ? 'bullish' : (result.indicators.macd.signal === 'bearish' ? 'bearish' : '')">
+                  {{ translateTrend(result.indicators.macd.trend) }}
+                </div>
+                <div class="indicator-signal">{{ translateSignal(result.indicators.macd.signal) }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.moving_averages">
+                <div class="indicator-name">{{ $t('fastAnalysis.maTrend') }}</div>
+                <div class="indicator-value" :class="getMaTrendClass(result.indicators.moving_averages.trend)">
+                  {{ translateTrend(result.indicators.moving_averages.trend) }}
+                </div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.volatility && result.indicators.volatility.atr != null">
+                <div class="indicator-name">ATR (14)</div>
+                <div class="indicator-value" :class="getVolatilityClass(result.indicators.volatility.level)">
+                  ${{ formatPrice(result.indicators.volatility.atr) }}
+                </div>
+                <div class="indicator-signal">{{ $t('fastAnalysis.atrTrueRange') }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.bollinger && result.indicators.bollinger.BB_width != null">
+                <div class="indicator-name">{{ $t('fastAnalysis.bbWidth') }}</div>
+                <div class="indicator-value">{{ formatNumber(result.indicators.bollinger.BB_width, 2) }}%</div>
+                <div class="indicator-signal">{{ $t('fastAnalysis.bbWidthHint') }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.price_position != null">
+                <div class="indicator-name">{{ $t('fastAnalysis.rangePct20') }}</div>
+                <div class="indicator-value">{{ formatNumber(result.indicators.price_position, 1) }}%</div>
+                <div class="indicator-signal">{{ $t('fastAnalysis.rangePct20Hint') }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.volume_ratio != null">
+                <div class="indicator-name">{{ $t('fastAnalysis.volumeRatio') }}</div>
+                <div class="indicator-value" :class="volumeRatioClass(result.indicators.volume_ratio)">
+                  {{ formatNumber(result.indicators.volume_ratio, 2) }}×
+                </div>
+                <div class="indicator-signal">{{ $t('fastAnalysis.volumeRatioHint') }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.levels">
+                <div class="indicator-name">{{ $t('fastAnalysis.support') }}</div>
+                <div class="indicator-value">${{ formatPrice(result.indicators.levels.support) }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.levels">
+                <div class="indicator-name">{{ $t('fastAnalysis.resistance') }}</div>
+                <div class="indicator-value">${{ formatPrice(result.indicators.levels.resistance) }}</div>
+              </div>
+              <div class="indicator-item" v-if="result.indicators.volatility">
+                <div class="indicator-name">{{ $t('fastAnalysis.volatility') }}</div>
+                <div class="indicator-value" :class="getVolatilityClass(result.indicators.volatility.level)">
+                  {{ translateVolatility(result.indicators.volatility.level) }} ({{ result.indicators.volatility.pct }}%)
+                </div>
+              </div>
+            </div>
+
+            <!-- 机构风参数表：展示后端已计算的扩展字段 -->
+            <div v-if="professionalIndicatorRows.length" class="indicators-pro-wrap">
+              <div class="indicators-pro-title">
+                <a-icon type="deployment-unit" />
+                {{ ($i18n && $i18n.locale === 'zh-CN') ? '量化参数明细' : 'Quant Parameters' }}
+              </div>
+              <a-descriptions
+                bordered
+                size="small"
+                :column="2"
+                class="indicators-pro-desc"
+              >
+                <a-descriptions-item
+                  v-for="row in professionalIndicatorRows"
+                  :key="row.key"
+                  :label="row.label"
+                >
+                  <span :class="row.valueClass">{{ row.text }}</span>
+                </a-descriptions-item>
+              </a-descriptions>
+            </div>
           </div>
-          <a-descriptions
-            bordered
-            size="small"
-            :column="2"
-            class="indicators-pro-desc"
-          >
-            <a-descriptions-item
-              v-for="row in professionalIndicatorRows"
-              :key="row.key"
-              :label="row.label"
-            >
-              <span :class="row.valueClass">{{ row.text }}</span>
-            </a-descriptions-item>
-          </a-descriptions>
         </div>
       </div>
 
@@ -441,7 +472,7 @@
 
 <script>
 import { mapState } from 'vuex'
-import { submitFeedback as submitFeedbackApi } from '@/api/fast-analysis'
+import { submitFeedback as submitFeedbackApi, getPerformanceStats } from '@/api/fast-analysis'
 
 export default {
   name: 'FastAnalysisReport',
@@ -468,10 +499,18 @@ export default {
     return {
       userFeedback: null,
       feedbackLoading: null,
-      // 简化的进度系统
-      progress: 0, // 0-95
+      progress: 0,
       elapsedSeconds: 0,
-      mainTimer: null
+      mainTimer: null,
+      performanceStats: null,
+      performanceLoading: false,
+      sectionCollapsed: {
+        trendOutlook: false,
+        scores: false,
+        detailedAnalysis: false,
+        reasonsRisks: false,
+        indicators: false
+      }
     }
   },
   computed: {
@@ -661,9 +700,11 @@ export default {
     }
   },
   watch: {
-    result () {
-      // Reset feedback when result changes
+    result (newVal) {
       this.userFeedback = null
+      if (newVal && newVal.market && newVal.symbol) {
+        this.fetchPerformance(newVal.market, newVal.symbol)
+      }
     },
     loading: {
       handler (newVal) {
@@ -794,6 +835,22 @@ export default {
       const key = `fastAnalysis.volatilityLevel.${level}`
       const translated = this.$t(key)
       return translated === key ? level : translated
+    },
+    toggleSection (key) {
+      this.$set(this.sectionCollapsed, key, !this.sectionCollapsed[key])
+    },
+    async fetchPerformance (market, symbol) {
+      this.performanceLoading = true
+      try {
+        const res = await getPerformanceStats({ market, symbol, days: 30 })
+        if (res && res.code === 1 && res.data) {
+          this.performanceStats = res.data
+        }
+      } catch (e) {
+        console.warn('Performance stats unavailable:', e)
+      } finally {
+        this.performanceLoading = false
+      }
     },
     async submitFeedback (feedback) {
       if (!this.result?.memory_id) {
@@ -935,6 +992,122 @@ export default {
       .empty-title { margin-top: 14px; font-size: 17px; font-weight: 700; color: @rpt-text; }
       .empty-hint { margin-top: 6px; color: @rpt-text3; font-size: 13px; }
     }
+  }
+
+  // ── Golden Path Bar ──
+  .golden-path-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--primary-color, #1890ff) 6%, @rpt-surface), @rpt-surface);
+    margin-bottom: 2px;
+    border-left: 3px solid var(--primary-color, #1890ff);
+
+    .gp-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary-color, #1890ff);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      .anticon { font-size: 14px; }
+    }
+    .gp-actions {
+      display: flex;
+      gap: 8px;
+      .ant-btn { border-radius: 6px; font-weight: 600; font-size: 12px; }
+    }
+  }
+
+  // ── Performance Strip ──
+  .performance-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 0;
+    background: @rpt-surface;
+    margin-bottom: 2px;
+
+    .perf-item {
+      text-align: center;
+      padding: 12px 8px;
+      position: relative;
+
+      &:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 20%;
+        height: 60%;
+        width: 1px;
+        background: @rpt-border;
+      }
+
+      .perf-value {
+        display: block;
+        font-size: 18px;
+        font-weight: 800;
+        color: @rpt-text;
+        font-family: @rpt-mono;
+        &.positive { color: @rpt-green; }
+        &.negative { color: @rpt-red; }
+      }
+
+      .perf-label {
+        display: block;
+        font-size: 10px;
+        color: @rpt-text3;
+        margin-top: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+    }
+  }
+
+  // ── Report Section (Collapsible) ──
+  .report-section {
+    background: @rpt-surface;
+    margin-bottom: 2px;
+  }
+
+  .report-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+
+    &:hover { background: rgba(0,0,0,0.02); }
+
+    .rsh-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: @rpt-text;
+      .anticon { color: var(--primary-color, #1890ff); font-size: 15px; }
+      .indicators-pro-badge { margin: 0; font-size: 10px; line-height: 16px; font-weight: 600; }
+    }
+  }
+
+  .section-clickable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+    &:hover { background: rgba(0,0,0,0.02); }
+  }
+
+  .section-toggle-arrow {
+    font-size: 12px;
+    color: @rpt-text3;
+    margin-left: auto;
+    transition: transform 0.25s ease;
+    &.open { transform: rotate(90deg); }
   }
 
   // ── Result ──
@@ -1193,6 +1366,34 @@ export default {
   background: @dk-bg;
 
   &::-webkit-scrollbar-thumb { background: #333; }
+
+  .golden-path-bar {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--primary-color, #1890ff) 8%, @dk-surface), @dk-surface);
+    border-left-color: var(--primary-color, #1890ff);
+    .gp-label { color: var(--primary-color, #1890ff); }
+    .gp-actions .ant-btn {
+      background: @dk-surface2; border-color: @dk-border; color: @dk-text2;
+      &:hover { border-color: var(--primary-color, #1890ff); color: var(--primary-color, #1890ff); }
+      &.ant-btn-primary { background: var(--primary-color, #1890ff); border-color: var(--primary-color, #1890ff); color: #fff; }
+    }
+  }
+
+  .performance-strip {
+    background: @dk-surface;
+    .perf-item {
+      &:not(:last-child)::after { background: @dk-border; }
+      .perf-value { color: #f0f0f2; &.positive { color: #34d399; } &.negative { color: #f87171; } }
+      .perf-label { color: @dk-text3; }
+    }
+  }
+
+  .report-section { background: @dk-surface; }
+  .report-section-header {
+    &:hover { background: rgba(255,255,255,0.03); }
+    .rsh-title { color: @dk-text; .anticon { color: var(--primary-color, #1890ff); } }
+  }
+  .section-clickable:hover { background: rgba(255,255,255,0.03); }
+  .section-toggle-arrow { color: @dk-text3; }
 
   .loading-container .loading-content-pro {
     .loading-title { color: @dk-text; }

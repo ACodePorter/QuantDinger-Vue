@@ -1600,10 +1600,9 @@ export default {
     },
     goToStrategyEditor (strategy) {
       if (!strategy || !strategy.id) return
-      this.$router.push({
-        path: '/trading-assistant',
-        query: { mode: 'edit', strategy_id: String(strategy.id) }
-      })
+      const q = { mode: 'edit', strategy_id: String(strategy.id) }
+      const path = strategy.strategy_mode === 'script' ? '/strategy-script' : '/strategy-live'
+      this.$router.push({ path, query: q })
     },
 
     // ===== Run indicator backtest =====

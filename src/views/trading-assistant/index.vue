@@ -48,169 +48,258 @@
       class="top-level-tabs"
       :animated="false"
     >
-      <a-tab-pane key="overview" :tab="$t('trading-assistant.tabs.overview')">
+      <a-tab-pane
+        v-if="!isScriptStrategiesOnlyPage"
+        key="overview"
+        :tab="$t('trading-assistant.tabs.overview')">
         <dashboard-overview v-if="topTab === 'overview'" :hide-setup-guide="true" />
       </a-tab-pane>
       <a-tab-pane key="strategy" :tab="$t('trading-assistant.tabs.strategyManage')">
-    <a-row :gutter="24" class="strategy-layout">
-      <!-- 左侧：策略列表 -->
-      <a-col
-        :xs="24"
-        :sm="24"
-        :md="10"
-        :lg="8"
-        :xl="8"
-        class="strategy-list-col">
-        <a-card :bordered="false" class="strategy-list-card">
-          <div slot="title" class="card-title">
-            <span>{{ $t('trading-assistant.strategyList') }}</span>
-            <a-button type="primary" size="small" @click="handleCreateStrategy">
-              <a-icon type="plus" />
-              {{ $t('trading-assistant.createStrategy') }}
-            </a-button>
-          </div>
+        <a-row :gutter="24" class="strategy-layout">
+          <!-- 左侧：策略列表 -->
+          <a-col
+            :xs="24"
+            :sm="24"
+            :md="10"
+            :lg="8"
+            :xl="8"
+            class="strategy-list-col">
+            <a-card :bordered="false" class="strategy-list-card">
+              <div slot="title" class="card-title">
+                <span>{{ $t('trading-assistant.strategyList') }}</span>
+                <a-button type="primary" size="small" @click="handleCreateStrategy">
+                  <a-icon type="plus" />
+                  {{ $t('trading-assistant.createStrategy') }}
+                </a-button>
+              </div>
 
-          <!-- 分组方式切换 -->
-          <div class="group-mode-switch">
-            <span class="group-mode-label">{{ $t('trading-assistant.groupBy') }}:</span>
-            <a-radio-group v-model="groupByMode" size="small" button-style="solid">
-              <a-radio-button value="strategy">
-                <a-icon type="folder" />
-                {{ $t('trading-assistant.groupByStrategy') }}
-              </a-radio-button>
-              <a-radio-button value="symbol">
-                <a-icon type="stock" />
-                {{ $t('trading-assistant.groupBySymbol') }}
-              </a-radio-button>
-            </a-radio-group>
-          </div>
+              <!-- 分组方式切换 -->
+              <div class="group-mode-switch">
+                <span class="group-mode-label">{{ $t('trading-assistant.groupBy') }}:</span>
+                <a-radio-group v-model="groupByMode" size="small" button-style="solid">
+                  <a-radio-button value="strategy">
+                    <a-icon type="folder" />
+                    {{ $t('trading-assistant.groupByStrategy') }}
+                  </a-radio-button>
+                  <a-radio-button value="symbol">
+                    <a-icon type="stock" />
+                    {{ $t('trading-assistant.groupBySymbol') }}
+                  </a-radio-button>
+                </a-radio-group>
+              </div>
 
-          <a-spin :spinning="loading">
-            <div v-if="!loading && strategies.length === 0" class="strategy-empty-state">
-              <a-empty :description="$t('trading-assistant.empty.title')" />
-              <div class="strategy-empty-desc">{{ $t('trading-assistant.empty.desc') }}</div>
-              <a-button type="primary" @click="openCreateStrategyFromGuide">
-                <a-icon type="plus" />
-                {{ $t('trading-assistant.empty.primary') }}
-              </a-button>
-            </div>
-            <div v-else class="strategy-grouped-list">
-              <!-- 策略组列表 -->
-              <div v-for="group in groupedStrategies.groups" :key="group.id" class="strategy-group">
-                <!-- 策略组头部 -->
-                <div class="strategy-group-header" @click="toggleGroup(group.id)">
-                  <div class="group-header-left">
-                    <a-icon :type="collapsedGroups[group.id] ? 'right' : 'down'" class="collapse-icon" />
-                    <a-icon :type="groupByMode === 'symbol' ? 'stock' : 'folder'" class="group-icon" />
-                    <span class="group-name">{{ group.baseName }}</span>
-                    <a-tag size="small" color="blue">{{ group.strategies.length }} {{
-                      groupByMode === 'symbol' ? $t('trading-assistant.strategyCount') : $t('trading-assistant.symbolCount') }}</a-tag>
-                  </div>
-                  <div class="group-header-right" @click.stop>
-                    <span v-if="group.runningCount > 0" class="group-status running">
-                      {{ group.runningCount }} {{ $t('trading-assistant.status.running') }}
-                    </span>
-                    <span v-if="group.stoppedCount > 0" class="group-status stopped">
-                      {{ group.stoppedCount }} {{ $t('trading-assistant.status.stopped') }}
-                    </span>
-                    <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
-                      <a-menu slot="overlay" @click="({ key }) => handleGroupMenuClick(key, group)">
-                        <a-menu-item key="startAll">
-                          <a-icon type="play-circle" />
-                          {{ $t('trading-assistant.startAll') }}
-                        </a-menu-item>
-                        <a-menu-item key="stopAll">
-                          <a-icon type="pause-circle" />
-                          {{ $t('trading-assistant.stopAll') }}
-                        </a-menu-item>
-                        <a-menu-divider />
-                        <a-menu-item key="deleteAll" class="danger-item">
-                          <a-icon type="delete" />
-                          {{ $t('trading-assistant.deleteAll') }}
-                        </a-menu-item>
-                      </a-menu>
-                      <a-button type="link" icon="more" size="small" />
-                    </a-dropdown>
-                  </div>
+              <a-spin :spinning="loading">
+                <div v-if="!loading && strategiesForPage.length === 0" class="strategy-empty-state">
+                  <a-empty :description="$t('trading-assistant.empty.title')" />
+                  <div class="strategy-empty-desc">{{ $t('trading-assistant.empty.desc') }}</div>
+                  <a-button type="primary" @click="openCreateStrategyFromGuide">
+                    <a-icon type="plus" />
+                    {{ $t('trading-assistant.empty.primary') }}
+                  </a-button>
                 </div>
-                <!-- 策略组内的策略列表（可折叠） -->
-                <div v-show="!collapsedGroups[group.id]" class="strategy-group-content">
+                <div v-else class="strategy-grouped-list">
+                  <!-- 策略组列表 -->
+                  <div v-for="group in groupedStrategies.groups" :key="group.id" class="strategy-group">
+                    <!-- 策略组头部 -->
+                    <div class="strategy-group-header" @click="toggleGroup(group.id)">
+                      <div class="group-header-left">
+                        <a-icon :type="collapsedGroups[group.id] ? 'right' : 'down'" class="collapse-icon" />
+                        <a-icon :type="groupByMode === 'symbol' ? 'stock' : 'folder'" class="group-icon" />
+                        <span class="group-name">{{ group.baseName }}</span>
+                        <a-tag size="small" color="blue">{{ group.strategies.length }} {{
+                          groupByMode === 'symbol' ? $t('trading-assistant.strategyCount') : $t('trading-assistant.symbolCount') }}</a-tag>
+                      </div>
+                      <div class="group-header-right" @click.stop>
+                        <span v-if="group.runningCount > 0" class="group-status running">
+                          {{ group.runningCount }} {{ $t('trading-assistant.status.running') }}
+                        </span>
+                        <span v-if="group.stoppedCount > 0" class="group-status stopped">
+                          {{ group.stoppedCount }} {{ $t('trading-assistant.status.stopped') }}
+                        </span>
+                        <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
+                          <a-menu slot="overlay" @click="({ key }) => handleGroupMenuClick(key, group)">
+                            <a-menu-item key="startAll">
+                              <a-icon type="play-circle" />
+                              {{ $t('trading-assistant.startAll') }}
+                            </a-menu-item>
+                            <a-menu-item key="stopAll">
+                              <a-icon type="pause-circle" />
+                              {{ $t('trading-assistant.stopAll') }}
+                            </a-menu-item>
+                            <a-menu-divider />
+                            <a-menu-item key="deleteAll" class="danger-item">
+                              <a-icon type="delete" />
+                              {{ $t('trading-assistant.deleteAll') }}
+                            </a-menu-item>
+                          </a-menu>
+                          <a-button type="link" icon="more" size="small" />
+                        </a-dropdown>
+                      </div>
+                    </div>
+                    <!-- 策略组内的策略列表（可折叠） -->
+                    <div v-show="!collapsedGroups[group.id]" class="strategy-group-content">
+                      <div
+                        v-for="item in group.strategies"
+                        :key="item.id"
+                        :class="[
+                          'strategy-list-item',
+                          { active: selectedStrategy && selectedStrategy.id === item.id },
+                          { 'strategy-list-item--strategy-group': groupByMode === 'strategy' }
+                        ]"
+                        @click="handleSelectStrategy(item)">
+                        <div class="strategy-item-content">
+                          <div class="strategy-item-header">
+                            <div :class="['strategy-name-wrapper', { 'strategy-name-wrapper--grouped': groupByMode === 'symbol' }]">
+                              <template v-if="groupByMode === 'strategy'">
+                                <span class="strategy-name">{{ item.strategy_name }}</span>
+                                <a-tag
+                                  v-if="item.strategy_type === 'PromptBasedStrategy'"
+                                  color="purple"
+                                  size="small"
+                                  class="strategy-type-tag">
+                                  <a-icon type="robot" style="margin-right: 2px;" />
+                                  AI
+                                </a-tag>
+                                <a-tag v-if="item.strategy_mode === 'script'" size="small" color="green" style="margin-left: 4px;">
+                                  <a-icon type="code" style="margin-right: 2px;" />{{ $t('trading-assistant.strategyMode.script') }}
+                                </a-tag>
+                                <a-tag
+                                  v-if="item.strategy_mode === 'script' && scriptTemplateKeyOf(item)"
+                                  size="small"
+                                  color="blue"
+                                  style="margin-left: 4px;">
+                                  {{ scriptTemplateLabel(scriptTemplateKeyOf(item)) }}
+                                </a-tag>
+                              </template>
+                              <template v-else>
+                                <span class="info-item strategy-name-text">
+                                  <a-icon type="thunderbolt" />
+                                  {{ item.displayInfo ? item.displayInfo.strategyName : item.strategy_name }}
+                                </span>
+                                <a-tag size="small" color="cyan" v-if="item.displayInfo && item.displayInfo.timeframe">
+                                  <a-icon type="clock-circle" style="margin-right: 2px;" />
+                                  {{ item.displayInfo.timeframe }}
+                                </a-tag>
+                                <a-tag size="small" color="purple" v-if="item.displayInfo && item.displayInfo.indicatorName && item.displayInfo.indicatorName !== '-'">
+                                  <a-icon type="line-chart" style="margin-right: 2px;" />
+                                  {{ item.displayInfo.indicatorName }}
+                                </a-tag>
+                                <a-tag v-if="item.strategy_mode === 'script'" size="small" color="green" style="margin-left: 4px;">
+                                  <a-icon type="code" style="margin-right: 2px;" />{{ $t('trading-assistant.strategyMode.script') }}
+                                </a-tag>
+                                <a-tag
+                                  v-if="item.strategy_mode === 'script' && scriptTemplateKeyOf(item)"
+                                  size="small"
+                                  color="blue"
+                                  style="margin-left: 4px;">
+                                  {{ scriptTemplateLabel(scriptTemplateKeyOf(item)) }}
+                                </a-tag>
+                              </template>
+                            </div>
+                          </div>
+                          <div class="strategy-item-info">
+                            <template v-if="groupByMode === 'strategy'">
+                              <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
+                                <a-icon type="dollar" />
+                                {{ item.trading_config.symbol }}
+                              </span>
+                              <span
+                                class="info-item"
+                                v-if="item.exchange_config && item.exchange_config.exchange_id">
+                                <a-icon type="bank" />
+                                {{ getExchangeDisplayName(item.exchange_config.exchange_id) }}
+                              </span>
+                              <span class="info-item" v-if="item.trading_config && item.trading_config.timeframe">
+                                <a-icon type="clock-circle" />
+                                {{ item.trading_config.timeframe }}
+                              </span>
+                            </template>
+                            <span
+                              class="status-label"
+                              :class="[
+                                item.status ? `status-${item.status}` : '',
+                                { 'status-stopped': item.status === 'stopped' }
+                              ]">
+                              {{ getStatusText(item.status) }}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="strategy-item-actions" @click.stop>
+                          <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
+                            <a-menu slot="overlay" @click="({ key }) => handleMenuClick(key, item)">
+                              <a-menu-item v-if="item.status === 'stopped'" key="start">
+                                <a-icon type="play-circle" />
+                                {{ $t('trading-assistant.startStrategy') }}
+                              </a-menu-item>
+                              <a-menu-item v-if="item.status === 'running'" key="stop">
+                                <a-icon type="pause-circle" />
+                                {{ $t('trading-assistant.stopStrategy') }}
+                              </a-menu-item>
+                              <a-menu-divider />
+                              <a-menu-item key="edit">
+                                <a-icon type="edit" />
+                                {{ $t('trading-assistant.editStrategy') }}
+                              </a-menu-item>
+                              <a-menu-item key="backtest">
+                                <a-icon type="experiment" />
+                                {{ $t('dashboard.indicator.action.backtest') }}
+                              </a-menu-item>
+                              <a-menu-divider />
+                              <a-menu-item key="delete" class="danger-item">
+                                <a-icon type="delete" />
+                                {{ $t('trading-assistant.deleteStrategy') }}
+                              </a-menu-item>
+                            </a-menu>
+                            <a-button type="link" icon="more" size="small" />
+                          </a-dropdown>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 未分组的策略列表 -->
                   <div
-                    v-for="item in group.strategies"
+                    v-for="item in groupedStrategies.ungrouped"
                     :key="item.id"
-                    :class="[
-                      'strategy-list-item',
-                      { active: selectedStrategy && selectedStrategy.id === item.id },
-                      { 'strategy-list-item--strategy-group': groupByMode === 'strategy' }
-                    ]"
+                    :class="['strategy-list-item', { active: selectedStrategy && selectedStrategy.id === item.id }]"
                     @click="handleSelectStrategy(item)">
                     <div class="strategy-item-content">
                       <div class="strategy-item-header">
-                        <div :class="['strategy-name-wrapper', { 'strategy-name-wrapper--grouped': groupByMode === 'symbol' }]">
-                          <template v-if="groupByMode === 'strategy'">
-                            <span class="strategy-name">{{ item.strategy_name }}</span>
-                            <a-tag
-                              v-if="item.strategy_type === 'PromptBasedStrategy'"
-                              color="purple"
-                              size="small"
-                              class="strategy-type-tag">
-                              <a-icon type="robot" style="margin-right: 2px;" />
-                              AI
-                            </a-tag>
-                            <a-tag v-if="item.strategy_mode === 'script'" size="small" color="green" style="margin-left: 4px;">
-                              <a-icon type="code" style="margin-right: 2px;" />{{ $t('trading-assistant.strategyMode.script') }}
-                            </a-tag>
-                            <a-tag
-                              v-if="item.strategy_mode === 'script' && scriptTemplateKeyOf(item)"
-                              size="small"
-                              color="blue"
-                              style="margin-left: 4px;">
-                              {{ scriptTemplateLabel(scriptTemplateKeyOf(item)) }}
-                            </a-tag>
-                          </template>
-                          <template v-else>
-                            <span class="info-item strategy-name-text">
-                              <a-icon type="thunderbolt" />
-                              {{ item.displayInfo ? item.displayInfo.strategyName : item.strategy_name }}
-                            </span>
-                            <a-tag size="small" color="cyan" v-if="item.displayInfo && item.displayInfo.timeframe">
-                              <a-icon type="clock-circle" style="margin-right: 2px;" />
-                              {{ item.displayInfo.timeframe }}
-                            </a-tag>
-                            <a-tag size="small" color="purple" v-if="item.displayInfo && item.displayInfo.indicatorName && item.displayInfo.indicatorName !== '-'">
-                              <a-icon type="line-chart" style="margin-right: 2px;" />
-                              {{ item.displayInfo.indicatorName }}
-                            </a-tag>
-                            <a-tag v-if="item.strategy_mode === 'script'" size="small" color="green" style="margin-left: 4px;">
-                              <a-icon type="code" style="margin-right: 2px;" />{{ $t('trading-assistant.strategyMode.script') }}
-                            </a-tag>
-                            <a-tag
-                              v-if="item.strategy_mode === 'script' && scriptTemplateKeyOf(item)"
-                              size="small"
-                              color="blue"
-                              style="margin-left: 4px;">
-                              {{ scriptTemplateLabel(scriptTemplateKeyOf(item)) }}
-                            </a-tag>
-                          </template>
+                        <div class="strategy-name-wrapper">
+                          <a-tag
+                            v-if="item.exchange_config && item.exchange_config.exchange_id"
+                            :color="getExchangeTagColor(item.exchange_config.exchange_id)"
+                            size="small"
+                            class="exchange-tag">
+                            <a-icon type="bank" style="margin-right: 4px;" />
+                            {{ getExchangeDisplayName(item.exchange_config.exchange_id) }}
+                          </a-tag>
+                          <span class="strategy-name">{{ item.strategy_name }}</span>
+                          <a-tag
+                            v-if="item.strategy_type === 'PromptBasedStrategy'"
+                            color="purple"
+                            size="small"
+                            class="strategy-type-tag">
+                            <a-icon type="robot" style="margin-right: 2px;" />
+                            AI
+                          </a-tag>
+                          <a-tag v-if="item.strategy_mode === 'script'" size="small" color="green" style="margin-left: 4px;">
+                            <a-icon type="code" style="margin-right: 2px;" />{{ $t('trading-assistant.strategyMode.script') }}
+                          </a-tag>
+                          <a-tag
+                            v-if="item.strategy_mode === 'script' && scriptTemplateKeyOf(item)"
+                            size="small"
+                            color="blue"
+                            style="margin-left: 4px;">
+                            {{ scriptTemplateLabel(scriptTemplateKeyOf(item)) }}
+                          </a-tag>
                         </div>
                       </div>
                       <div class="strategy-item-info">
-                        <template v-if="groupByMode === 'strategy'">
-                          <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
-                            <a-icon type="dollar" />
-                            {{ item.trading_config.symbol }}
-                          </span>
-                          <span
-                            class="info-item"
-                            v-if="item.exchange_config && item.exchange_config.exchange_id">
-                            <a-icon type="bank" />
-                            {{ getExchangeDisplayName(item.exchange_config.exchange_id) }}
-                          </span>
-                          <span class="info-item" v-if="item.trading_config && item.trading_config.timeframe">
-                            <a-icon type="clock-circle" />
-                            {{ item.trading_config.timeframe }}
-                          </span>
-                        </template>
+                        <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
+                          <a-icon type="dollar" />
+                          {{ item.trading_config.symbol }}
+                        </span>
                         <span
                           class="status-label"
                           :class="[
@@ -252,1405 +341,1053 @@
                     </div>
                   </div>
                 </div>
-              </div>
+              </a-spin>
+            </a-card>
+          </a-col>
 
-              <!-- 未分组的策略列表 -->
-              <div
-                v-for="item in groupedStrategies.ungrouped"
-                :key="item.id"
-                :class="['strategy-list-item', { active: selectedStrategy && selectedStrategy.id === item.id }]"
-                @click="handleSelectStrategy(item)">
-                <div class="strategy-item-content">
-                  <div class="strategy-item-header">
-                    <div class="strategy-name-wrapper">
-                      <a-tag
-                        v-if="item.exchange_config && item.exchange_config.exchange_id"
-                        :color="getExchangeTagColor(item.exchange_config.exchange_id)"
-                        size="small"
-                        class="exchange-tag">
-                        <a-icon type="bank" style="margin-right: 4px;" />
-                        {{ getExchangeDisplayName(item.exchange_config.exchange_id) }}
-                      </a-tag>
-                      <span class="strategy-name">{{ item.strategy_name }}</span>
-                      <a-tag
-                        v-if="item.strategy_type === 'PromptBasedStrategy'"
-                        color="purple"
-                        size="small"
-                        class="strategy-type-tag">
-                        <a-icon type="robot" style="margin-right: 2px;" />
-                        AI
-                      </a-tag>
-                      <a-tag v-if="item.strategy_mode === 'script'" size="small" color="green" style="margin-left: 4px;">
-                        <a-icon type="code" style="margin-right: 2px;" />{{ $t('trading-assistant.strategyMode.script') }}
-                      </a-tag>
-                      <a-tag
-                        v-if="item.strategy_mode === 'script' && scriptTemplateKeyOf(item)"
-                        size="small"
-                        color="blue"
-                        style="margin-left: 4px;">
-                        {{ scriptTemplateLabel(scriptTemplateKeyOf(item)) }}
-                      </a-tag>
-                    </div>
-                  </div>
-                  <div class="strategy-item-info">
-                    <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
-                      <a-icon type="dollar" />
-                      {{ item.trading_config.symbol }}
-                    </span>
-                    <span
-                      class="status-label"
-                      :class="[
-                        item.status ? `status-${item.status}` : '',
-                        { 'status-stopped': item.status === 'stopped' }
-                      ]">
-                      {{ getStatusText(item.status) }}
-                    </span>
-                  </div>
+          <!-- 右侧：策略详情和交易记录 -->
+          <a-col
+            :xs="24"
+            :sm="24"
+            :md="14"
+            :lg="16"
+            :xl="16"
+            class="strategy-detail-col">
+            <div v-if="!selectedStrategy" class="strategy-empty-detail">
+              <div class="strategy-empty-detail-card">
+                <div class="strategy-empty-detail-icon">
+                  <a-icon type="deployment-unit" />
                 </div>
-                <div class="strategy-item-actions" @click.stop>
-                  <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
-                    <a-menu slot="overlay" @click="({ key }) => handleMenuClick(key, item)">
-                      <a-menu-item v-if="item.status === 'stopped'" key="start">
-                        <a-icon type="play-circle" />
-                        {{ $t('trading-assistant.startStrategy') }}
-                      </a-menu-item>
-                      <a-menu-item v-if="item.status === 'running'" key="stop">
-                        <a-icon type="pause-circle" />
-                        {{ $t('trading-assistant.stopStrategy') }}
-                      </a-menu-item>
-                      <a-menu-divider />
-                      <a-menu-item key="edit">
-                        <a-icon type="edit" />
-                        {{ $t('trading-assistant.editStrategy') }}
-                      </a-menu-item>
-                      <a-menu-item key="backtest">
-                        <a-icon type="experiment" />
-                        {{ $t('dashboard.indicator.action.backtest') }}
-                      </a-menu-item>
-                      <a-menu-divider />
-                      <a-menu-item key="delete" class="danger-item">
-                        <a-icon type="delete" />
-                        {{ $t('trading-assistant.deleteStrategy') }}
-                      </a-menu-item>
-                    </a-menu>
-                    <a-button type="link" icon="more" size="small" />
-                  </a-dropdown>
+                <h3 class="strategy-empty-detail-title">{{ $t('trading-assistant.emptyDetail.title') }}</h3>
+                <p class="strategy-empty-detail-hint">{{ $t('trading-assistant.emptyDetail.hint') }}</p>
+                <div class="strategy-empty-detail-actions">
+                  <a-button type="primary" @click="handleCreateStrategy">
+                    <a-icon type="plus" />
+                    {{ $t('trading-assistant.createStrategy') }}
+                  </a-button>
                 </div>
               </div>
             </div>
-          </a-spin>
-        </a-card>
-      </a-col>
 
-      <!-- 右侧：策略详情和交易记录 -->
-      <a-col
-        :xs="24"
-        :sm="24"
-        :md="14"
-        :lg="16"
-        :xl="16"
-        class="strategy-detail-col">
-        <div v-if="!selectedStrategy" class="strategy-empty-detail">
-          <div class="strategy-empty-detail-card">
-            <div class="strategy-empty-detail-icon">
-              <a-icon type="deployment-unit" />
-            </div>
-            <h3 class="strategy-empty-detail-title">{{ $t('trading-assistant.emptyDetail.title') }}</h3>
-            <p class="strategy-empty-detail-hint">{{ $t('trading-assistant.emptyDetail.hint') }}</p>
-            <div class="strategy-empty-detail-actions">
-              <a-button type="primary" @click="handleCreateStrategy">
-                <a-icon type="plus" />
-                {{ $t('trading-assistant.createStrategy') }}
-              </a-button>
-            </div>
-          </div>
-        </div>
+            <div v-else class="strategy-detail-panel">
+              <!-- 策略头部信息 -->
+              <a-card :bordered="false" class="strategy-header-card">
+                <div class="strategy-header">
+                  <div class="header-left">
+                    <div class="strategy-title-row">
+                      <h3 class="strategy-title">{{ selectedStrategy.strategy_name }}</h3>
+                      <div class="status-badge" :class="[`status-${selectedStrategy.status}`]">
+                        <span class="status-dot"></span>
+                        {{ getStatusText(selectedStrategy.status) }}
+                      </div>
+                    </div>
 
-        <div v-else class="strategy-detail-panel">
-          <!-- 策略头部信息 -->
-          <a-card :bordered="false" class="strategy-header-card">
-            <div class="strategy-header">
-              <div class="header-left">
-                <div class="strategy-title-row">
-                  <h3 class="strategy-title">{{ selectedStrategy.strategy_name }}</h3>
-                  <div class="status-badge" :class="[`status-${selectedStrategy.status}`]">
-                    <span class="status-dot"></span>
-                    {{ getStatusText(selectedStrategy.status) }}
-                  </div>
-                </div>
+                    <!-- 关键数据卡片 -->
+                    <div class="key-stats-grid">
+                      <div
+                        class="stat-card"
+                        v-if="selectedStrategy.initial_capital || (selectedStrategy.trading_config && selectedStrategy.trading_config.initial_capital)">
+                        <div class="stat-icon investment">
+                          <a-icon type="wallet" />
+                        </div>
+                        <div class="stat-content">
+                          <div class="stat-label">{{ $t('trading-assistant.detail.totalInvestment') }}</div>
+                          <div class="stat-value">${{ parseFloat((selectedStrategy.initial_capital ||
+                            selectedStrategy.trading_config?.initial_capital) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div>
+                        </div>
+                      </div>
+                      <div class="stat-card" v-if="currentEquity !== null">
+                        <div class="stat-icon equity">
+                          <a-icon type="fund" />
+                        </div>
+                        <div class="stat-content">
+                          <div class="stat-label">{{ $t('trading-assistant.detail.currentEquity') }}</div>
+                          <div class="stat-value" :class="getEquityColorClass">{{ formatCurrency(currentEquity) }}</div>
+                        </div>
+                      </div>
+                      <div
+                        class="stat-card pnl-card"
+                        v-if="totalPnl !== null"
+                        :class="{ 'profit': totalPnl > 0, 'loss': totalPnl < 0 }">
+                        <div class="stat-icon pnl">
+                          <a-icon :type="totalPnl >= 0 ? 'rise' : 'fall'" />
+                        </div>
+                        <div class="stat-content">
+                          <div class="stat-label">{{ $t('trading-assistant.detail.totalPnl') }}</div>
+                          <div class="stat-value" :class="getPnlColorClass">
+                            {{ formatPnl(totalPnl) }}
+                            <span class="pnl-percent">({{ formatPnlPercent(totalPnlPercent) }})</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                <!-- 关键数据卡片 -->
-                <div class="key-stats-grid">
-                  <div
-                    class="stat-card"
-                    v-if="selectedStrategy.initial_capital || (selectedStrategy.trading_config && selectedStrategy.trading_config.initial_capital)">
-                    <div class="stat-icon investment">
-                      <a-icon type="wallet" />
-                    </div>
-                    <div class="stat-content">
-                      <div class="stat-label">{{ $t('trading-assistant.detail.totalInvestment') }}</div>
-                      <div class="stat-value">${{ parseFloat((selectedStrategy.initial_capital ||
-                        selectedStrategy.trading_config?.initial_capital) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div>
-                    </div>
-                  </div>
-                  <div class="stat-card" v-if="currentEquity !== null">
-                    <div class="stat-icon equity">
-                      <a-icon type="fund" />
-                    </div>
-                    <div class="stat-content">
-                      <div class="stat-label">{{ $t('trading-assistant.detail.currentEquity') }}</div>
-                      <div class="stat-value" :class="getEquityColorClass">{{ formatCurrency(currentEquity) }}</div>
-                    </div>
-                  </div>
-                  <div
-                    class="stat-card pnl-card"
-                    v-if="totalPnl !== null"
-                    :class="{ 'profit': totalPnl > 0, 'loss': totalPnl < 0 }">
-                    <div class="stat-icon pnl">
-                      <a-icon :type="totalPnl >= 0 ? 'rise' : 'fall'" />
-                    </div>
-                    <div class="stat-content">
-                      <div class="stat-label">{{ $t('trading-assistant.detail.totalPnl') }}</div>
-                      <div class="stat-value" :class="getPnlColorClass">
-                        {{ formatPnl(totalPnl) }}
-                        <span class="pnl-percent">({{ formatPnlPercent(totalPnlPercent) }})</span>
+                    <!-- 策略详情标签 -->
+                    <div class="strategy-tags">
+                      <div class="tag-item" v-if="selectedStrategy.trading_config">
+                        <a-icon type="stock" />
+                        <span>{{ selectedStrategy.trading_config.symbol }}</span>
+                      </div>
+                      <div
+                        class="tag-item"
+                        v-if="selectedStrategy.indicator_config && selectedStrategy.indicator_config.indicator_name">
+                        <a-icon type="line-chart" />
+                        <span>{{ selectedStrategy.indicator_config.indicator_name }}</span>
+                      </div>
+                      <div class="tag-item" v-if="selectedStrategy.trading_config">
+                        <a-icon type="thunderbolt" />
+                        <span>{{ selectedStrategy.trading_config.leverage || 1 }}x</span>
+                      </div>
+                      <div
+                        class="tag-item"
+                        v-if="selectedStrategy.trading_config && selectedStrategy.trading_config.trade_direction">
+                        <a-icon type="swap" />
+                        <span>{{ getTradeDirectionText(selectedStrategy.trading_config.trade_direction) }}</span>
+                      </div>
+                      <div
+                        class="tag-item"
+                        v-if="selectedStrategy.strategy_mode === 'script' && scriptTemplateKeyOf(selectedStrategy)">
+                        <a-icon type="file-text" />
+                        <span>{{ scriptTemplateLabel(scriptTemplateKeyOf(selectedStrategy)) }}</span>
+                      </div>
+                      <div
+                        class="tag-item"
+                        v-if="selectedStrategy.trading_config && selectedStrategy.trading_config.timeframe">
+                        <a-icon type="clock-circle" />
+                        <span>{{ selectedStrategy.trading_config.timeframe }}</span>
                       </div>
                     </div>
                   </div>
+                  <div class="header-right">
+                    <a-button
+                      v-if="selectedStrategy.status === 'stopped'"
+                      type="primary"
+                      size="large"
+                      class="action-btn start-btn"
+                      @click="handleStartStrategy(selectedStrategy.id)">
+                      <a-icon type="play-circle" />
+                      {{ $t('trading-assistant.startStrategy') }}
+                    </a-button>
+                    <a-button
+                      v-if="selectedStrategy.status === 'running'"
+                      type="danger"
+                      size="large"
+                      class="action-btn stop-btn"
+                      @click="handleStopStrategy(selectedStrategy.id)">
+                      <a-icon type="pause-circle" />
+                      {{ $t('trading-assistant.stopStrategy') }}
+                    </a-button>
+                  </div>
                 </div>
+              </a-card>
 
-                <!-- 策略详情标签 -->
-                <div class="strategy-tags">
-                  <div class="tag-item" v-if="selectedStrategy.trading_config">
-                    <a-icon type="stock" />
-                    <span>{{ selectedStrategy.trading_config.symbol }}</span>
-                  </div>
-                  <div
-                    class="tag-item"
-                    v-if="selectedStrategy.indicator_config && selectedStrategy.indicator_config.indicator_name">
-                    <a-icon type="line-chart" />
-                    <span>{{ selectedStrategy.indicator_config.indicator_name }}</span>
-                  </div>
-                  <div class="tag-item" v-if="selectedStrategy.trading_config">
-                    <a-icon type="thunderbolt" />
-                    <span>{{ selectedStrategy.trading_config.leverage || 1 }}x</span>
-                  </div>
-                  <div
-                    class="tag-item"
-                    v-if="selectedStrategy.trading_config && selectedStrategy.trading_config.trade_direction">
-                    <a-icon type="swap" />
-                    <span>{{ getTradeDirectionText(selectedStrategy.trading_config.trade_direction) }}</span>
-                  </div>
-                  <div
-                    class="tag-item"
-                    v-if="selectedStrategy.strategy_mode === 'script' && scriptTemplateKeyOf(selectedStrategy)">
-                    <a-icon type="file-text" />
-                    <span>{{ scriptTemplateLabel(scriptTemplateKeyOf(selectedStrategy)) }}</span>
-                  </div>
-                  <div
-                    class="tag-item"
-                    v-if="selectedStrategy.trading_config && selectedStrategy.trading_config.timeframe">
-                    <a-icon type="clock-circle" />
-                    <span>{{ selectedStrategy.trading_config.timeframe }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="header-right">
-                <a-button
-                  v-if="selectedStrategy.status === 'stopped'"
-                  type="primary"
-                  size="large"
-                  class="action-btn start-btn"
-                  @click="handleStartStrategy(selectedStrategy.id)">
-                  <a-icon type="play-circle" />
-                  {{ $t('trading-assistant.startStrategy') }}
-                </a-button>
-                <a-button
-                  v-if="selectedStrategy.status === 'running'"
-                  type="danger"
-                  size="large"
-                  class="action-btn stop-btn"
-                  @click="handleStopStrategy(selectedStrategy.id)">
-                  <a-icon type="pause-circle" />
-                  {{ $t('trading-assistant.stopStrategy') }}
-                </a-button>
-              </div>
+              <!-- 策略详情标签页 -->
+              <a-card :bordered="false" class="strategy-content-card">
+                <a-tabs defaultActiveKey="positions">
+                  <a-tab-pane key="positions" :tab="$t('trading-assistant.tabs.positions')">
+                    <position-records
+                      :strategy-id="selectedStrategy.id"
+                      :market-type="(selectedStrategy.trading_config && selectedStrategy.trading_config.market_type) || 'swap'"
+                      :leverage="(selectedStrategy.trading_config && selectedStrategy.trading_config.leverage) || 1"
+                      :loading="loadingRecords"
+                      :is-dark="isDarkTheme" />
+                  </a-tab-pane>
+                  <a-tab-pane key="trades" :tab="$t('trading-assistant.tabs.tradingRecords')">
+                    <trading-records
+                      :strategy-id="selectedStrategy.id"
+                      :loading="loadingRecords"
+                      :is-dark="isDarkTheme" />
+                  </a-tab-pane>
+                  <a-tab-pane key="performance" :tab="$t('trading-assistant.tabs.performance')">
+                    <performance-analysis
+                      :strategy-id="selectedStrategy.id"
+                      :is-dark="isDarkTheme" />
+                  </a-tab-pane>
+                  <a-tab-pane key="logs" :tab="$t('trading-assistant.tabs.logs')">
+                    <strategy-logs
+                      :strategy-id="selectedStrategy.id"
+                      :is-dark="isDarkTheme" />
+                  </a-tab-pane>
+                </a-tabs>
+              </a-card>
             </div>
-          </a-card>
+          </a-col>
+        </a-row>
 
-          <!-- 策略详情标签页 -->
-          <a-card :bordered="false" class="strategy-content-card">
-            <a-tabs defaultActiveKey="positions">
-              <a-tab-pane key="positions" :tab="$t('trading-assistant.tabs.positions')">
-                <position-records
-                  :strategy-id="selectedStrategy.id"
-                  :market-type="(selectedStrategy.trading_config && selectedStrategy.trading_config.market_type) || 'swap'"
-                  :leverage="(selectedStrategy.trading_config && selectedStrategy.trading_config.leverage) || 1"
-                  :loading="loadingRecords"
-                  :is-dark="isDarkTheme" />
-              </a-tab-pane>
-              <a-tab-pane key="trades" :tab="$t('trading-assistant.tabs.tradingRecords')">
-                <trading-records
-                  :strategy-id="selectedStrategy.id"
-                  :loading="loadingRecords"
-                  :is-dark="isDarkTheme" />
-              </a-tab-pane>
-              <a-tab-pane key="performance" :tab="$t('trading-assistant.tabs.performance')">
-                <performance-analysis
-                  :strategy-id="selectedStrategy.id"
-                  :is-dark="isDarkTheme" />
-              </a-tab-pane>
-              <a-tab-pane key="logs" :tab="$t('trading-assistant.tabs.logs')">
-                <strategy-logs
-                  :strategy-id="selectedStrategy.id"
-                  :is-dark="isDarkTheme" />
-              </a-tab-pane>
-            </a-tabs>
-          </a-card>
-        </div>
-      </a-col>
-    </a-row>
+        <!-- 策略类型选择弹窗 -->
+        <a-modal
+          :visible="showModeSelector"
+          :title="$t('trading-assistant.selectMode')"
+          :width="isMobile ? '95%' : 700"
+          :footer="null"
+          @cancel="showModeSelector = false"
+          :maskClosable="true"
+          class="mode-selector-modal"
+          :bodyStyle="{ padding: '16px 24px' }">
+          <strategy-type-selector
+            :selected="strategyMode"
+            :is-dark="isDarkTheme"
+            :variant="modeSelectorVariant"
+            @select="handleModeSelect"
+            @use-template="handleUseTemplate"
+          />
+        </a-modal>
 
-    <!-- 策略类型选择弹窗 -->
-    <a-modal
-      :visible="showModeSelector"
-      :title="$t('trading-assistant.selectMode')"
-      :width="isMobile ? '95%' : 700"
-      :footer="null"
-      @cancel="showModeSelector = false"
-      :maskClosable="true"
-      class="mode-selector-modal"
-      :bodyStyle="{ padding: '16px 24px' }">
-      <strategy-type-selector
-        :selected="strategyMode"
-        :is-dark="isDarkTheme"
-        @select="handleModeSelect"
-        @use-template="handleUseTemplate"
-      />
-    </a-modal>
+        <!-- 创建/编辑策略弹窗 - 合并版本 -->
+        <a-modal
+          :visible="showFormModal"
+          :title="editingStrategy ? $t('trading-assistant.editStrategy') : $t('trading-assistant.createStrategy') + (strategyMode === 'script' ? ' - ' + $t('trading-assistant.strategyMode.script') : '')"
+          :width="isMobile ? '95%' : 1120"
+          :confirmLoading="saving"
+          @ok="handleSubmit"
+          @cancel="handleCloseModal"
+          :maskClosable="false"
+          :wrapClassName="strategyFormWrapClass"
+          :bodyStyle="{ maxHeight: '76vh', overflowY: 'auto', paddingBottom: '8px' }">
+          <a-spin :spinning="loadingIndicators">
+            <a-steps :current="displayCurrentStep" class="steps-container">
+              <template v-if="strategyMode === 'script'">
+                <a-step :title="$t('trading-assistant.form.simpleStep1')" />
+                <a-step :title="$t('trading-assistant.editor.title')" />
+                <a-step :title="$t('trading-assistant.form.step3Signal')" />
+              </template>
+              <template v-else>
+                <a-step :title="$t('trading-assistant.form.stepMergedConfig')" />
+                <a-step :title="$t('trading-assistant.form.step3Signal')" />
+              </template>
+            </a-steps>
 
-    <!-- 创建/编辑策略弹窗 - 合并版本 -->
-    <a-modal
-      :visible="showFormModal"
-      :title="editingStrategy ? $t('trading-assistant.editStrategy') : $t('trading-assistant.createStrategy') + (strategyMode === 'script' ? ' - ' + $t('trading-assistant.strategyMode.script') : '')"
-      :width="isMobile ? '95%' : 1120"
-      :confirmLoading="saving"
-      @ok="handleSubmit"
-      @cancel="handleCloseModal"
-      :maskClosable="false"
-      :wrapClassName="strategyFormWrapClass"
-      :bodyStyle="{ maxHeight: '76vh', overflowY: 'auto', paddingBottom: '8px' }">
-      <a-spin :spinning="loadingIndicators">
-        <a-steps :current="displayCurrentStep" class="steps-container">
-          <template v-if="strategyMode === 'script'">
-            <a-step :title="$t('trading-assistant.form.simpleStep1')" />
-            <a-step :title="$t('trading-assistant.editor.title')" />
-            <a-step :title="$t('trading-assistant.form.step3Signal')" />
-          </template>
-          <template v-else>
-            <a-step :title="$t('trading-assistant.form.stepMergedConfig')" />
-            <a-step :title="$t('trading-assistant.form.step3Signal')" />
-          </template>
-        </a-steps>
-
-        <div class="form-container">
-          <!-- 步骤1: 指标策略-选择技术指标 / 脚本策略-基础配置 -->
-          <div v-show="currentStep === 0" class="step-content">
-            <!-- 指标策略：选择技术指标 -->
-            <div v-if="strategyType === 'indicator' && strategyMode !== 'script'">
-              <a-form :form="form" layout="vertical">
-                <a-form-item :label="$t('trading-assistant.form.indicator')">
-                  <a-select
-                    v-decorator="['indicator_id', { rules: [{ required: true, message: $t('trading-assistant.validation.indicatorRequired') }] }]"
-                    :placeholder="$t('trading-assistant.placeholders.selectIndicator')"
-                    show-search
-                    optionLabelProp="label"
-                    :filter-option="filterIndicatorOption"
-                    @focus="handleIndicatorSelectFocus"
-                    @change="handleIndicatorChange"
-                    :loading="loadingIndicators"
-                    :getPopupContainer="(triggerNode) => triggerNode.parentNode">
-                    <a-select-option
-                      v-for="indicator in availableIndicators"
-                      :key="String(indicator.id)"
-                      :value="String(indicator.id)"
-                      :label="getIndicatorOptionLabel(indicator)">
-                      <div class="indicator-option">
-                        <div class="indicator-option-main">
-                          <span class="indicator-name">{{ indicator.name }}</span>
-                          <span v-if="indicator.description" class="indicator-option-desc">{{ indicator.description }}</span>
-                        </div>
-                        <a-tag v-if="indicator.type" size="small" :color="getIndicatorTypeColor(indicator.type)">
-                          {{ getIndicatorTypeName(indicator.type) }}
-                        </a-tag>
+            <div class="form-container">
+              <!-- 步骤1: 指标策略-选择技术指标 / 脚本策略-基础配置 -->
+              <div v-show="currentStep === 0" class="step-content">
+                <!-- 指标策略：选择技术指标 -->
+                <div v-if="strategyType === 'indicator' && strategyMode !== 'script'">
+                  <a-form :form="form" layout="vertical">
+                    <a-form-item :label="$t('trading-assistant.form.indicator')">
+                      <a-select
+                        v-decorator="['indicator_id', { rules: [{ required: true, message: $t('trading-assistant.validation.indicatorRequired') }] }]"
+                        :placeholder="$t('trading-assistant.placeholders.selectIndicator')"
+                        show-search
+                        optionLabelProp="label"
+                        :filter-option="filterIndicatorOption"
+                        @focus="handleIndicatorSelectFocus"
+                        @change="handleIndicatorChange"
+                        :loading="loadingIndicators"
+                        :getPopupContainer="(triggerNode) => triggerNode.parentNode">
+                        <a-select-option
+                          v-for="indicator in availableIndicators"
+                          :key="String(indicator.id)"
+                          :value="String(indicator.id)"
+                          :label="getIndicatorOptionLabel(indicator)">
+                          <div class="indicator-option">
+                            <div class="indicator-option-main">
+                              <span class="indicator-name">{{ indicator.name }}</span>
+                              <span v-if="indicator.description" class="indicator-option-desc">{{ indicator.description }}</span>
+                            </div>
+                            <a-tag v-if="indicator.type" size="small" :color="getIndicatorTypeColor(indicator.type)">
+                              {{ getIndicatorTypeName(indicator.type) }}
+                            </a-tag>
+                          </div>
+                        </a-select-option>
+                      </a-select>
+                      <div class="form-item-hint">
+                        {{ $t('trading-assistant.form.indicatorHint') }}
                       </div>
-                    </a-select-option>
-                  </a-select>
-                  <div class="form-item-hint">
-                    {{ $t('trading-assistant.form.indicatorHint') }}
-                  </div>
-                  <a-alert
-                    v-if="!loadingIndicators && (!availableIndicators || availableIndicators.length === 0)"
-                    type="info"
-                    show-icon
-                    style="margin-top: 12px;"
-                    :message="$t('trading-assistant.indicatorEmpty.title')"
-                    :description="$t('trading-assistant.indicatorEmpty.desc')"
-                  >
-                    <template slot="action">
-                      <a-button type="primary" size="small" @click="goToIndicatorAnalysisCreate">
-                        <a-icon type="rocket" />
-                        {{ $t('trading-assistant.indicatorEmpty.cta') }}
-                      </a-button>
-                    </template>
-                  </a-alert>
-                </a-form-item>
+                      <a-alert
+                        v-if="!loadingIndicators && (!availableIndicators || availableIndicators.length === 0)"
+                        type="info"
+                        show-icon
+                        style="margin-top: 12px;"
+                        :message="$t('trading-assistant.indicatorEmpty.title')"
+                        :description="$t('trading-assistant.indicatorEmpty.desc')"
+                      >
+                        <template slot="action">
+                          <a-button type="primary" size="small" @click="goToIndicatorAnalysisCreate">
+                            <a-icon type="rocket" />
+                            {{ $t('trading-assistant.indicatorEmpty.cta') }}
+                          </a-button>
+                        </template>
+                      </a-alert>
+                    </a-form-item>
 
-                <a-form-item v-if="selectedIndicator" :label="$t('trading-assistant.form.indicatorDescription')">
-                  <div class="selected-indicator-card">
-                    <div class="selected-indicator-header">
-                      <span class="selected-indicator-name">{{ selectedIndicator.name }}</span>
-                      <a-tag v-if="selectedIndicator.type" size="small" :color="getIndicatorTypeColor(selectedIndicator.type)">
-                        {{ getIndicatorTypeName(selectedIndicator.type) }}
-                      </a-tag>
-                    </div>
-                    <div class="indicator-description">
-                      {{ selectedIndicator.description || $t('trading-assistant.form.noDescription') }}
-                    </div>
-                  </div>
-                </a-form-item>
-
-                <!-- 指标参数配置 -->
-                <a-form-item v-if="indicatorParams.length > 0" :label="$t('trading-assistant.form.indicatorParams')">
-                  <div class="indicator-params-form">
-                    <a-row :gutter="16">
-                      <a-col v-for="param in indicatorParams" :key="param.name" :xs="24" :sm="12" :md="8">
-                        <div class="param-item">
-                          <label class="param-label">
-                            {{ param.name }}
-                            <a-tooltip v-if="param.description" :title="param.description">
-                              <a-icon type="question-circle" style="margin-left: 4px; color: #999;" />
-                            </a-tooltip>
-                          </label>
-                          <!-- 整数类型 -->
-                          <a-input-number
-                            v-if="param.type === 'int'"
-                            v-model="indicatorParamValues[param.name]"
-                            :precision="0"
-                            style="width: 100%;"
-                            size="small" />
-                          <!-- 浮点数类型 -->
-                          <a-input-number
-                            v-else-if="param.type === 'float'"
-                            v-model="indicatorParamValues[param.name]"
-                            :precision="4"
-                            style="width: 100%;"
-                            size="small" />
-                          <!-- 布尔类型 -->
-                          <a-switch
-                            v-else-if="param.type === 'bool'"
-                            v-model="indicatorParamValues[param.name]"
-                            size="small" />
-                          <!-- 字符串类型 -->
-                          <a-input
-                            v-else
-                            v-model="indicatorParamValues[param.name]"
-                            size="small" />
-                        </div>
-                      </a-col>
-                    </a-row>
-                    <div class="form-item-hint" style="margin-top: 8px;">
-                      {{ $t('trading-assistant.form.indicatorParamsHint') }}
-                    </div>
-                  </div>
-                </a-form-item>
-
-                <a-divider />
-
-                <a-form-item :label="$t('trading-assistant.form.strategyName')">
-                  <a-input
-                    v-decorator="['strategy_name', { rules: [{ required: true, message: $t('trading-assistant.validation.strategyNameRequired') }] }]"
-                    :placeholder="$t('trading-assistant.placeholders.inputStrategyName')" />
-                  <div class="form-item-hint">
-                    {{ $t('trading-assistant.form.strategyNameHint') }}
-                  </div>
-                </a-form-item>
-
-                <!-- ===== Strategy type & market scope ===== -->
-                <div class="advanced-settings-shell">
-                  <div class="section-block-title">
-                    <span>{{ $t('trading-assistant.form.sectionStrategyMarket') }}</span>
-                    <span class="section-block-desc">{{ $t('trading-assistant.form.sectionStrategyMarketDesc') }}</span>
-                  </div>
-                  <!-- 策略类型选择 -->
-                  <a-form-item :label="$t('trading-assistant.form.strategyType')">
-                    <a-radio-group
-                      v-decorator="['cs_strategy_type', { initialValue: 'single' }]"
-                      @change="handleStrategyTypeChange">
-                      <a-radio value="single">{{ $t('trading-assistant.form.strategyTypeSingle') }}</a-radio>
-                      <a-radio value="cross_sectional">{{ $t('trading-assistant.form.strategyTypeCrossSectional') }}</a-radio>
-                    </a-radio-group>
-                    <div class="form-item-hint">
-                      {{ $t('trading-assistant.form.strategyTypeHint') }}
-                    </div>
-                  </a-form-item>
-                </div>
-
-                <!-- 截面策略配置 -->
-                <template v-if="form.getFieldValue('cs_strategy_type') === 'cross_sectional'">
-                  <a-form-item :label="$t('trading-assistant.form.symbolList')">
-                    <a-select
-                      v-model="crossSectionalSymbols"
-                      mode="multiple"
-                      :placeholder="$t('trading-assistant.placeholders.selectSymbols')"
-                      show-search
-                      :filter-option="filterWatchlistOptionWithAdd"
-                      :loading="loadingWatchlist"
-                      @change="handleCrossSectionalSymbolChange"
-                      :getPopupContainer="(triggerNode) => triggerNode.parentNode"
-                      :maxTagCount="5">
-                      <a-select-option
-                        v-for="item in watchlist"
-                        :key="`${item.market}:${item.symbol}`"
-                        :value="`${item.market}:${item.symbol}`">
-                        <div class="symbol-option">
-                          <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
-                            {{ item.market }}
+                    <a-form-item v-if="selectedIndicator" :label="$t('trading-assistant.form.indicatorDescription')">
+                      <div class="selected-indicator-card">
+                        <div class="selected-indicator-header">
+                          <span class="selected-indicator-name">{{ selectedIndicator.name }}</span>
+                          <a-tag v-if="selectedIndicator.type" size="small" :color="getIndicatorTypeColor(selectedIndicator.type)">
+                            {{ getIndicatorTypeName(selectedIndicator.type) }}
                           </a-tag>
-                          <span class="symbol-name">{{ item.symbol }}</span>
-                          <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
                         </div>
-                      </a-select-option>
-                      <a-select-option key="__add_symbol_option__" value="__add_symbol_option__" class="add-symbol-option">
-                        <div style="width: 100%; text-align: center; padding: 4px 0; color: #1890ff; cursor: pointer;">
-                          <a-icon type="plus" style="margin-right: 4px;" />
-                          <span>{{ $t('trading-assistant.form.addSymbol') }}</span>
+                        <div class="indicator-description">
+                          {{ selectedIndicator.description || $t('trading-assistant.form.noDescription') }}
                         </div>
-                      </a-select-option>
-                    </a-select>
-                    <div class="form-item-hint">
-                      {{ $t('trading-assistant.form.symbolListHint') }}
-                    </div>
-                  </a-form-item>
+                      </div>
+                    </a-form-item>
 
-                  <a-row :gutter="16">
-                    <a-col :xs="24" :sm="12">
-                      <a-form-item :label="$t('trading-assistant.form.portfolioSize')">
-                        <a-input-number
-                          v-decorator="['portfolio_size', { initialValue: 10, rules: [{ required: true, message: $t('trading-assistant.validation.portfolioSizeRequired') }] }]"
-                          :min="1"
-                          :max="100"
-                          :step="1"
-                          style="width: 100%" />
-                        <div class="form-item-hint">
-                          {{ $t('trading-assistant.form.portfolioSizeHint') }}
+                    <!-- 指标参数配置 -->
+                    <a-form-item v-if="indicatorParams.length > 0" :label="$t('trading-assistant.form.indicatorParams')">
+                      <div class="indicator-params-form">
+                        <a-row :gutter="16">
+                          <a-col v-for="param in indicatorParams" :key="param.name" :xs="24" :sm="12" :md="8">
+                            <div class="param-item">
+                              <label class="param-label">
+                                {{ param.name }}
+                                <a-tooltip v-if="param.description" :title="param.description">
+                                  <a-icon type="question-circle" style="margin-left: 4px; color: #999;" />
+                                </a-tooltip>
+                              </label>
+                              <!-- 整数类型 -->
+                              <a-input-number
+                                v-if="param.type === 'int'"
+                                v-model="indicatorParamValues[param.name]"
+                                :precision="0"
+                                style="width: 100%;"
+                                size="small" />
+                              <!-- 浮点数类型 -->
+                              <a-input-number
+                                v-else-if="param.type === 'float'"
+                                v-model="indicatorParamValues[param.name]"
+                                :precision="4"
+                                style="width: 100%;"
+                                size="small" />
+                              <!-- 布尔类型 -->
+                              <a-switch
+                                v-else-if="param.type === 'bool'"
+                                v-model="indicatorParamValues[param.name]"
+                                size="small" />
+                              <!-- 字符串类型 -->
+                              <a-input
+                                v-else
+                                v-model="indicatorParamValues[param.name]"
+                                size="small" />
+                            </div>
+                          </a-col>
+                        </a-row>
+                        <div class="form-item-hint" style="margin-top: 8px;">
+                          {{ $t('trading-assistant.form.indicatorParamsHint') }}
                         </div>
-                      </a-form-item>
-                    </a-col>
-                    <a-col :xs="24" :sm="12">
-                      <a-form-item :label="$t('trading-assistant.form.longRatio')">
-                        <a-input-number
-                          v-decorator="['long_ratio', { initialValue: 0.5, rules: [{ required: true, message: $t('trading-assistant.validation.longRatioRequired') }] }]"
-                          :min="0"
-                          :max="1"
-                          :step="0.1"
-                          :precision="2"
-                          style="width: 100%" />
-                        <div class="form-item-hint">
-                          {{ $t('trading-assistant.form.longRatioHint') }}
-                        </div>
-                      </a-form-item>
-                    </a-col>
-                  </a-row>
-
-                  <a-form-item :label="$t('trading-assistant.form.rebalanceFrequency')">
-                    <a-select
-                      v-decorator="['rebalance_frequency', { initialValue: 'daily' }]"
-                      style="width: 100%">
-                      <a-select-option value="daily">{{ $t('trading-assistant.form.rebalanceDaily') }}</a-select-option>
-                      <a-select-option value="weekly">{{ $t('trading-assistant.form.rebalanceWeekly') }}</a-select-option>
-                      <a-select-option value="monthly">{{ $t('trading-assistant.form.rebalanceMonthly') }}</a-select-option>
-                    </a-select>
-                    <div class="form-item-hint">
-                      {{ $t('trading-assistant.form.rebalanceFrequencyHint') }}
-                    </div>
-                  </a-form-item>
-                </template>
-
-                <!-- 单标的策略：原有的标的选择 -->
-                <a-form-item
-                  v-if="form.getFieldValue('cs_strategy_type') !== 'cross_sectional'"
-                  :label="isEditMode ? $t('trading-assistant.form.symbol') : $t('trading-assistant.form.symbols')">
-                  <!-- 编辑模式：单选 -->
-                  <a-select
-                    v-if="isEditMode"
-                    v-decorator="['symbol', { rules: [{ required: true, message: $t('trading-assistant.validation.symbolRequired') }] }]"
-                    :placeholder="$t('trading-assistant.placeholders.selectSymbol')"
-                    show-search
-                    :filter-option="filterWatchlistOption"
-                    :loading="loadingWatchlist"
-                    @change="handleWatchlistSymbolChange"
-                    :getPopupContainer="(triggerNode) => triggerNode.parentNode">
-                    <a-select-option
-                      v-for="item in watchlist"
-                      :key="`${item.market}:${item.symbol}`"
-                      :value="`${item.market}:${item.symbol}`">
-                      <div class="symbol-option">
-                        <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
-                          {{ item.market }}
-                        </a-tag>
-                        <span class="symbol-name">{{ item.symbol }}</span>
-                        <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
                       </div>
-                    </a-select-option>
-                    <!-- 添加交易对选项 -->
-                    <a-select-option key="__add_symbol_option__" value="__add_symbol_option__" class="add-symbol-option">
-                      <div style="width: 100%; text-align: center; padding: 4px 0; color: #1890ff; cursor: pointer;">
-                        <a-icon type="plus" style="margin-right: 4px;" />
-                        <span>{{ $t('trading-assistant.form.addSymbol') }}</span>
-                      </div>
-                    </a-select-option>
-                  </a-select>
-                  <!-- 创建模式：多选 -->
-                  <a-select
-                    v-else
-                    v-model="selectedSymbols"
-                    mode="multiple"
-                    :placeholder="$t('trading-assistant.placeholders.selectSymbols')"
-                    show-search
-                    :filter-option="filterWatchlistOptionWithAdd"
-                    :loading="loadingWatchlist"
-                    @change="handleMultiSymbolChangeWithAdd"
-                    :getPopupContainer="(triggerNode) => triggerNode.parentNode"
-                    :maxTagCount="3">
-                    <a-select-option
-                      v-for="item in watchlist"
-                      :key="`${item.market}:${item.symbol}`"
-                      :value="`${item.market}:${item.symbol}`">
-                      <div class="symbol-option">
-                        <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
-                          {{ item.market }}
-                        </a-tag>
-                        <span class="symbol-name">{{ item.symbol }}</span>
-                        <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
-                      </div>
-                    </a-select-option>
-                    <!-- 添加交易对选项 -->
-                    <a-select-option key="__add_symbol_option__" value="__add_symbol_option__" class="add-symbol-option">
-                      <div style="width: 100%; text-align: center; padding: 4px 0; color: #1890ff; cursor: pointer;">
-                        <a-icon type="plus" style="margin-right: 4px;" />
-                        <span>{{ $t('trading-assistant.form.addSymbol') }}</span>
-                      </div>
-                    </a-select-option>
-                  </a-select>
-                  <div class="form-item-hint">
-                    {{ isEditMode ? $t('trading-assistant.form.symbolHintCrypto') :
-                      $t('trading-assistant.form.symbolsHint') }}
-                  </div>
-                </a-form-item>
+                    </a-form-item>
 
-                <!-- ===== Trading params (capital/leverage/direction/timeframe etc.) ===== -->
-                <div>
+                    <a-divider />
 
-                  <a-row :gutter="16">
-                    <a-col :xs="24" :sm="24" :md="12" :lg="12">
-                      <a-form-item :label="$t('trading-assistant.form.initialCapital')">
-                        <a-input-number
-                          v-decorator="['initial_capital', { rules: [{ required: true, message: $t('trading-assistant.validation.initialCapitalRequired') }], initialValue: 1000 }]"
-                          :min="10"
-                          :step="100"
-                          :precision="2"
-                          style="width: 100%" />
-                      </a-form-item>
-                    </a-col>
-                    <a-col :xs="24" :sm="24" :md="12" :lg="12">
-                      <a-form-item :label="$t('trading-assistant.form.marketType')">
+                    <a-form-item :label="$t('trading-assistant.form.strategyName')">
+                      <a-input
+                        v-decorator="['strategy_name', { rules: [{ required: true, message: $t('trading-assistant.validation.strategyNameRequired') }] }]"
+                        :placeholder="$t('trading-assistant.placeholders.inputStrategyName')" />
+                      <div class="form-item-hint">
+                        {{ $t('trading-assistant.form.strategyNameHint') }}
+                      </div>
+                    </a-form-item>
+
+                    <!-- ===== Strategy type & market scope ===== -->
+                    <div class="advanced-settings-shell">
+                      <div class="section-block-title">
+                        <span>{{ $t('trading-assistant.form.sectionStrategyMarket') }}</span>
+                        <span class="section-block-desc">{{ $t('trading-assistant.form.sectionStrategyMarketDesc') }}</span>
+                      </div>
+                      <!-- 策略类型选择 -->
+                      <a-form-item :label="$t('trading-assistant.form.strategyType')">
                         <a-radio-group
-                          v-decorator="['market_type', { initialValue: 'swap' }]"
-                          @change="handleMarketTypeChange">
-                          <a-radio value="swap">{{ $t('trading-assistant.form.marketTypeFutures') }}</a-radio>
-                          <a-radio value="spot">{{ $t('trading-assistant.form.marketTypeSpot') }}</a-radio>
+                          v-decorator="['cs_strategy_type', { initialValue: 'single' }]"
+                          @change="handleStrategyTypeChange">
+                          <a-radio value="single">{{ $t('trading-assistant.form.strategyTypeSingle') }}</a-radio>
+                          <a-radio value="cross_sectional">{{ $t('trading-assistant.form.strategyTypeCrossSectional') }}</a-radio>
                         </a-radio-group>
                         <div class="form-item-hint">
-                          {{ $t('trading-assistant.form.marketTypeHint') }}
+                          {{ $t('trading-assistant.form.strategyTypeHint') }}
                         </div>
                       </a-form-item>
-                    </a-col>
-                  </a-row>
+                    </div>
 
-                  <a-row :gutter="16">
-                    <a-col :xs="24" :sm="24" :md="12" :lg="12">
-                      <a-form-item :label="`${$t('trading-assistant.form.leverage')} (x)`">
-                        <a-input-number
-                          v-decorator="['leverage', { initialValue: 5, rules: [{ required: true, message: $t('trading-assistant.validation.leverageRequired') }] }]"
-                          :min="1"
-                          :max="form.getFieldValue('market_type') === 'spot' ? 1 : 125"
-                          :step="1"
-                          style="width: 100%"
-                          :disabled="form.getFieldValue('market_type') === 'spot'" />
-                        <div class="form-item-hint">
-                          <span v-if="form.getFieldValue('market_type') === 'spot'">
-                            {{ $t('trading-assistant.form.spotLeverageFixed') }}
-                          </span>
-                          <span v-else>
-                            {{ $t('trading-assistant.form.leverageHint') }}
-                          </span>
-                        </div>
-                      </a-form-item>
-                    </a-col>
-                    <a-col :xs="24" :sm="24" :md="12" :lg="12">
-                      <a-form-item :label="$t('trading-assistant.form.tradeDirection')">
-                        <a-radio-group
-                          v-decorator="['trade_direction', { initialValue: 'long' }]"
-                          :disabled="form.getFieldValue('market_type') === 'spot'">
-                          <a-radio value="long">{{ $t('trading-assistant.form.tradeDirectionLong') }}</a-radio>
-                          <a-radio value="short" :disabled="form.getFieldValue('market_type') === 'spot'">
-                            {{ $t('trading-assistant.form.tradeDirectionShort') }}
-                          </a-radio>
-                          <a-radio value="both" :disabled="form.getFieldValue('market_type') === 'spot'">
-                            {{ $t('trading-assistant.form.tradeDirectionBoth') }}
-                          </a-radio>
-                        </a-radio-group>
-                        <div
-                          v-if="form.getFieldValue('market_type') === 'spot'"
-                          class="form-item-hint"
-                          style="color: #ff9800;">
-                          {{ $t('trading-assistant.form.spotOnlyLongHint') }}
-                        </div>
-                      </a-form-item>
-                    </a-col>
-                  </a-row>
-
-                  <a-row :gutter="16">
-                    <a-col :xs="24" :sm="24" :md="12" :lg="12">
-                      <a-form-item :label="$t('trading-assistant.form.klinePeriod')">
+                    <!-- 截面策略配置 -->
+                    <template v-if="form.getFieldValue('cs_strategy_type') === 'cross_sectional'">
+                      <a-form-item :label="$t('trading-assistant.form.symbolList')">
                         <a-select
-                          v-decorator="['timeframe', { initialValue: '15m', rules: [{ required: true }] }]"
-                          :placeholder="$t('trading-assistant.placeholders.selectKlinePeriod')"
-                          :getPopupContainer="(triggerNode) => triggerNode.parentNode">
-                          <a-select-option value="1m">{{ $t('trading-assistant.form.timeframe1m') }}</a-select-option>
-                          <a-select-option value="5m">{{ $t('trading-assistant.form.timeframe5m') }}</a-select-option>
-                          <a-select-option value="15m">{{ $t('trading-assistant.form.timeframe15m') }}</a-select-option>
-                          <a-select-option value="30m">{{ $t('trading-assistant.form.timeframe30m') }}</a-select-option>
-                          <a-select-option value="1H">{{ $t('trading-assistant.form.timeframe1H') }}</a-select-option>
-                          <a-select-option value="4H">{{ $t('trading-assistant.form.timeframe4H') }}</a-select-option>
-                          <a-select-option value="1D">{{ $t('trading-assistant.form.timeframe1D') }}</a-select-option>
+                          v-model="crossSectionalSymbols"
+                          mode="multiple"
+                          :placeholder="$t('trading-assistant.placeholders.selectSymbols')"
+                          show-search
+                          :filter-option="filterWatchlistOptionWithAdd"
+                          :loading="loadingWatchlist"
+                          @change="handleCrossSectionalSymbolChange"
+                          :getPopupContainer="(triggerNode) => triggerNode.parentNode"
+                          :maxTagCount="5">
+                          <a-select-option
+                            v-for="item in watchlist"
+                            :key="`${item.market}:${item.symbol}`"
+                            :value="`${item.market}:${item.symbol}`">
+                            <div class="symbol-option">
+                              <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
+                                {{ item.market }}
+                              </a-tag>
+                              <span class="symbol-name">{{ item.symbol }}</span>
+                              <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
+                            </div>
+                          </a-select-option>
+                          <a-select-option key="__add_symbol_option__" value="__add_symbol_option__" class="add-symbol-option">
+                            <div style="width: 100%; text-align: center; padding: 4px 0; color: #1890ff; cursor: pointer;">
+                              <a-icon type="plus" style="margin-right: 4px;" />
+                              <span>{{ $t('trading-assistant.form.addSymbol') }}</span>
+                            </div>
+                          </a-select-option>
                         </a-select>
+                        <div class="form-item-hint">
+                          {{ $t('trading-assistant.form.symbolListHint') }}
+                        </div>
                       </a-form-item>
-                    </a-col>
-                    <a-col :xs="24" :sm="24" :md="12" :lg="12"></a-col>
-                  </a-row>
 
-                </div><!-- / trading params -->
-
-                <a-divider />
-                <div class="section-block-title" style="margin-top: 4px;">
-                  <span>{{ $t('trading-assistant.form.sectionRiskExecutionParams') }}</span>
-                  <span class="section-block-desc">{{ $t('trading-assistant.form.sectionRiskExecutionParamsDesc') }}</span>
-                </div>
-
-                <a-collapse v-model="backtestCollapseKeys" :bordered="false" class="strategy-params-collapse">
-                  <a-collapse-panel key="risk" :header="$t('dashboard.indicator.backtest.panel.risk')">
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.stopLossPct')">
-                          <a-input-number
-                            v-decorator="['stop_loss_pct', { initialValue: 3 }]"
-                            :min="0"
-                            :max="100"
-                            :step="0.01"
-                            :precision="4"
-                            style="width: 220px" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.takeProfitPct')">
-                          <a-input-number
-                            v-decorator="['take_profit_pct', { initialValue: 6 }]"
-                            :min="0"
-                            :max="1000"
-                            :step="0.01"
-                            :precision="4"
-                            style="width: 220px" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trailingEnabled')">
-                          <a-switch
-                            v-decorator="['trailing_enabled', { valuePropName: 'checked', initialValue: false }]"
-                            @change="onTrailingToggle" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12"></a-col>
-                    </a-row>
-
-                    <template v-if="trailingEnabledUi">
-                      <a-row :gutter="24">
-                        <a-col :span="12">
-                          <a-form-item :label="$t('dashboard.indicator.backtest.field.trailingStopPct')">
+                      <a-row :gutter="16">
+                        <a-col :xs="24" :sm="12">
+                          <a-form-item :label="$t('trading-assistant.form.portfolioSize')">
                             <a-input-number
-                              v-decorator="['trailing_stop_pct', { initialValue: 0 }]"
-                              :min="0"
+                              v-decorator="['portfolio_size', { initialValue: 10, rules: [{ required: true, message: $t('trading-assistant.validation.portfolioSizeRequired') }] }]"
+                              :min="1"
                               :max="100"
-                              :step="0.01"
-                              :precision="4"
-                              style="width: 220px" />
+                              :step="1"
+                              style="width: 100%" />
+                            <div class="form-item-hint">
+                              {{ $t('trading-assistant.form.portfolioSizeHint') }}
+                            </div>
                           </a-form-item>
                         </a-col>
-                        <a-col :span="12">
-                          <a-form-item :label="$t('dashboard.indicator.backtest.field.trailingActivationPct')">
+                        <a-col :xs="24" :sm="12">
+                          <a-form-item :label="$t('trading-assistant.form.longRatio')">
                             <a-input-number
-                              v-decorator="['trailing_activation_pct', { initialValue: 0 }]"
+                              v-decorator="['long_ratio', { initialValue: 0.5, rules: [{ required: true, message: $t('trading-assistant.validation.longRatioRequired') }] }]"
                               :min="0"
-                              :max="1000"
-                              :step="0.01"
-                              :precision="4"
-                              style="width: 220px" />
+                              :max="1"
+                              :step="0.1"
+                              :precision="2"
+                              style="width: 100%" />
+                            <div class="form-item-hint">
+                              {{ $t('trading-assistant.form.longRatioHint') }}
+                            </div>
                           </a-form-item>
                         </a-col>
                       </a-row>
+
+                      <a-form-item :label="$t('trading-assistant.form.rebalanceFrequency')">
+                        <a-select
+                          v-decorator="['rebalance_frequency', { initialValue: 'daily' }]"
+                          style="width: 100%">
+                          <a-select-option value="daily">{{ $t('trading-assistant.form.rebalanceDaily') }}</a-select-option>
+                          <a-select-option value="weekly">{{ $t('trading-assistant.form.rebalanceWeekly') }}</a-select-option>
+                          <a-select-option value="monthly">{{ $t('trading-assistant.form.rebalanceMonthly') }}</a-select-option>
+                        </a-select>
+                        <div class="form-item-hint">
+                          {{ $t('trading-assistant.form.rebalanceFrequencyHint') }}
+                        </div>
+                      </a-form-item>
                     </template>
-                  </a-collapse-panel>
 
-                  <a-collapse-panel key="scale" :header="$t('dashboard.indicator.backtest.panel.scale')">
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendAddEnabled')">
-                          <a-switch
-                            v-decorator="['trend_add_enabled', { valuePropName: 'checked', initialValue: false }]"
-                            @change="onTrendAddToggle" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.dcaAddEnabled')">
-                          <a-switch
-                            v-decorator="['dca_add_enabled', { valuePropName: 'checked', initialValue: false }]"
-                            @change="onDcaAddToggle" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendAddStepPct')">
-                          <a-input-number
-                            v-decorator="['trend_add_step_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="1000"
-                            :step="0.01"
-                            :precision="4"
-                            style="width: 220px"
-                            @change="onScaleParamsChange" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.dcaAddStepPct')">
-                          <a-input-number
-                            v-decorator="['dca_add_step_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="1000"
-                            :step="0.01"
-                            :precision="4"
-                            style="width: 220px"
-                            @change="onScaleParamsChange" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendAddSizePct')">
-                          <a-input-number
-                            v-decorator="['trend_add_size_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="100"
-                            :step="0.1"
-                            :precision="4"
-                            style="width: 220px"
-                            @change="onScaleParamsChange" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.dcaAddSizePct')">
-                          <a-input-number
-                            v-decorator="['dca_add_size_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="100"
-                            :step="0.1"
-                            :precision="4"
-                            style="width: 220px"
-                            @change="onScaleParamsChange" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendAddMaxTimes')">
-                          <a-input-number
-                            v-decorator="['trend_add_max_times', { initialValue: 0 }]"
-                            :min="0"
-                            :max="50"
-                            :step="1"
-                            :precision="0"
-                            style="width: 220px"
-                            @change="onScaleParamsChange" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.dcaAddMaxTimes')">
-                          <a-input-number
-                            v-decorator="['dca_add_max_times', { initialValue: 0 }]"
-                            :min="0"
-                            :max="50"
-                            :step="1"
-                            :precision="0"
-                            style="width: 220px"
-                            @change="onScaleParamsChange" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                  </a-collapse-panel>
-
-                  <a-collapse-panel key="reduce" :header="$t('dashboard.indicator.backtest.panel.reduce')">
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendReduceEnabled')">
-                          <a-switch
-                            v-decorator="['trend_reduce_enabled', { valuePropName: 'checked', initialValue: false }]" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.adverseReduceEnabled')">
-                          <a-switch
-                            v-decorator="['adverse_reduce_enabled', { valuePropName: 'checked', initialValue: false }]" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendReduceStepPct')">
-                          <a-input-number
-                            v-decorator="['trend_reduce_step_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="1000"
-                            :step="0.01"
-                            :precision="4"
-                            style="width: 220px" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.adverseReduceStepPct')">
-                          <a-input-number
-                            v-decorator="['adverse_reduce_step_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="1000"
-                            :step="0.01"
-                            :precision="4"
-                            style="width: 220px" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendReduceSizePct')">
-                          <a-input-number
-                            v-decorator="['trend_reduce_size_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="100"
-                            :step="0.1"
-                            :precision="4"
-                            style="width: 220px" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.adverseReduceSizePct')">
-                          <a-input-number
-                            v-decorator="['adverse_reduce_size_pct', { initialValue: 0 }]"
-                            :min="0"
-                            :max="100"
-                            :step="0.1"
-                            :precision="4"
-                            style="width: 220px" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.trendReduceMaxTimes')">
-                          <a-input-number
-                            v-decorator="['trend_reduce_max_times', { initialValue: 0 }]"
-                            :min="0"
-                            :max="50"
-                            :step="1"
-                            :precision="0"
-                            style="width: 100%" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12">
-                        <a-form-item :label="$t('dashboard.indicator.backtest.field.adverseReduceMaxTimes')">
-                          <a-input-number
-                            v-decorator="['adverse_reduce_max_times', { initialValue: 0 }]"
-                            :min="0"
-                            :max="50"
-                            :step="1"
-                            :precision="0"
-                            style="width: 100%" />
-                        </a-form-item>
-                      </a-col>
-                    </a-row>
-                  </a-collapse-panel>
-
-                  <a-collapse-panel key="position" :header="$t('dashboard.indicator.backtest.panel.position')">
-                    <a-row :gutter="24">
-                      <a-col :span="12">
-                        <a-form-item
-                          :label="$t('dashboard.indicator.backtest.field.entryPct')"
-                          :help="$t('dashboard.indicator.backtest.hint.entryPctMax', { maxPct: Number(entryPctMaxUi || 0).toFixed(0) })">
-                          <a-input-number
-                            v-decorator="['entry_pct', { initialValue: 100 }]"
-                            :min="0"
-                            :max="entryPctMaxUi"
-                            :step="0.1"
-                            :precision="4"
-                            style="width: 220px"
-                            @change="onEntryPctChange" />
-                        </a-form-item>
-                      </a-col>
-                      <a-col :span="12"></a-col>
-                    </a-row>
-                  </a-collapse-panel>
-                </a-collapse>
-
-                <div class="ai-filter-box">
-                  <div class="ai-filter-header">
-                    <div class="ai-filter-title">
-                      <a-icon type="robot" />
-                      <span>{{ $t('trading-assistant.form.enableAiFilter') }}</span>
-                    </div>
-                    <a-switch :checked="aiFilterEnabledUi" @change="onAiFilterToggle" />
-                  </div>
-                  <div class="ai-filter-hint">{{ $t('trading-assistant.form.enableAiFilterHint') }}</div>
-                </div>
-              </a-form>
-            </div>
-
-            <div v-if="strategyMode === 'script'">
-              <a-form :form="form" layout="vertical">
-                <a-form-item :label="$t('trading-assistant.form.strategyName')">
-                  <a-input
-                    v-decorator="['strategy_name', { rules: [{ required: true, message: $t('trading-assistant.validation.strategyNameRequired') }] }]"
-                    :placeholder="$t('trading-assistant.placeholders.inputStrategyName')" />
-                </a-form-item>
-
-                <a-form-item :label="$t('trading-assistant.form.symbol')">
-                  <a-select
-                    v-decorator="['symbol', { rules: [{ required: true, message: $t('trading-assistant.validation.symbolRequired') }] }]"
-                    :placeholder="$t('trading-assistant.placeholders.selectSymbol')"
-                    show-search
-                    :filter-option="filterWatchlistOption"
-                    :loading="loadingWatchlist"
-                    @change="handleWatchlistSymbolChange"
-                    :getPopupContainer="(triggerNode) => triggerNode.parentNode">
-                    <a-select-option
-                      v-for="item in watchlist"
-                      :key="`${item.market}:${item.symbol}`"
-                      :value="`${item.market}:${item.symbol}`">
-                      <div class="symbol-option">
-                        <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
-                          {{ item.market }}
-                        </a-tag>
-                        <span class="symbol-name">{{ item.symbol }}</span>
-                        <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
-                      </div>
-                    </a-select-option>
-                  </a-select>
-                </a-form-item>
-
-                <a-row :gutter="16">
-                  <a-col :xs="24" :sm="12">
-                    <a-form-item :label="$t('trading-assistant.form.initialCapital')">
-                      <a-input-number
-                        v-decorator="['initial_capital', { initialValue: 1000, rules: [{ required: true }] }]"
-                        :min="10"
-                        :step="100"
-                        :precision="2"
-                        style="width: 100%"
-                      />
-                    </a-form-item>
-                  </a-col>
-                  <a-col :xs="24" :sm="12">
-                    <a-form-item :label="$t('trading-assistant.form.klinePeriod')">
+                    <!-- 单标的策略：原有的标的选择 -->
+                    <a-form-item
+                      v-if="form.getFieldValue('cs_strategy_type') !== 'cross_sectional'"
+                      :label="isEditMode ? $t('trading-assistant.form.symbol') : $t('trading-assistant.form.symbols')">
+                      <!-- 编辑模式：单选 -->
                       <a-select
-                        v-decorator="['timeframe', { initialValue: '15m', rules: [{ required: true }] }]"
+                        v-if="isEditMode"
+                        v-decorator="['symbol', { rules: [{ required: true, message: $t('trading-assistant.validation.symbolRequired') }] }]"
+                        :placeholder="$t('trading-assistant.placeholders.selectSymbol')"
+                        show-search
+                        :filter-option="filterWatchlistOption"
+                        :loading="loadingWatchlist"
+                        @change="handleWatchlistSymbolChange"
                         :getPopupContainer="(triggerNode) => triggerNode.parentNode">
-                        <a-select-option value="1m">{{ $t('trading-assistant.form.timeframe1m') }}</a-select-option>
-                        <a-select-option value="5m">{{ $t('trading-assistant.form.timeframe5m') }}</a-select-option>
-                        <a-select-option value="15m">{{ $t('trading-assistant.form.timeframe15m') }}</a-select-option>
-                        <a-select-option value="30m">{{ $t('trading-assistant.form.timeframe30m') }}</a-select-option>
-                        <a-select-option value="1H">{{ $t('trading-assistant.form.timeframe1H') }}</a-select-option>
-                        <a-select-option value="4H">{{ $t('trading-assistant.form.timeframe4H') }}</a-select-option>
-                        <a-select-option value="1D">{{ $t('trading-assistant.form.timeframe1D') }}</a-select-option>
-                      </a-select>
-                    </a-form-item>
-                  </a-col>
-                </a-row>
-
-                <a-row :gutter="16">
-                  <a-col :xs="24" :sm="12">
-                    <a-form-item :label="$t('trading-assistant.form.marketType')">
-                      <a-radio-group v-decorator="['market_type', { initialValue: 'swap' }]">
-                        <a-radio value="swap">{{ $t('trading-assistant.form.marketTypeFutures') }}</a-radio>
-                        <a-radio value="spot">{{ $t('trading-assistant.form.marketTypeSpot') }}</a-radio>
-                      </a-radio-group>
-                    </a-form-item>
-                  </a-col>
-                  <a-col :xs="24" :sm="12">
-                    <a-form-item :label="`${$t('trading-assistant.form.leverage')} (x)`">
-                      <a-input-number
-                        v-decorator="['leverage', { initialValue: 5 }]"
-                        :min="1"
-                        :max="125"
-                        :step="1"
-                        style="width: 100%"
-                      />
-                    </a-form-item>
-                  </a-col>
-                </a-row>
-
-                <a-form-item :label="$t('trading-assistant.form.tradeDirection')">
-                  <a-select
-                    v-decorator="['trade_direction', { initialValue: 'both' }]"
-                    :getPopupContainer="(triggerNode) => triggerNode.parentNode">
-                    <a-select-option value="long">{{ $t('trading-assistant.form.tradeDirectionLong') }}</a-select-option>
-                    <a-select-option value="short">{{ $t('trading-assistant.form.tradeDirectionShort') }}</a-select-option>
-                    <a-select-option value="both">{{ $t('trading-assistant.form.tradeDirectionBoth') }}</a-select-option>
-                  </a-select>
-                </a-form-item>
-              </a-form>
-            </div>
-          </div>
-
-          <!-- Step 1.5 (Script mode): Strategy Code Editor -->
-          <div v-if="strategyMode === 'script'" v-show="currentStep === 1" class="step-content">
-            <strategy-editor
-              ref="strategyEditor"
-              v-model="strategyCode"
-              :is-dark="isDarkTheme"
-              :user-id="1"
-              :visible="showFormModal && strategyMode === 'script' && currentStep === 1"
-              :initial-template-key="pendingScriptTemplateKey"
-              @template-change="onScriptTemplateChange"
-            />
-          </div>
-
-          <!-- 指标策略：执行/通知（步进 1）；脚本策略：步进 2 -->
-          <div
-            v-show="(strategyMode === 'script' && currentStep === 2) || (strategyMode !== 'script' && currentStep === 1)"
-            class="step-content">
-            <a-form :form="form" layout="vertical" autocomplete="off">
-              <div class="execution-step-layout">
-                <div class="execution-step-hero">
-                  <div class="simple-mode-kicker">{{ $t('trading-assistant.form.step2HeroTitle') }}</div>
-                  <div class="execution-step-hero-desc">{{ $t('trading-assistant.form.step2HeroDesc') }}</div>
-                </div>
-
-                <div class="execution-section-card">
-                  <div class="section-block-title">
-                    <span>{{ $t('trading-assistant.form.executionSectionTitle') }}</span>
-                    <span class="section-block-desc">{{ $t('trading-assistant.form.executionSectionDesc') }}</span>
-                  </div>
-
-                  <a-form-item :label="$t('trading-assistant.form.executionMode')" class="compact-form-item">
-                    <a-input
-                      v-decorator="['execution_mode', { initialValue: 'signal' }]"
-                      style="display: none;" />
-                    <div class="execution-mode-cards">
-                      <div
-                        :class="['execution-mode-card', { active: executionModeUi === 'signal' }]"
-                        @click="setExecutionModeUi('signal')">
-                        <div class="execution-mode-card-icon signal">
-                          <a-icon type="notification" />
-                        </div>
-                        <div class="execution-mode-card-body">
-                          <div class="execution-mode-card-title">{{ $t('trading-assistant.form.executionModeSignal') }}</div>
-                          <div class="execution-mode-card-desc">{{ $t('trading-assistant.form.executionModeSignalDesc') }}</div>
-                        </div>
-                        <a-icon v-if="executionModeUi === 'signal'" type="check-circle" theme="filled" class="execution-mode-card-check" />
-                      </div>
-
-                      <div
-                        :class="['execution-mode-card', 'live-card', { active: executionModeUi === 'live', disabled: !canUseLiveTrading }]"
-                        @click="canUseLiveTrading && setExecutionModeUi('live')">
-                        <div class="execution-mode-card-icon live">
-                          <a-icon type="thunderbolt" />
-                        </div>
-                        <div class="execution-mode-card-body">
-                          <div class="execution-mode-card-title">{{ $t('trading-assistant.form.executionModeLive') }}</div>
-                          <div class="execution-mode-card-desc">
-                            {{ canUseLiveTrading ? $t('trading-assistant.form.executionModeLiveDesc') : $t('trading-assistant.form.liveTradingNotSupportedHint') }}
+                        <a-select-option
+                          v-for="item in watchlist"
+                          :key="`${item.market}:${item.symbol}`"
+                          :value="`${item.market}:${item.symbol}`">
+                          <div class="symbol-option">
+                            <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
+                              {{ item.market }}
+                            </a-tag>
+                            <span class="symbol-name">{{ item.symbol }}</span>
+                            <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
                           </div>
-                        </div>
-                        <a-icon
-                          v-if="executionModeUi === 'live' && canUseLiveTrading"
-                          type="check-circle"
-                          theme="filled"
-                          class="execution-mode-card-check" />
+                        </a-select-option>
+                        <!-- 添加交易对选项 -->
+                        <a-select-option key="__add_symbol_option__" value="__add_symbol_option__" class="add-symbol-option">
+                          <div style="width: 100%; text-align: center; padding: 4px 0; color: #1890ff; cursor: pointer;">
+                            <a-icon type="plus" style="margin-right: 4px;" />
+                            <span>{{ $t('trading-assistant.form.addSymbol') }}</span>
+                          </div>
+                        </a-select-option>
+                      </a-select>
+                      <!-- 创建模式：多选 -->
+                      <a-select
+                        v-else
+                        v-model="selectedSymbols"
+                        mode="multiple"
+                        :placeholder="$t('trading-assistant.placeholders.selectSymbols')"
+                        show-search
+                        :filter-option="filterWatchlistOptionWithAdd"
+                        :loading="loadingWatchlist"
+                        @change="handleMultiSymbolChangeWithAdd"
+                        :getPopupContainer="(triggerNode) => triggerNode.parentNode"
+                        :maxTagCount="3">
+                        <a-select-option
+                          v-for="item in watchlist"
+                          :key="`${item.market}:${item.symbol}`"
+                          :value="`${item.market}:${item.symbol}`">
+                          <div class="symbol-option">
+                            <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
+                              {{ item.market }}
+                            </a-tag>
+                            <span class="symbol-name">{{ item.symbol }}</span>
+                            <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
+                          </div>
+                        </a-select-option>
+                        <!-- 添加交易对选项 -->
+                        <a-select-option key="__add_symbol_option__" value="__add_symbol_option__" class="add-symbol-option">
+                          <div style="width: 100%; text-align: center; padding: 4px 0; color: #1890ff; cursor: pointer;">
+                            <a-icon type="plus" style="margin-right: 4px;" />
+                            <span>{{ $t('trading-assistant.form.addSymbol') }}</span>
+                          </div>
+                        </a-select-option>
+                      </a-select>
+                      <div class="form-item-hint">
+                        {{ isEditMode ? $t('trading-assistant.form.symbolHintCrypto') :
+                          $t('trading-assistant.form.symbolsHint') }}
                       </div>
-                    </div>
-                    <div v-if="!canUseLiveTrading" class="form-item-hint execution-warn-text">
-                      {{ $t('trading-assistant.form.liveTradingNotSupportedHint') }}
-                    </div>
-                  </a-form-item>
+                    </a-form-item>
 
-                  <a-alert
-                    v-if="executionModeUi === 'live' && canUseLiveTrading"
-                    type="warning"
-                    showIcon
-                    class="section-inline-alert"
-                    :message="$t('trading-assistant.liveDisclaimer.title')"
-                    :description="$t('trading-assistant.liveDisclaimer.content')" />
-                </div>
+                    <!-- ===== Trading params (capital/leverage/direction/timeframe etc.) ===== -->
+                    <div>
 
-                <div class="execution-section-card">
-                  <div class="section-block-title">
-                    <span>{{ $t('trading-assistant.form.notificationSectionTitle') }}</span>
-                    <span class="section-block-desc">{{ $t('trading-assistant.form.notificationSectionDesc') }}</span>
-                  </div>
+                      <a-row :gutter="16">
+                        <a-col :xs="24" :sm="24" :md="12" :lg="12">
+                          <a-form-item :label="$t('trading-assistant.form.initialCapital')">
+                            <a-input-number
+                              v-decorator="['initial_capital', { rules: [{ required: true, message: $t('trading-assistant.validation.initialCapitalRequired') }], initialValue: 1000 }]"
+                              :min="10"
+                              :step="100"
+                              :precision="2"
+                              style="width: 100%" />
+                          </a-form-item>
+                        </a-col>
+                        <a-col :xs="24" :sm="24" :md="12" :lg="12">
+                          <a-form-item :label="$t('trading-assistant.form.marketType')">
+                            <a-radio-group
+                              v-decorator="['market_type', { initialValue: 'swap' }]"
+                              @change="handleMarketTypeChange">
+                              <a-radio value="swap">{{ $t('trading-assistant.form.marketTypeFutures') }}</a-radio>
+                              <a-radio value="spot">{{ $t('trading-assistant.form.marketTypeSpot') }}</a-radio>
+                            </a-radio-group>
+                            <div class="form-item-hint">
+                              {{ $t('trading-assistant.form.marketTypeHint') }}
+                            </div>
+                          </a-form-item>
+                        </a-col>
+                      </a-row>
 
-                  <a-form-item :label="$t('trading-assistant.form.notifyChannels')" class="compact-form-item">
-                    <a-checkbox-group
-                      v-decorator="['notify_channels', { initialValue: ['browser'] }]"
-                      class="notify-channel-grid"
-                      @change="onNotifyChannelsChange">
-                      <a-checkbox value="browser">{{ $t('trading-assistant.notify.browser') }}</a-checkbox>
-                      <a-checkbox value="email">{{ $t('trading-assistant.notify.email') }}</a-checkbox>
-                      <a-checkbox value="telegram">{{ $t('trading-assistant.notify.telegram') }}</a-checkbox>
-                      <a-checkbox value="discord">{{ $t('trading-assistant.notify.discord') }}</a-checkbox>
-                      <a-checkbox value="webhook">{{ $t('trading-assistant.notify.webhook') }}</a-checkbox>
-                      <a-checkbox value="phone">{{ $t('trading-assistant.notify.phone') }}</a-checkbox>
-                    </a-checkbox-group>
-                    <div class="form-item-hint">{{ $t('trading-assistant.form.notifyChannelsHint') }}</div>
-                  </a-form-item>
+                      <a-row :gutter="16">
+                        <a-col :xs="24" :sm="24" :md="12" :lg="12">
+                          <a-form-item :label="`${$t('trading-assistant.form.leverage')} (x)`">
+                            <a-input-number
+                              v-decorator="['leverage', { initialValue: 5, rules: [{ required: true, message: $t('trading-assistant.validation.leverageRequired') }] }]"
+                              :min="1"
+                              :max="form.getFieldValue('market_type') === 'spot' ? 1 : 125"
+                              :step="1"
+                              style="width: 100%"
+                              :disabled="form.getFieldValue('market_type') === 'spot'" />
+                            <div class="form-item-hint">
+                              <span v-if="form.getFieldValue('market_type') === 'spot'">
+                                {{ $t('trading-assistant.form.spotLeverageFixed') }}
+                              </span>
+                              <span v-else>
+                                {{ $t('trading-assistant.form.leverageHint') }}
+                              </span>
+                            </div>
+                          </a-form-item>
+                        </a-col>
+                        <a-col :xs="24" :sm="24" :md="12" :lg="12">
+                          <a-form-item :label="$t('trading-assistant.form.tradeDirection')">
+                            <a-radio-group
+                              v-decorator="['trade_direction', { initialValue: 'long' }]"
+                              :disabled="form.getFieldValue('market_type') === 'spot'">
+                              <a-radio value="long">{{ $t('trading-assistant.form.tradeDirectionLong') }}</a-radio>
+                              <a-radio value="short" :disabled="form.getFieldValue('market_type') === 'spot'">
+                                {{ $t('trading-assistant.form.tradeDirectionShort') }}
+                              </a-radio>
+                              <a-radio value="both" :disabled="form.getFieldValue('market_type') === 'spot'">
+                                {{ $t('trading-assistant.form.tradeDirectionBoth') }}
+                              </a-radio>
+                            </a-radio-group>
+                            <div
+                              v-if="form.getFieldValue('market_type') === 'spot'"
+                              class="form-item-hint"
+                              style="color: #ff9800;">
+                              {{ $t('trading-assistant.form.spotOnlyLongHint') }}
+                            </div>
+                          </a-form-item>
+                        </a-col>
+                      </a-row>
 
-                  <a-alert
-                    v-if="unconfiguredChannels.length > 0"
-                    type="warning"
-                    showIcon
-                    class="section-inline-alert">
-                    <template #message>
-                      <span>
-                        {{ $t('trading-assistant.form.notificationConfigMissing', { channels: unconfiguredChannels.join(', ') }) }}
-                        <router-link to="/profile" style="margin-left: 8px">
-                          <a-icon type="setting" /> {{ $t('trading-assistant.form.goToProfile') }}
-                        </router-link>
-                      </span>
-                    </template>
-                  </a-alert>
+                      <a-row :gutter="16">
+                        <a-col :xs="24" :sm="24" :md="12" :lg="12">
+                          <a-form-item :label="$t('trading-assistant.form.klinePeriod')">
+                            <a-select
+                              v-decorator="['timeframe', { initialValue: '15m', rules: [{ required: true }] }]"
+                              :placeholder="$t('trading-assistant.placeholders.selectKlinePeriod')"
+                              :getPopupContainer="(triggerNode) => triggerNode.parentNode">
+                              <a-select-option value="1m">{{ $t('trading-assistant.form.timeframe1m') }}</a-select-option>
+                              <a-select-option value="5m">{{ $t('trading-assistant.form.timeframe5m') }}</a-select-option>
+                              <a-select-option value="15m">{{ $t('trading-assistant.form.timeframe15m') }}</a-select-option>
+                              <a-select-option value="30m">{{ $t('trading-assistant.form.timeframe30m') }}</a-select-option>
+                              <a-select-option value="1H">{{ $t('trading-assistant.form.timeframe1H') }}</a-select-option>
+                              <a-select-option value="4H">{{ $t('trading-assistant.form.timeframe4H') }}</a-select-option>
+                              <a-select-option value="1D">{{ $t('trading-assistant.form.timeframe1D') }}</a-select-option>
+                            </a-select>
+                          </a-form-item>
+                        </a-col>
+                        <a-col :xs="24" :sm="24" :md="12" :lg="12"></a-col>
+                      </a-row>
 
-                  <a-alert
-                    v-else-if="notifyChannelsUi.length > 0 && !notifyChannelsUi.includes('browser') || (notifyChannelsUi.length > 1)"
-                    type="info"
-                    showIcon
-                    class="section-inline-alert">
-                    <template #message>
-                      <span>
-                        {{ $t('trading-assistant.form.notificationFromProfile') }}
-                        <router-link to="/profile" style="margin-left: 8px">
-                          <a-icon type="setting" /> {{ $t('trading-assistant.form.goToProfile') }}
-                        </router-link>
-                      </span>
-                    </template>
-                  </a-alert>
-                </div>
+                    </div><!-- / trading params -->
 
-                <div v-if="executionModeUi === 'live' && canUseLiveTrading" class="execution-section-card">
-                  <div class="section-block-title">
-                    <span>{{ $t('trading-assistant.form.liveConnectionSectionTitle') }}</span>
-                    <span class="section-block-desc">{{ $t('trading-assistant.form.liveConnectionSectionDesc') }}</span>
-                  </div>
-
-                  <a-alert
-                    type="warning"
-                    show-icon
-                    class="section-inline-alert"
-                    style="margin-bottom: 16px;"
-                    :message="$t('trading-assistant.form.liveTradingConfigTitle')"
-                    :description="$t('trading-assistant.form.liveTradingConfigHint')" />
-
-                  <a-form-item :label="$t('trading-assistant.form.savedCredential')" class="compact-form-item">
-                    <a-select
-                      v-decorator="['credential_id', {
-                        rules: [{ required: true, message: $t('profile.exchange.noCredentialHint') }],
-                        getValueFromEvent: (val) => val || undefined
-                      }]"
-                      :placeholder="$t('trading-assistant.placeholders.selectSavedCredential')"
-                      allow-clear
-                      show-search
-                      option-filter-prop="children"
-                      :loading="loadingExchangeCredentials"
-                      @change="handleCredentialSelectChange">
-                      <a-select-option
-                        v-for="cred in filteredExchangeCredentials"
-                        :key="cred.id"
-                        :value="cred.id">
-                        {{ formatCredentialLabel(cred) }}
-                      </a-select-option>
-                    </a-select>
-                    <div class="form-item-hint ta-credential-actions" style="margin-top: 6px;">
-                      <a-button type="link" size="small" class="ta-add-cred-btn" @click="showExchangeAccountModal = true">
-                        <a-icon type="plus-circle" /> {{ $t('quickTrade.addAccountInline') }}
-                      </a-button>
-                      <span class="ta-credential-actions-sep">·</span>
-                      <router-link to="/profile?tab=exchange">
-                        <a-icon type="setting" style="margin-right: 4px;" />{{ $t('profile.exchange.goToManage') }}
-                      </router-link>
-                    </div>
+                    <a-divider />
+                    <p class="form-item-hint" style="margin-bottom: 10px;">
+                      {{ $t('trading-assistant.form.riskFromIndicatorInfo') }}
+                    </p>
                     <a-alert
-                      v-if="executionModeUi === 'live' && canUseLiveTrading && !loadingExchangeCredentials && filteredExchangeCredentials.length === 0"
+                      v-if="indicatorRiskMissingWarn"
                       type="warning"
                       show-icon
-                      style="margin-top: 10px;"
-                      :message="$t('trading-assistant.noCredentialForLive.title')"
-                    >
-                      <template slot="description">
-                        <span>{{ $t('trading-assistant.noCredentialForLive.desc') }}</span>
-                        <a-button type="primary" size="small" style="margin-left: 8px;" @click="showExchangeAccountModal = true">
-                          {{ $t('quickTrade.addAccountInline') }}
-                        </a-button>
-                      </template>
-                    </a-alert>
-                  </a-form-item>
+                      :message="$t('trading-assistant.form.riskFromIndicatorMissingWarn')"
+                      style="margin-bottom: 14px;"
+                    />
+
+                    <div class="ai-filter-box">
+                      <div class="ai-filter-header">
+                        <div class="ai-filter-title">
+                          <a-icon type="robot" />
+                          <span>{{ $t('trading-assistant.form.enableAiFilter') }}</span>
+                        </div>
+                        <a-switch :checked="aiFilterEnabledUi" @change="onAiFilterToggle" />
+                      </div>
+                      <div class="ai-filter-hint">{{ $t('trading-assistant.form.enableAiFilterHint') }}</div>
+                    </div>
+                  </a-form>
+                </div>
+
+                <div v-if="strategyMode === 'script'">
+                  <a-form :form="form" layout="vertical">
+                    <a-form-item :label="$t('trading-assistant.form.strategyName')">
+                      <a-input
+                        v-decorator="['strategy_name', { rules: [{ required: true, message: $t('trading-assistant.validation.strategyNameRequired') }] }]"
+                        :placeholder="$t('trading-assistant.placeholders.inputStrategyName')" />
+                    </a-form-item>
+
+                    <a-form-item :label="$t('trading-assistant.form.symbol')">
+                      <a-select
+                        v-decorator="['symbol', { rules: [{ required: true, message: $t('trading-assistant.validation.symbolRequired') }] }]"
+                        :placeholder="$t('trading-assistant.placeholders.selectSymbol')"
+                        show-search
+                        :filter-option="filterWatchlistOption"
+                        :loading="loadingWatchlist"
+                        @change="handleWatchlistSymbolChange"
+                        :getPopupContainer="(triggerNode) => triggerNode.parentNode">
+                        <a-select-option
+                          v-for="item in watchlist"
+                          :key="`${item.market}:${item.symbol}`"
+                          :value="`${item.market}:${item.symbol}`">
+                          <div class="symbol-option">
+                            <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
+                              {{ item.market }}
+                            </a-tag>
+                            <span class="symbol-name">{{ item.symbol }}</span>
+                            <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
+                          </div>
+                        </a-select-option>
+                      </a-select>
+                    </a-form-item>
+
+                    <a-row :gutter="16">
+                      <a-col :xs="24" :sm="12">
+                        <a-form-item :label="$t('trading-assistant.form.initialCapital')">
+                          <a-input-number
+                            v-decorator="['initial_capital', { initialValue: 1000, rules: [{ required: true }] }]"
+                            :min="10"
+                            :step="100"
+                            :precision="2"
+                            style="width: 100%"
+                          />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :xs="24" :sm="12">
+                        <a-form-item :label="$t('trading-assistant.form.klinePeriod')">
+                          <a-select
+                            v-decorator="['timeframe', { initialValue: '15m', rules: [{ required: true }] }]"
+                            :getPopupContainer="(triggerNode) => triggerNode.parentNode">
+                            <a-select-option value="1m">{{ $t('trading-assistant.form.timeframe1m') }}</a-select-option>
+                            <a-select-option value="5m">{{ $t('trading-assistant.form.timeframe5m') }}</a-select-option>
+                            <a-select-option value="15m">{{ $t('trading-assistant.form.timeframe15m') }}</a-select-option>
+                            <a-select-option value="30m">{{ $t('trading-assistant.form.timeframe30m') }}</a-select-option>
+                            <a-select-option value="1H">{{ $t('trading-assistant.form.timeframe1H') }}</a-select-option>
+                            <a-select-option value="4H">{{ $t('trading-assistant.form.timeframe4H') }}</a-select-option>
+                            <a-select-option value="1D">{{ $t('trading-assistant.form.timeframe1D') }}</a-select-option>
+                          </a-select>
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+
+                    <a-row :gutter="16">
+                      <a-col :xs="24" :sm="12">
+                        <a-form-item :label="$t('trading-assistant.form.marketType')">
+                          <a-radio-group v-decorator="['market_type', { initialValue: 'swap' }]">
+                            <a-radio value="swap">{{ $t('trading-assistant.form.marketTypeFutures') }}</a-radio>
+                            <a-radio value="spot">{{ $t('trading-assistant.form.marketTypeSpot') }}</a-radio>
+                          </a-radio-group>
+                        </a-form-item>
+                      </a-col>
+                      <a-col :xs="24" :sm="12">
+                        <a-form-item :label="`${$t('trading-assistant.form.leverage')} (x)`">
+                          <a-input-number
+                            v-decorator="['leverage', { initialValue: 5 }]"
+                            :min="1"
+                            :max="125"
+                            :step="1"
+                            style="width: 100%"
+                          />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+
+                    <a-form-item :label="$t('trading-assistant.form.tradeDirection')">
+                      <a-select
+                        v-decorator="['trade_direction', { initialValue: 'both' }]"
+                        :getPopupContainer="(triggerNode) => triggerNode.parentNode">
+                        <a-select-option value="long">{{ $t('trading-assistant.form.tradeDirectionLong') }}</a-select-option>
+                        <a-select-option value="short">{{ $t('trading-assistant.form.tradeDirectionShort') }}</a-select-option>
+                        <a-select-option value="both">{{ $t('trading-assistant.form.tradeDirectionBoth') }}</a-select-option>
+                      </a-select>
+                    </a-form-item>
+                  </a-form>
                 </div>
               </div>
-            </a-form>
-          </div>
-        </div>
-      </a-spin>
 
-      <template slot="footer">
-        <a-button @click="handleCloseModal">{{ $t('trading-assistant.form.cancel') }}</a-button>
-        <a-button v-show="currentStep > 0" @click="handlePrev">
-          {{ $t('trading-assistant.form.prev') }}
-        </a-button>
-        <a-button v-show="showStrategyFormNext" type="primary" @click="handleNext" :loading="saving">
-          {{ $t('trading-assistant.form.next') }}
-        </a-button>
-        <a-button v-show="showStrategyFormSubmit" type="primary" @click="handleSubmit" :loading="saving">
-          {{ editingStrategy ? $t('trading-assistant.form.confirmEdit') : $t('trading-assistant.form.confirmCreate') }}
-        </a-button>
-      </template>
-    </a-modal>
+              <!-- Step 1.5 (Script mode): Strategy Code Editor -->
+              <div v-if="strategyMode === 'script'" v-show="currentStep === 1" class="step-content">
+                <strategy-editor
+                  ref="strategyEditor"
+                  v-model="strategyCode"
+                  :is-dark="isDarkTheme"
+                  :user-id="1"
+                  :visible="showFormModal && strategyMode === 'script' && currentStep === 1"
+                  :initial-template-key="pendingScriptTemplateKey"
+                  @template-change="onScriptTemplateChange"
+                />
+              </div>
 
-    <!-- 添加交易对弹窗 -->
-    <a-modal
-      :title="$t('trading-assistant.form.addSymbolTitle')"
-      :visible="showAddSymbolModal"
-      @ok="handleConfirmAddSymbol"
-      @cancel="handleCloseAddSymbolModal"
-      :confirmLoading="addingSymbol"
-      width="600px"
-      :okText="$t('trading-assistant.form.confirmAdd')"
-      :cancelText="$t('trading-assistant.form.cancel')"
-      :maskClosable="false"
-      :keyboard="false">
-      <div class="add-symbol-modal-content">
-        <!-- 市场类型Tab -->
-        <a-tabs v-model="addSymbolMarket" @change="handleAddSymbolMarketChange" class="market-tabs">
-          <a-tab-pane
-            v-for="marketType in addSymbolMarketTypes"
-            :key="marketType.value"
-            :tab="$t(marketType.i18nKey || `dashboard.analysis.market.${marketType.value}`)">
-          </a-tab-pane>
-        </a-tabs>
-
-        <!-- 搜索输入框 -->
-        <div class="symbol-search-section">
-          <a-input-search
-            v-model="addSymbolKeyword"
-            :placeholder="$t('dashboard.analysis.modal.addStock.searchOrInputPlaceholder')"
-            @search="handleSearchSymbol"
-            @change="handleSymbolSearchInputChange"
-            :loading="searchingSymbol"
-            size="large"
-            allow-clear>
-            <a-button slot="enterButton" type="primary" icon="search">
-              {{ $t('dashboard.analysis.modal.addStock.search') }}
-            </a-button>
-          </a-input-search>
-        </div>
-
-        <!-- 搜索结果 -->
-        <div v-if="symbolSearchResults.length > 0" class="search-results-section">
-          <div class="section-title">
-            <a-icon type="search" style="margin-right: 4px;" />
-            {{ $t('dashboard.analysis.modal.addStock.searchResults') }}
-          </div>
-          <a-list
-            :data-source="symbolSearchResults"
-            :loading="searchingSymbol"
-            size="small"
-            class="symbol-list">
-            <a-list-item slot="renderItem" slot-scope="item" class="symbol-list-item" @click="handleSelectAddSymbol(item)">
-              <a-list-item-meta>
-                <template slot="title">
-                  <div class="symbol-item-content">
-                    <span class="symbol-code">{{ item.symbol }}</span>
-                    <span class="symbol-name">{{ item.name }}</span>
-                    <a-tag v-if="item.exchange" size="small" color="blue" style="margin-left: 8px;">
-                      {{ item.exchange }}
-                    </a-tag>
-                  </div>
-                </template>
-              </a-list-item-meta>
-            </a-list-item>
-          </a-list>
-        </div>
-
-        <!-- 热门标的 -->
-        <div class="hot-symbols-section">
-          <div class="section-title">
-            <a-icon type="fire" style="color: #ff4d4f; margin-right: 4px;" />
-            {{ $t('dashboard.analysis.modal.addStock.hotSymbols') }}
-          </div>
-          <a-spin :spinning="loadingHotSymbols">
-            <a-list
-              v-if="hotSymbols.length > 0"
-              :data-source="hotSymbols"
-              size="small"
-              class="symbol-list">
-              <a-list-item slot="renderItem" slot-scope="item" class="symbol-list-item" @click="handleSelectAddSymbol(item)">
-                <a-list-item-meta>
-                  <template slot="title">
-                    <div class="symbol-item-content">
-                      <span class="symbol-code">{{ item.symbol }}</span>
-                      <span class="symbol-name">{{ item.name }}</span>
-                      <a-tag v-if="item.exchange" size="small" color="orange" style="margin-left: 8px;">
-                        {{ item.exchange }}
-                      </a-tag>
+              <!-- 指标策略：执行/通知（步进 1）；脚本策略：步进 2 -->
+              <div
+                v-show="(strategyMode === 'script' && currentStep === 2) || (strategyMode !== 'script' && currentStep === 1)"
+                class="step-content">
+                <a-form :form="form" layout="vertical" autocomplete="off">
+                  <div class="execution-step-layout">
+                    <div class="execution-step-hero">
+                      <div class="simple-mode-kicker">{{ $t('trading-assistant.form.step2HeroTitle') }}</div>
+                      <div class="execution-step-hero-desc">{{ $t('trading-assistant.form.step2HeroDesc') }}</div>
                     </div>
-                  </template>
-                </a-list-item-meta>
-              </a-list-item>
-            </a-list>
-            <a-empty v-else :description="$t('dashboard.analysis.modal.addStock.noHotSymbols')" :image="false" />
-          </a-spin>
-        </div>
 
-        <!-- 选中的标的显示 -->
-        <div v-if="selectedAddSymbol" class="selected-symbol-section">
-          <div class="section-title">
-            <a-icon type="check-circle" style="color: #52c41a; margin-right: 4px;" />
-            {{ $t('dashboard.analysis.modal.addStock.selectedSymbol') }}
+                    <div class="execution-section-card">
+                      <div class="section-block-title">
+                        <span>{{ $t('trading-assistant.form.executionSectionTitle') }}</span>
+                        <span class="section-block-desc">{{ $t('trading-assistant.form.executionSectionDesc') }}</span>
+                      </div>
+
+                      <a-form-item :label="$t('trading-assistant.form.executionMode')" class="compact-form-item">
+                        <a-input
+                          v-decorator="['execution_mode', { initialValue: 'signal' }]"
+                          style="display: none;" />
+                        <div class="execution-mode-cards">
+                          <div
+                            :class="['execution-mode-card', { active: executionModeUi === 'signal' }]"
+                            @click="setExecutionModeUi('signal')">
+                            <div class="execution-mode-card-icon signal">
+                              <a-icon type="notification" />
+                            </div>
+                            <div class="execution-mode-card-body">
+                              <div class="execution-mode-card-title">{{ $t('trading-assistant.form.executionModeSignal') }}</div>
+                              <div class="execution-mode-card-desc">{{ $t('trading-assistant.form.executionModeSignalDesc') }}</div>
+                            </div>
+                            <a-icon v-if="executionModeUi === 'signal'" type="check-circle" theme="filled" class="execution-mode-card-check" />
+                          </div>
+
+                          <div
+                            :class="['execution-mode-card', 'live-card', { active: executionModeUi === 'live', disabled: !canUseLiveTrading }]"
+                            @click="canUseLiveTrading && setExecutionModeUi('live')">
+                            <div class="execution-mode-card-icon live">
+                              <a-icon type="thunderbolt" />
+                            </div>
+                            <div class="execution-mode-card-body">
+                              <div class="execution-mode-card-title">{{ $t('trading-assistant.form.executionModeLive') }}</div>
+                              <div class="execution-mode-card-desc">
+                                {{ canUseLiveTrading ? $t('trading-assistant.form.executionModeLiveDesc') : $t('trading-assistant.form.liveTradingNotSupportedHint') }}
+                              </div>
+                            </div>
+                            <a-icon
+                              v-if="executionModeUi === 'live' && canUseLiveTrading"
+                              type="check-circle"
+                              theme="filled"
+                              class="execution-mode-card-check" />
+                          </div>
+                        </div>
+                        <div v-if="!canUseLiveTrading" class="form-item-hint execution-warn-text">
+                          {{ $t('trading-assistant.form.liveTradingNotSupportedHint') }}
+                        </div>
+                      </a-form-item>
+
+                      <a-alert
+                        v-if="executionModeUi === 'live' && canUseLiveTrading"
+                        type="warning"
+                        showIcon
+                        class="section-inline-alert"
+                        :message="$t('trading-assistant.liveDisclaimer.title')"
+                        :description="$t('trading-assistant.liveDisclaimer.content')" />
+                    </div>
+
+                    <div class="execution-section-card">
+                      <div class="section-block-title">
+                        <span>{{ $t('trading-assistant.form.notificationSectionTitle') }}</span>
+                        <span class="section-block-desc">{{ $t('trading-assistant.form.notificationSectionDesc') }}</span>
+                      </div>
+
+                      <a-form-item :label="$t('trading-assistant.form.notifyChannels')" class="compact-form-item">
+                        <a-checkbox-group
+                          v-decorator="['notify_channels', { initialValue: ['browser'] }]"
+                          class="notify-channel-grid"
+                          @change="onNotifyChannelsChange">
+                          <a-checkbox value="browser">{{ $t('trading-assistant.notify.browser') }}</a-checkbox>
+                          <a-checkbox value="email">{{ $t('trading-assistant.notify.email') }}</a-checkbox>
+                          <a-checkbox value="telegram">{{ $t('trading-assistant.notify.telegram') }}</a-checkbox>
+                          <a-checkbox value="discord">{{ $t('trading-assistant.notify.discord') }}</a-checkbox>
+                          <a-checkbox value="webhook">{{ $t('trading-assistant.notify.webhook') }}</a-checkbox>
+                          <a-checkbox value="phone">{{ $t('trading-assistant.notify.phone') }}</a-checkbox>
+                        </a-checkbox-group>
+                        <div class="form-item-hint">{{ $t('trading-assistant.form.notifyChannelsHint') }}</div>
+                      </a-form-item>
+
+                      <a-alert
+                        v-if="unconfiguredChannels.length > 0"
+                        type="warning"
+                        showIcon
+                        class="section-inline-alert">
+                        <template #message>
+                          <span>
+                            {{ $t('trading-assistant.form.notificationConfigMissing', { channels: unconfiguredChannels.join(', ') }) }}
+                            <router-link to="/profile" style="margin-left: 8px">
+                              <a-icon type="setting" /> {{ $t('trading-assistant.form.goToProfile') }}
+                            </router-link>
+                          </span>
+                        </template>
+                      </a-alert>
+
+                      <a-alert
+                        v-else-if="notifyChannelsUi.length > 0 && !notifyChannelsUi.includes('browser') || (notifyChannelsUi.length > 1)"
+                        type="info"
+                        showIcon
+                        class="section-inline-alert">
+                        <template #message>
+                          <span>
+                            {{ $t('trading-assistant.form.notificationFromProfile') }}
+                            <router-link to="/profile" style="margin-left: 8px">
+                              <a-icon type="setting" /> {{ $t('trading-assistant.form.goToProfile') }}
+                            </router-link>
+                          </span>
+                        </template>
+                      </a-alert>
+                    </div>
+
+                    <div v-if="executionModeUi === 'live' && canUseLiveTrading" class="execution-section-card">
+                      <div class="section-block-title">
+                        <span>{{ $t('trading-assistant.form.liveConnectionSectionTitle') }}</span>
+                        <span class="section-block-desc">{{ $t('trading-assistant.form.liveConnectionSectionDesc') }}</span>
+                      </div>
+
+                      <a-alert
+                        type="warning"
+                        show-icon
+                        class="section-inline-alert"
+                        style="margin-bottom: 16px;"
+                        :message="$t('trading-assistant.form.liveTradingConfigTitle')"
+                        :description="$t('trading-assistant.form.liveTradingConfigHint')" />
+
+                      <a-form-item :label="$t('trading-assistant.form.savedCredential')" class="compact-form-item">
+                        <a-select
+                          v-decorator="['credential_id', {
+                            rules: [{ required: true, message: $t('profile.exchange.noCredentialHint') }],
+                            getValueFromEvent: (val) => val || undefined
+                          }]"
+                          :placeholder="$t('trading-assistant.placeholders.selectSavedCredential')"
+                          allow-clear
+                          show-search
+                          option-filter-prop="children"
+                          :loading="loadingExchangeCredentials"
+                          @change="handleCredentialSelectChange">
+                          <a-select-option
+                            v-for="cred in filteredExchangeCredentials"
+                            :key="cred.id"
+                            :value="cred.id">
+                            {{ formatCredentialLabel(cred) }}
+                          </a-select-option>
+                        </a-select>
+                        <div class="form-item-hint ta-credential-actions" style="margin-top: 6px;">
+                          <a-button type="link" size="small" class="ta-add-cred-btn" @click="showExchangeAccountModal = true">
+                            <a-icon type="plus-circle" /> {{ $t('quickTrade.addAccountInline') }}
+                          </a-button>
+                          <span class="ta-credential-actions-sep">·</span>
+                          <router-link to="/profile?tab=exchange">
+                            <a-icon type="setting" style="margin-right: 4px;" />{{ $t('profile.exchange.goToManage') }}
+                          </router-link>
+                        </div>
+                        <a-alert
+                          v-if="executionModeUi === 'live' && canUseLiveTrading && !loadingExchangeCredentials && filteredExchangeCredentials.length === 0"
+                          type="warning"
+                          show-icon
+                          style="margin-top: 10px;"
+                          :message="$t('trading-assistant.noCredentialForLive.title')"
+                        >
+                          <template slot="description">
+                            <span>{{ $t('trading-assistant.noCredentialForLive.desc') }}</span>
+                            <a-button type="primary" size="small" style="margin-left: 8px;" @click="showExchangeAccountModal = true">
+                              {{ $t('quickTrade.addAccountInline') }}
+                            </a-button>
+                          </template>
+                        </a-alert>
+                      </a-form-item>
+                    </div>
+                  </div>
+                </a-form>
+              </div>
+            </div>
+          </a-spin>
+
+          <template slot="footer">
+            <a-button @click="handleCloseModal">{{ $t('trading-assistant.form.cancel') }}</a-button>
+            <a-button v-show="currentStep > 0" @click="handlePrev">
+              {{ $t('trading-assistant.form.prev') }}
+            </a-button>
+            <a-button v-show="showStrategyFormNext" type="primary" @click="handleNext" :loading="saving">
+              {{ $t('trading-assistant.form.next') }}
+            </a-button>
+            <a-button v-show="showStrategyFormSubmit" type="primary" @click="handleSubmit" :loading="saving">
+              {{ editingStrategy ? $t('trading-assistant.form.confirmEdit') : $t('trading-assistant.form.confirmCreate') }}
+            </a-button>
+          </template>
+        </a-modal>
+
+        <!-- 添加交易对弹窗 -->
+        <a-modal
+          :title="$t('trading-assistant.form.addSymbolTitle')"
+          :visible="showAddSymbolModal"
+          @ok="handleConfirmAddSymbol"
+          @cancel="handleCloseAddSymbolModal"
+          :confirmLoading="addingSymbol"
+          width="600px"
+          :okText="$t('trading-assistant.form.confirmAdd')"
+          :cancelText="$t('trading-assistant.form.cancel')"
+          :maskClosable="false"
+          :keyboard="false">
+          <div class="add-symbol-modal-content">
+            <!-- 市场类型Tab -->
+            <a-tabs v-model="addSymbolMarket" @change="handleAddSymbolMarketChange" class="market-tabs">
+              <a-tab-pane
+                v-for="marketType in addSymbolMarketTypes"
+                :key="marketType.value"
+                :tab="$t(marketType.i18nKey || `dashboard.analysis.market.${marketType.value}`)">
+              </a-tab-pane>
+            </a-tabs>
+
+            <!-- 搜索输入框 -->
+            <div class="symbol-search-section">
+              <a-input-search
+                v-model="addSymbolKeyword"
+                :placeholder="$t('dashboard.analysis.modal.addStock.searchOrInputPlaceholder')"
+                @search="handleSearchSymbol"
+                @change="handleSymbolSearchInputChange"
+                :loading="searchingSymbol"
+                size="large"
+                allow-clear>
+                <a-button slot="enterButton" type="primary" icon="search">
+                  {{ $t('dashboard.analysis.modal.addStock.search') }}
+                </a-button>
+              </a-input-search>
+            </div>
+
+            <!-- 搜索结果 -->
+            <div v-if="symbolSearchResults.length > 0" class="search-results-section">
+              <div class="section-title">
+                <a-icon type="search" style="margin-right: 4px;" />
+                {{ $t('dashboard.analysis.modal.addStock.searchResults') }}
+              </div>
+              <a-list
+                :data-source="symbolSearchResults"
+                :loading="searchingSymbol"
+                size="small"
+                class="symbol-list">
+                <a-list-item slot="renderItem" slot-scope="item" class="symbol-list-item" @click="handleSelectAddSymbol(item)">
+                  <a-list-item-meta>
+                    <template slot="title">
+                      <div class="symbol-item-content">
+                        <span class="symbol-code">{{ item.symbol }}</span>
+                        <span class="symbol-name">{{ item.name }}</span>
+                        <a-tag v-if="item.exchange" size="small" color="blue" style="margin-left: 8px;">
+                          {{ item.exchange }}
+                        </a-tag>
+                      </div>
+                    </template>
+                  </a-list-item-meta>
+                </a-list-item>
+              </a-list>
+            </div>
+
+            <!-- 热门标的 -->
+            <div class="hot-symbols-section">
+              <div class="section-title">
+                <a-icon type="fire" style="color: #ff4d4f; margin-right: 4px;" />
+                {{ $t('dashboard.analysis.modal.addStock.hotSymbols') }}
+              </div>
+              <a-spin :spinning="loadingHotSymbols">
+                <a-list
+                  v-if="hotSymbols.length > 0"
+                  :data-source="hotSymbols"
+                  size="small"
+                  class="symbol-list">
+                  <a-list-item slot="renderItem" slot-scope="item" class="symbol-list-item" @click="handleSelectAddSymbol(item)">
+                    <a-list-item-meta>
+                      <template slot="title">
+                        <div class="symbol-item-content">
+                          <span class="symbol-code">{{ item.symbol }}</span>
+                          <span class="symbol-name">{{ item.name }}</span>
+                          <a-tag v-if="item.exchange" size="small" color="orange" style="margin-left: 8px;">
+                            {{ item.exchange }}
+                          </a-tag>
+                        </div>
+                      </template>
+                    </a-list-item-meta>
+                  </a-list-item>
+                </a-list>
+                <a-empty v-else :description="$t('dashboard.analysis.modal.addStock.noHotSymbols')" :image="false" />
+              </a-spin>
+            </div>
+
+            <!-- 选中的标的显示 -->
+            <div v-if="selectedAddSymbol" class="selected-symbol-section">
+              <div class="section-title">
+                <a-icon type="check-circle" style="color: #52c41a; margin-right: 4px;" />
+                {{ $t('dashboard.analysis.modal.addStock.selectedSymbol') }}
+              </div>
+              <div class="selected-symbol-info">
+                <a-tag :color="getMarketColor(addSymbolMarket)" style="margin-right: 8px;">{{ addSymbolMarket }}</a-tag>
+                <span class="symbol-code">{{ selectedAddSymbol.symbol }}</span>
+                <span v-if="selectedAddSymbol.name" class="symbol-name">{{ selectedAddSymbol.name }}</span>
+              </div>
+            </div>
           </div>
-          <div class="selected-symbol-info">
-            <a-tag :color="getMarketColor(addSymbolMarket)" style="margin-right: 8px;">{{ addSymbolMarket }}</a-tag>
-            <span class="symbol-code">{{ selectedAddSymbol.symbol }}</span>
-            <span v-if="selectedAddSymbol.name" class="symbol-name">{{ selectedAddSymbol.name }}</span>
-          </div>
-        </div>
-      </div>
-    </a-modal>
+        </a-modal>
       </a-tab-pane>
     </a-tabs>
 
@@ -1731,6 +1468,7 @@ export default {
   },
   computed: {
     showAssistantGuide () {
+      if (this.$route.meta && this.$route.meta.scriptStrategiesOnly) return false
       return !this.assistantGuideDismissed
     },
     assistantGuideStorageKey () {
@@ -1754,6 +1492,18 @@ export default {
     },
     showStrategyFormSubmit () {
       return this.currentStep === this.strategyFormLastStepIndex
+    },
+    /** 指标代码中未配置止损/止盈/移动止盈时提示（依赖 # @strategy，与指标 IDE 一致） */
+    indicatorRiskMissingWarn () {
+      if (!this.showFormModal || this.strategyMode === 'script') return false
+      if (this.currentStep !== 0) return false
+      const ind = this.selectedIndicator
+      if (!ind || !ind.code) return false
+      const r = this.buildRiskPositionFromIndicatorCode(ind.code)
+      const hasSl = Number(r.stop_loss_pct) > 0
+      const hasTp = Number(r.take_profit_pct) > 0
+      const hasTrail = !!r.trailing_enabled && Number(r.trailing_stop_pct) > 0
+      return !hasSl && !hasTp && !hasTrail
     },
     isDarkTheme () {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
@@ -1939,6 +1689,27 @@ export default {
         }
       })
     },
+    isScriptStrategiesOnlyPage () {
+      return !!(this.$route.meta && this.$route.meta.scriptStrategiesOnly)
+    },
+    isIndicatorSignalOnlyPage () {
+      return !!(this.$route.meta && this.$route.meta.indicatorSignalOnly)
+    },
+    modeSelectorVariant () {
+      if (this.isScriptStrategiesOnlyPage) return 'script'
+      return 'all'
+    },
+    /** 按路由过滤：策略与实盘页不展示脚本策略；脚本专页只展示脚本策略 */
+    strategiesForPage () {
+      const list = this.strategies || []
+      if (this.isIndicatorSignalOnlyPage) {
+        return list.filter(s => s.strategy_mode !== 'script')
+      }
+      if (this.isScriptStrategiesOnlyPage) {
+        return list.filter(s => s.strategy_mode === 'script')
+      }
+      return list
+    },
     // 策略分组显示
     groupedStrategies () {
       if (this.groupByMode === 'symbol') {
@@ -1951,7 +1722,7 @@ export default {
       const groups = {}
       const ungrouped = []
 
-      for (const s of this.strategies) {
+      for (const s of this.strategiesForPage) {
         const groupId = s.strategy_group_id
         if (groupId && groupId.trim()) {
           if (!groups[groupId]) {
@@ -1989,7 +1760,7 @@ export default {
       const groups = {}
       const ungrouped = []
 
-      for (const s of this.strategies) {
+      for (const s of this.strategiesForPage) {
         const tc = s.trading_config || {}
         const symbol = tc.symbol
         if (symbol && symbol.trim()) {
@@ -2059,6 +1830,13 @@ export default {
       return missing
     }
   },
+  watch: {
+    '$route.path' (to, from) {
+      if (!from || to === from) return
+      this.selectedStrategy = null
+      this.loadStrategies()
+    }
+  },
   data () {
     return {
       topTab: 'overview',
@@ -2098,10 +1876,6 @@ export default {
       editingStrategy: null, // 正在编辑的策略
       currentEquity: null, // 当前净值
       equityPollingTimer: null, // 净值轮询定时器
-      // Backtest-like UI state (same as indicator-analysis BacktestModal step1)
-      backtestCollapseKeys: ['risk'],
-      trailingEnabledUi: false,
-      entryPctMaxUi: 100,
       aiFilterEnabledUi: false,
       isEditMode: false, // 是否为编辑模式
       supportedIPs: [], // 白名单IP列表
@@ -2160,6 +1934,9 @@ export default {
   },
   mounted () {
     this.restoreAssistantGuidePreference()
+    if (this.isScriptStrategiesOnlyPage) {
+      this.topTab = 'strategy'
+    }
     if (this.$route.query.tab === 'strategy' || this.$route.query.mode === 'create') {
       this.topTab = 'strategy'
     }
@@ -2168,10 +1945,19 @@ export default {
 
     if (this.$route.query.mode === 'create') {
       this.$nextTick(() => {
+        if (this.isScriptStrategiesOnlyPage) {
+          this.strategyMode = 'script'
+          this.pendingScriptTemplateKey = ''
+          this._openCreateModal()
+          return
+        }
         const indicatorId = this.$route.query.indicator_id
         if (indicatorId) {
           this.strategyMode = 'signal'
           this.pendingRouteIndicatorId = String(indicatorId)
+          this._openCreateModal()
+        } else if (this.isIndicatorSignalOnlyPage) {
+          this.strategyMode = 'signal'
           this._openCreateModal()
         } else {
           this.handleCreateStrategy()
@@ -2814,11 +2600,43 @@ export default {
         this.$message.error(this.$t('trading-assistant.messages.loadFailed'))
       } finally {
         this.loading = false
+        this.applyRouteStrategyQuery()
+      }
+    },
+    applyRouteStrategyQuery () {
+      const q = this.$route.query || {}
+      const sid = q.strategy_id ? Number(q.strategy_id) : 0
+      if (!sid || Number.isNaN(sid)) return
+      const found = (this.strategies || []).find(s => s.id === sid)
+      if (!found) return
+      if (this.isIndicatorSignalOnlyPage && found.strategy_mode === 'script') return
+      if (this.isScriptStrategiesOnlyPage && found.strategy_mode !== 'script') return
+      this.topTab = 'strategy'
+      this.handleSelectStrategy(found)
+      if (q.mode === 'edit') {
+        this.$nextTick(() => this.handleEditStrategy(found))
       }
     },
     handleCreateStrategy () {
       this.isEditMode = false
       this.editingStrategy = null
+      if (this.isIndicatorSignalOnlyPage) {
+        this.strategyMode = 'signal'
+        this.pendingScriptTemplateKey = ''
+        this.strategyCode = ''
+        this.showModeSelector = false
+        this.showFormModal = false
+        this._openCreateModal()
+        return
+      }
+      if (this.isScriptStrategiesOnlyPage) {
+        this.strategyMode = ''
+        this.strategyCode = ''
+        this.pendingScriptTemplateKey = ''
+        this.showModeSelector = true
+        this.showFormModal = false
+        return
+      }
       this.strategyMode = ''
       this.strategyCode = ''
       this.pendingScriptTemplateKey = ''
@@ -2847,9 +2665,6 @@ export default {
       this.executionModeUi = 'signal'
       this.notifyChannelsUi = ['browser']
       this.saveCredentialUi = false
-      this.backtestCollapseKeys = ['risk']
-      this.trailingEnabledUi = false
-      this.entryPctMaxUi = 100
       this.aiFilterEnabledUi = false
       this.selectedMarketCategory = 'Crypto'
       this.selectedSymbols = []
@@ -2904,9 +2719,6 @@ export default {
       this.selectedIndicator = null
       this.connectionTestResult = null
       this.form.resetFields()
-      this.backtestCollapseKeys = ['risk']
-      this.trailingEnabledUi = false
-      this.entryPctMaxUi = 100
       this.aiFilterEnabledUi = false
 
       // IMPORTANT:
@@ -2941,53 +2753,16 @@ export default {
       const notifyChannels = (strategy.notification_config && strategy.notification_config.channels) || ['browser']
       this.notifyChannelsUi = Array.isArray(notifyChannels) ? notifyChannels : ['browser']
 
-      // Initialize trading config UI states first
-      let trailingEnabled = false
       // Initialize AI filter state
       let aiFilterEnabled = false
 
       if (strategy.trading_config) {
         const tc = strategy.trading_config || {}
-        const trailingObj = (tc.trailing && typeof tc.trailing === 'object') ? tc.trailing : null
-        trailingEnabled = (tc.trailing_enabled !== undefined) ? !!tc.trailing_enabled : !!(trailingObj && trailingObj.enabled)
-
-        // Check AI filter - handle various truthy values
         const aiVal = tc.enable_ai_filter
         aiFilterEnabled = aiVal === true || aiVal === 'true' || aiVal === 1 || aiVal === '1'
-
-        // Determine which collapse panels to open based on config to ensure fields are rendered
-        const scaleObj = (tc.scale && typeof tc.scale === 'object') ? tc.scale : null
-        const posObj = (tc.position && typeof tc.position === 'object') ? tc.position : null
-        const panels = new Set(['risk']) // Always keep risk panel open or as default
-
-        // Check Scale panel content
-        if (
-          tc.trend_add_enabled || tc.dca_add_enabled ||
-          (scaleObj && (scaleObj.trendAdd?.enabled || scaleObj.dcaAdd?.enabled))
-        ) {
-          panels.add('scale')
-        }
-
-        // Check Reduce panel content
-        if (
-          tc.trend_reduce_enabled || tc.adverse_reduce_enabled ||
-          (scaleObj && (scaleObj.trendReduce?.enabled || scaleObj.adverseReduce?.enabled))
-        ) {
-          panels.add('reduce')
-        }
-
-        // Check Position panel content - open if entry_pct is customized or if we just want to show it
-        // Considering "Entry sizing" parameter missing issue, better to expand it if data exists
-        if (tc.entry_pct !== undefined || (posObj && posObj.entryPct !== undefined)) {
-          panels.add('position')
-        }
-
-        this.backtestCollapseKeys = Array.from(panels)
       }
-      this.trailingEnabledUi = trailingEnabled
       this.aiFilterEnabledUi = aiFilterEnabled
 
-      // Wait for DOM update to ensure v-if fields (trailing) and Collapse panels are rendered
       await this.$nextTick()
 
       // First, set the "switch" fields that might control v-if visibility of other fields
@@ -3121,12 +2896,9 @@ export default {
         }
       }
 
-      // 加载交易配置
+      // 加载交易配置（风控/仓位由指标 # @strategy 决定，此处不再写入已删除的表单项）
       if (strategy.trading_config) {
         const tc = strategy.trading_config || {}
-        const trailingObj = (tc.trailing && typeof tc.trailing === 'object') ? tc.trailing : null
-        const scaleObj = (tc.scale && typeof tc.scale === 'object') ? tc.scale : null
-        const posObj = (tc.position && typeof tc.position === 'object') ? tc.position : null
 
         // 加载截面策略配置
         const strategyType = tc.strategy_type || strategy.strategy_type || 'single'
@@ -3160,12 +2932,6 @@ export default {
           this.crossSectionalSymbols = []
         }
 
-        // Backward compatible: nested configs from indicator-analysis backtest modal
-        const trendAddObj = scaleObj && scaleObj.trendAdd ? scaleObj.trendAdd : null
-        const dcaAddObj = scaleObj && scaleObj.dcaAdd ? scaleObj.dcaAdd : null
-        const trendReduceObj = scaleObj && scaleObj.trendReduce ? scaleObj.trendReduce : null
-        const adverseReduceObj = scaleObj && scaleObj.adverseReduce ? scaleObj.adverseReduce : null
-
         // Backward compatible: show symbol as "Market:SYMBOL" for watchlist dropdown
         const rawSymbol = tc.symbol
         const symbolValue = (typeof rawSymbol === 'string' && rawSymbol.includes(':'))
@@ -3179,37 +2945,7 @@ export default {
           trade_direction: tc.trade_direction || 'long',
           timeframe: tc.timeframe || '1H',
           market_type: (tc.market_type === 'futures' ? 'swap' : (tc.market_type || 'swap')),
-          take_profit_pct: tc.take_profit_pct || 0,
-          stop_loss_pct: tc.stop_loss_pct || 0,
-          // Trailing: support both flat fields and nested trailing object
-          trailing_enabled: trailingEnabled,
-          trailing_stop_pct: (tc.trailing_stop_pct !== undefined) ? (tc.trailing_stop_pct || 0) : (trailingObj ? (trailingObj.pct || 0) : 0),
-          trailing_activation_pct: (tc.trailing_activation_pct !== undefined) ? (tc.trailing_activation_pct || 0) : (trailingObj ? (trailingObj.activationPct || 0) : 0),
-          // Scale / reduce: support both flat fields and nested objects
-          trend_add_enabled: (tc.trend_add_enabled !== undefined) ? !!tc.trend_add_enabled : !!(trendAddObj && trendAddObj.enabled),
-          trend_add_step_pct: (tc.trend_add_step_pct !== undefined) ? (tc.trend_add_step_pct || 0) : (trendAddObj ? (trendAddObj.stepPct || 0) : 0),
-          trend_add_size_pct: (tc.trend_add_size_pct !== undefined) ? (tc.trend_add_size_pct || 0) : (trendAddObj ? (trendAddObj.sizePct || 0) : 0),
-          trend_add_max_times: (tc.trend_add_max_times !== undefined) ? (tc.trend_add_max_times || 0) : (trendAddObj ? (trendAddObj.maxTimes || 0) : 0),
-          dca_add_enabled: (tc.dca_add_enabled !== undefined) ? !!tc.dca_add_enabled : !!(dcaAddObj && dcaAddObj.enabled),
-          dca_add_step_pct: (tc.dca_add_step_pct !== undefined) ? (tc.dca_add_step_pct || 0) : (dcaAddObj ? (dcaAddObj.stepPct || 0) : 0),
-          dca_add_size_pct: (tc.dca_add_size_pct !== undefined) ? (tc.dca_add_size_pct || 0) : (dcaAddObj ? (dcaAddObj.sizePct || 0) : 0),
-          dca_add_max_times: (tc.dca_add_max_times !== undefined) ? (tc.dca_add_max_times || 0) : (dcaAddObj ? (dcaAddObj.maxTimes || 0) : 0),
-          trend_reduce_enabled: (tc.trend_reduce_enabled !== undefined) ? !!tc.trend_reduce_enabled : !!(trendReduceObj && trendReduceObj.enabled),
-          trend_reduce_step_pct: (tc.trend_reduce_step_pct !== undefined) ? (tc.trend_reduce_step_pct || 0) : (trendReduceObj ? (trendReduceObj.stepPct || 0) : 0),
-          trend_reduce_size_pct: (tc.trend_reduce_size_pct !== undefined) ? (tc.trend_reduce_size_pct || 0) : (trendReduceObj ? (trendReduceObj.sizePct || 0) : 0),
-          trend_reduce_max_times: (tc.trend_reduce_max_times !== undefined) ? (tc.trend_reduce_max_times || 0) : (trendReduceObj ? (trendReduceObj.maxTimes || 0) : 0),
-          adverse_reduce_enabled: (tc.adverse_reduce_enabled !== undefined) ? !!tc.adverse_reduce_enabled : !!(adverseReduceObj && adverseReduceObj.enabled),
-          adverse_reduce_step_pct: (tc.adverse_reduce_step_pct !== undefined) ? (tc.adverse_reduce_step_pct || 0) : (adverseReduceObj ? (adverseReduceObj.stepPct || 0) : 0),
-          adverse_reduce_size_pct: (tc.adverse_reduce_size_pct !== undefined) ? (tc.adverse_reduce_size_pct || 0) : (adverseReduceObj ? (adverseReduceObj.sizePct || 0) : 0),
-          adverse_reduce_max_times: (tc.adverse_reduce_max_times !== undefined) ? (tc.adverse_reduce_max_times || 0) : (adverseReduceObj ? (adverseReduceObj.maxTimes || 0) : 0),
-          entry_pct: (tc.entry_pct === 0 || tc.entry_pct) ? tc.entry_pct : (posObj && posObj.entryPct ? posObj.entryPct : 100),
-          // AI智能决策过滤
           enable_ai_filter: aiFilterEnabled
-        })
-
-        this.$nextTick(() => {
-          this.recalcEntryPctMaxUi()
-          this.normalizeEntryPct()
         })
       }
     },
@@ -3297,9 +3033,6 @@ export default {
       this.lastAutoStrategyName = ''
       this.lastAutoScriptStrategyName = ''
       this.scriptTemplateKeyForPayload = ''
-      this.backtestCollapseKeys = ['risk']
-      this.trailingEnabledUi = false
-      this.entryPctMaxUi = 100
       this.aiFilterEnabledUi = false
       this.executionModeUi = 'signal'
       this.liveDisclaimerAckUi = false
@@ -3607,67 +3340,79 @@ export default {
         })
       }
     },
-    // --- Backtest-like UI helpers (Ant Form getFieldValue is not reactive) ---
-    recalcEntryPctMaxUi () {
-      if (!this.form) {
-        this.entryPctMaxUi = 100
-        return
+    /** 与指标 IDE / 后端 StrategyConfigParser：从行首解析 # @strategy key value */
+    parseStrategyAnnotationRaw (code) {
+      const lineRe = /^#\s*@strategy\s+(\w+)\s*:?\s*(\S+)/i
+      const config = {}
+      if (!code) return config
+      for (const rawLine of code.split('\n')) {
+        const line = rawLine.trim()
+        const m = line.match(lineRe)
+        if (m) config[m[1]] = m[2]
       }
-      const trendOn = !!this.form.getFieldValue('trend_add_enabled')
-      const dcaOn = !!this.form.getFieldValue('dca_add_enabled')
-      const trendTimes = Number(this.form.getFieldValue('trend_add_max_times') || 0)
-      const dcaTimes = Number(this.form.getFieldValue('dca_add_max_times') || 0)
-      const trendSizePct = Number(this.form.getFieldValue('trend_add_size_pct') || 0)
-      const dcaSizePct = Number(this.form.getFieldValue('dca_add_size_pct') || 0)
+      return config
+    },
+    /**
+     * 将 @strategy 转为 trading_config 扁平字段（比例可与后端 _to_ratio 兼容：0~1 或百分数）
+     */
+    buildRiskPositionFromIndicatorCode (code) {
+      const raw = this.parseStrategyAnnotationRaw(code || '')
+      const toFloat = (v) => {
+        const f = parseFloat(v)
+        return isNaN(f) ? null : f
+      }
+      const toBool = (v) => ['true', '1', 'yes', 'on'].includes(String(v).toLowerCase())
 
-      const reservePct = (trendOn ? trendTimes * trendSizePct : 0) + (dcaOn ? dcaTimes * dcaSizePct : 0)
-      const maxEntryPct = Math.max(0, Math.min(100, 100 - reservePct))
-      this.entryPctMaxUi = maxEntryPct
-    },
-    normalizeEntryPct () {
-      if (!this.form) return
-      const current = Number(this.form.getFieldValue('entry_pct') || 0)
-      const max = Number(this.entryPctMaxUi || 100)
-      if (current > max) {
-        this.form.setFieldsValue({ entry_pct: max })
+      const sl = toFloat(raw.stopLossPct) ?? 0
+      const tp = toFloat(raw.takeProfitPct) ?? 0
+      const entryRaw = toFloat(raw.entryPct)
+      let entryPctOut
+      if (entryRaw == null || entryRaw === 0) {
+        entryPctOut = 100
+      } else if (entryRaw > 1 && entryRaw <= 100) {
+        entryPctOut = entryRaw
+      } else {
+        entryPctOut = entryRaw <= 1 ? entryRaw : 1
+      }
+
+      const trailingEnabled = raw.trailingEnabled != null ? toBool(raw.trailingEnabled) : false
+      const trailingStopPct = toFloat(raw.trailingStopPct) ?? 0
+      const trailingActivationPct = toFloat(raw.trailingActivationPct) ?? 0
+
+      return {
+        stop_loss_pct: sl,
+        take_profit_pct: tp,
+        trailing_enabled: trailingEnabled,
+        trailing_stop_pct: trailingStopPct,
+        trailing_activation_pct: trailingActivationPct,
+        entry_pct: entryPctOut
       }
     },
-    onTrendAddToggle (checked) {
-      if (!this.form) return
-      // Mutual exclusion to avoid double scale-in on the same candle.
-      if (checked) {
-        this.form.setFieldsValue({ dca_add_enabled: false })
-      }
-      this.$nextTick(() => {
-        this.recalcEntryPctMaxUi()
-        this.normalizeEntryPct()
-      })
-    },
-    onDcaAddToggle (checked) {
-      if (!this.form) return
-      if (checked) {
-        this.form.setFieldsValue({ trend_add_enabled: false })
-      }
-      this.$nextTick(() => {
-        this.recalcEntryPctMaxUi()
-        this.normalizeEntryPct()
-      })
-    },
-    onScaleParamsChange () {
-      this.$nextTick(() => {
-        this.recalcEntryPctMaxUi()
-        this.normalizeEntryPct()
-      })
-    },
-    onEntryPctChange () {
-      this.$nextTick(() => this.normalizeEntryPct())
-    },
-    onTrailingToggle (checked) {
-      if (!this.form) return
-      this.trailingEnabledUi = !!checked
-      // Only show fields when enabled; also clear values when disabled.
-      if (!checked) {
-        this.form.setFieldsValue({ trailing_stop_pct: 0, trailing_activation_pct: 0 })
+    /** 编辑策略时保留库里的加减仓配置；新建时全部为关/0 */
+    extractScaleReduceFlatFromTradingConfig (tc) {
+      tc = tc || {}
+      const scaleObj = (tc.scale && typeof tc.scale === 'object') ? tc.scale : null
+      const trendAddObj = scaleObj && scaleObj.trendAdd ? scaleObj.trendAdd : null
+      const dcaAddObj = scaleObj && scaleObj.dcaAdd ? scaleObj.dcaAdd : null
+      const trendReduceObj = scaleObj && scaleObj.trendReduce ? scaleObj.trendReduce : null
+      const adverseReduceObj = scaleObj && scaleObj.adverseReduce ? scaleObj.adverseReduce : null
+      return {
+        trend_add_enabled: (tc.trend_add_enabled !== undefined) ? !!tc.trend_add_enabled : !!(trendAddObj && trendAddObj.enabled),
+        trend_add_step_pct: (tc.trend_add_step_pct !== undefined) ? (tc.trend_add_step_pct || 0) : (trendAddObj ? (trendAddObj.stepPct || 0) : 0),
+        trend_add_size_pct: (tc.trend_add_size_pct !== undefined) ? (tc.trend_add_size_pct || 0) : (trendAddObj ? (trendAddObj.sizePct || 0) : 0),
+        trend_add_max_times: (tc.trend_add_max_times !== undefined) ? (tc.trend_add_max_times || 0) : (trendAddObj ? (trendAddObj.maxTimes || 0) : 0),
+        dca_add_enabled: (tc.dca_add_enabled !== undefined) ? !!tc.dca_add_enabled : !!(dcaAddObj && dcaAddObj.enabled),
+        dca_add_step_pct: (tc.dca_add_step_pct !== undefined) ? (tc.dca_add_step_pct || 0) : (dcaAddObj ? (dcaAddObj.stepPct || 0) : 0),
+        dca_add_size_pct: (tc.dca_add_size_pct !== undefined) ? (tc.dca_add_size_pct || 0) : (dcaAddObj ? (dcaAddObj.sizePct || 0) : 0),
+        dca_add_max_times: (tc.dca_add_max_times !== undefined) ? (tc.dca_add_max_times || 0) : (dcaAddObj ? (dcaAddObj.maxTimes || 0) : 0),
+        trend_reduce_enabled: (tc.trend_reduce_enabled !== undefined) ? !!tc.trend_reduce_enabled : !!(trendReduceObj && trendReduceObj.enabled),
+        trend_reduce_step_pct: (tc.trend_reduce_step_pct !== undefined) ? (tc.trend_reduce_step_pct || 0) : (trendReduceObj ? (trendReduceObj.stepPct || 0) : 0),
+        trend_reduce_size_pct: (tc.trend_reduce_size_pct !== undefined) ? (tc.trend_reduce_size_pct || 0) : (trendReduceObj ? (trendReduceObj.sizePct || 0) : 0),
+        trend_reduce_max_times: (tc.trend_reduce_max_times !== undefined) ? (tc.trend_reduce_max_times || 0) : (trendReduceObj ? (trendReduceObj.maxTimes || 0) : 0),
+        adverse_reduce_enabled: (tc.adverse_reduce_enabled !== undefined) ? !!tc.adverse_reduce_enabled : !!(adverseReduceObj && adverseReduceObj.enabled),
+        adverse_reduce_step_pct: (tc.adverse_reduce_step_pct !== undefined) ? (tc.adverse_reduce_step_pct || 0) : (adverseReduceObj ? (adverseReduceObj.stepPct || 0) : 0),
+        adverse_reduce_size_pct: (tc.adverse_reduce_size_pct !== undefined) ? (tc.adverse_reduce_size_pct || 0) : (adverseReduceObj ? (adverseReduceObj.sizePct || 0) : 0),
+        adverse_reduce_max_times: (tc.adverse_reduce_max_times !== undefined) ? (tc.adverse_reduce_max_times || 0) : (adverseReduceObj ? (adverseReduceObj.maxTimes || 0) : 0)
       }
     },
     onAiFilterToggle (checked) {
@@ -3997,17 +3742,6 @@ export default {
             }
           } catch (e) { }
 
-          this.backtestCollapseKeys = ['risk']
-          try {
-            this.trailingEnabledUi = !!this.form.getFieldValue('trailing_enabled')
-          } catch (e) {
-            this.trailingEnabledUi = false
-          }
-          this.$nextTick(() => {
-            this.recalcEntryPctMaxUi()
-            this.normalizeEntryPct()
-          })
-
           try {
             const execMode = this.form.getFieldValue('execution_mode') || 'signal'
             this.executionModeUi = execMode
@@ -4181,6 +3915,12 @@ export default {
               if (leverage > 125) leverage = 125
             }
 
+            const riskFromCode = this.buildRiskPositionFromIndicatorCode(indicator.code || '')
+            const prevTc = this.editingStrategy && this.editingStrategy.trading_config
+              ? this.editingStrategy.trading_config
+              : {}
+            const scaleReduceFlat = this.extractScaleReduceFlatFromTradingConfig(prevTc)
+
             // 构建基础 payload
             const basePayload = {
               strategy_name: values.strategy_name,
@@ -4223,29 +3963,15 @@ export default {
                 // Order execution settings moved to backend env config (ORDER_MODE, MAKER_WAIT_SEC, MAKER_OFFSET_BPS)
                 margin_mode: 'cross',
                 signal_mode: 'confirmed',
-                // Backtest-like configs
-                take_profit_pct: values.take_profit_pct || 0,
-                stop_loss_pct: values.stop_loss_pct || 0,
-                trailing_enabled: !!values.trailing_enabled,
-                trailing_stop_pct: values.trailing_stop_pct || 0,
-                trailing_activation_pct: values.trailing_activation_pct || 0,
-                trend_add_enabled: !!values.trend_add_enabled,
-                trend_add_step_pct: values.trend_add_step_pct || 0,
-                trend_add_size_pct: values.trend_add_size_pct || 0,
-                trend_add_max_times: values.trend_add_max_times || 0,
-                dca_add_enabled: !!values.dca_add_enabled,
-                dca_add_step_pct: values.dca_add_step_pct || 0,
-                dca_add_size_pct: values.dca_add_size_pct || 0,
-                dca_add_max_times: values.dca_add_max_times || 0,
-                trend_reduce_enabled: !!values.trend_reduce_enabled,
-                trend_reduce_step_pct: values.trend_reduce_step_pct || 0,
-                trend_reduce_size_pct: values.trend_reduce_size_pct || 0,
-                trend_reduce_max_times: values.trend_reduce_max_times || 0,
-                adverse_reduce_enabled: !!values.adverse_reduce_enabled,
-                adverse_reduce_step_pct: values.adverse_reduce_step_pct || 0,
-                adverse_reduce_size_pct: values.adverse_reduce_size_pct || 0,
-                adverse_reduce_max_times: values.adverse_reduce_max_times || 0,
-                entry_pct: (values.entry_pct === 0 || values.entry_pct) ? values.entry_pct : 100,
+                // 风控与仓位：来自指标源码 # @strategy（与指标 IDE / 后端 StrategyConfigParser 一致）
+                take_profit_pct: riskFromCode.take_profit_pct,
+                stop_loss_pct: riskFromCode.stop_loss_pct,
+                trailing_enabled: riskFromCode.trailing_enabled,
+                trailing_stop_pct: riskFromCode.trailing_stop_pct,
+                trailing_activation_pct: riskFromCode.trailing_activation_pct,
+                entry_pct: riskFromCode.entry_pct,
+                // 加减仓：新建策略默认为关；编辑时保留库中已有配置（界面已移除）
+                ...scaleReduceFlat,
                 commission: values.commission || 0,
                 slippage: values.slippage || 0,
                 // AI智能决策过滤
