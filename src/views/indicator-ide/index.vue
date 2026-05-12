@@ -513,6 +513,36 @@
                       />
                     </a-col>
                   </a-row>
+                  <a-row :gutter="8" style="margin-top: 6px;">
+                    <a-col :span="12">
+                      <div class="field-label">
+                        <a-tooltip :title="$t('indicatorIde.fundingRateHint')">
+                          {{ $t('indicatorIde.fundingRateAnnual') }} <a-icon type="info-circle" />
+                        </a-tooltip>
+                      </div>
+                      <a-input-number
+                        v-model="fundingRateAnnual"
+                        :min="-100"
+                        :max="100"
+                        :step="0.01"
+                        :precision="4"
+                        size="small"
+                        style="width: 100%"
+                      />
+                    </a-col>
+                    <a-col :span="12">
+                      <div class="field-label">{{ $t('indicatorIde.fundingIntervalHours') }}</div>
+                      <a-input-number
+                        v-model="fundingIntervalHours"
+                        :min="1"
+                        :max="168"
+                        :step="1"
+                        :precision="0"
+                        size="small"
+                        style="width: 100%"
+                      />
+                    </a-col>
+                  </a-row>
                   </div>
 
                   <div class="param-section param-section--top">
@@ -699,20 +729,39 @@
                     <div class="ide-tuning-method-card-head">
                       <a-icon type="deployment-unit" class="ide-tuning-method-icon ide-tuning-method-icon--grid" />
                       <span class="ide-tuning-method-name">{{ $t('indicatorIde.runStructuredTune') }}</span>
+                      <span v-if="activeTuneMethodOption" class="ide-tune-method-badge">{{ activeTuneMethodOption.badge }}</span>
                     </div>
                     <div class="ide-tuning-method-desc">{{ $t('indicatorIde.structuredTuneExplain') }}</div>
-                    <div class="ide-tuning-method-actions">
-                      <a-radio-group v-model="structuredTuneMethod" size="small">
-                        <a-radio-button value="grid">{{ $t('indicatorIde.structuredTuneGrid') }}</a-radio-button>
-                        <a-radio-button value="random">{{ $t('indicatorIde.structuredTuneRandom') }}</a-radio-button>
-                      </a-radio-group>
+                    <div class="ide-tune-pills">
+                      <button
+                        v-for="opt in tuneMethodOptions"
+                        :key="opt.value"
+                        type="button"
+                        class="ide-tune-pill"
+                        :class="['ide-tune-pill--' + opt.value, { active: structuredTuneMethod === opt.value }]"
+                        :disabled="experimentRunning"
+                        @click="structuredTuneMethod = opt.value"
+                      >
+                        <a-tooltip :title="opt.hint" placement="top">
+                          <span class="ide-tune-pill-inner">
+                            <a-icon :type="opt.icon" />
+                            <span class="ide-tune-pill-label">{{ opt.label }}</span>
+                          </span>
+                        </a-tooltip>
+                      </button>
+                    </div>
+                    <div class="ide-tune-method-meta">
+                      <span class="ide-tune-method-meta-hint">{{ activeTuneMethodOption ? activeTuneMethodOption.hint : '' }}</span>
                       <a-button
+                        type="primary"
+                        ghost
                         size="small"
+                        class="ide-tune-run-btn"
                         :loading="experimentRunning && experimentRunKind === 'structured'"
                         :disabled="experimentRunning"
                         @click="handleRunStructuredTune"
                       >
-                        <a-icon type="play-circle" />
+                        <a-icon type="thunderbolt" />
                         {{ $t('indicatorIde.runTune') }}
                       </a-button>
                     </div>
@@ -722,13 +771,19 @@
                     <div class="ide-tuning-method-card-head">
                       <a-icon type="robot" class="ide-tuning-method-icon ide-tuning-method-icon--ai" />
                       <span class="ide-tuning-method-name">{{ $t('indicatorIde.runAiExperiment') }}</span>
-                      <a-tag color="blue" size="small" style="margin-left: auto;">AI</a-tag>
+                      <span class="ide-tune-method-badge ide-tune-method-badge--ai">AI</span>
                     </div>
                     <div class="ide-tuning-method-desc">{{ $t('indicatorIde.aiTuneExplain') }}</div>
-                    <div class="ide-tuning-method-actions">
+                    <div class="ide-tune-ai-feature-list">
+                      <div class="ide-tune-ai-feature"><a-icon type="rocket" /><span>{{ $t('indicatorIde.aiTuneFeature1') }}</span></div>
+                      <div class="ide-tune-ai-feature"><a-icon type="bulb" /><span>{{ $t('indicatorIde.aiTuneFeature2') }}</span></div>
+                      <div class="ide-tune-ai-feature"><a-icon type="safety" /><span>{{ $t('indicatorIde.aiTuneFeature3') }}</span></div>
+                    </div>
+                    <div class="ide-tune-method-meta ide-tune-method-meta--ai">
+                      <span class="ide-tune-method-meta-hint">{{ $t('indicatorIde.aiTuneCta') }}</span>
                       <a-button
                         type="primary"
-                        size="small"
+                        class="ide-tune-run-btn ide-tune-run-btn--ai"
                         :loading="experimentRunning && experimentRunKind === 'llm'"
                         :disabled="experimentRunning"
                         @click="handleRunAIExperiment"
@@ -799,16 +854,13 @@
                   </div>
                 </div>
 
-                <!-- Action bar -->
+                <!-- Action bar (rerun shortcuts only; "apply best" lives on the best-candidate card to avoid duplication) -->
                 <div class="experiment-action-bar experiment-action-bar--split">
                   <a-button size="small" @click="handleRunAIExperiment">
                     <a-icon type="experiment" /> {{ $t('indicatorIde.rerunAiTuning') }}
                   </a-button>
                   <a-button size="small" @click="handleRunStructuredTune">
                     <a-icon type="deployment-unit" /> {{ $t('indicatorIde.rerunStructuredTuning') }}
-                  </a-button>
-                  <a-button size="small" type="primary" @click="applyBestExperimentCandidate">
-                    <a-icon type="check" /> {{ $t('indicatorIde.applyBestParams') }}
                   </a-button>
                 </div>
 
@@ -823,6 +875,12 @@
                     <div class="experiment-hint">{{ experimentPromptHint }}</div>
                     <div class="experiment-family-tags">
                       <a-tag v-for="family in experimentPreferredFamilies" :key="family.key" color="purple">{{ family.label }}</a-tag>
+                    </div>
+                    <div v-if="experimentTopWeights.length" class="experiment-weights-row">
+                      <span class="experiment-weights-label">{{ $t('indicatorIde.scoringProfile') }}:</span>
+                      <a-tooltip v-for="w in experimentTopWeights" :key="w.key" :title="`${w.label} ${(w.value * 100).toFixed(0)}%`">
+                        <a-tag size="small" color="cyan">{{ w.label }} {{ (w.value * 100).toFixed(0) }}%</a-tag>
+                      </a-tooltip>
                     </div>
                   </div>
                   <div class="experiment-best-score">
@@ -859,7 +917,7 @@
                     </div>
                   </div>
                   <div class="experiment-best-actions">
-                    <a-button type="primary" size="small" @click="applyBestExperimentCandidate">
+                    <a-button type="primary" @click="applyBestExperimentCandidate">
                       <a-icon type="check" /> {{ $t('indicatorIde.applyBestParams') }}
                     </a-button>
                   </div>
@@ -887,6 +945,53 @@
                       <span>{{ $t('indicatorIde.totalReturn') }} {{ fmtPct((candidate.result || {}).totalReturn) }}</span>
                       <span>{{ $t('indicatorIde.sharpeRatio') }} {{ (((candidate.result || {}).sharpeRatio || 0)).toFixed(2) }}</span>
                     </div>
+                    <div
+                      v-if="candidate.oosScore"
+                      class="experiment-candidate-oos"
+                      :class="{ 'is-overfit': candidate.oosOverfit }">
+                      <span>
+                        {{ $t('indicatorIde.oosScore') }}
+                        {{ ((candidate.oosScore.overallScore || 0)).toFixed(1) }}
+                      </span>
+                      <span v-if="candidate.oosDegradation != null">
+                        {{ $t('indicatorIde.oosDegradation') }}
+                        {{ ((candidate.oosDegradation || 0) * 100).toFixed(1) }}%
+                      </span>
+                      <a-tag v-if="candidate.oosOverfit" color="red" style="margin-left: 4px;">
+                        {{ $t('indicatorIde.oosOverfitTag') }}
+                      </a-tag>
+                    </div>
+                  </div>
+                </div>
+                <a-alert
+                  v-if="experimentOosMeta && experimentOosMeta.enabled"
+                  type="info"
+                  show-icon
+                  style="margin-top: 8px;"
+                  :message="$t('indicatorIde.oosBanner', {
+                    trainStart: experimentOosMeta.trainStart,
+                    trainEnd: experimentOosMeta.trainEnd,
+                    oosStart: experimentOosMeta.oosStart,
+                    oosEnd: experimentOosMeta.oosEnd
+                  })"
+                />
+
+                <div v-if="experimentHasAnalytics" class="experiment-analytics">
+                  <div class="experiment-analytics-card">
+                    <div class="experiment-analytics-head">
+                      <a-icon type="dot-chart" />
+                      <span class="experiment-analytics-title">{{ $t('indicatorIde.analyticsRiskReturn') }}</span>
+                      <span class="experiment-analytics-sub">{{ $t('indicatorIde.analyticsRiskReturnHint') }}</span>
+                    </div>
+                    <div ref="experimentScatterChart" class="experiment-analytics-chart"></div>
+                  </div>
+                  <div class="experiment-analytics-card">
+                    <div class="experiment-analytics-head">
+                      <a-icon type="radar-chart" />
+                      <span class="experiment-analytics-title">{{ $t('indicatorIde.analyticsRadar') }}</span>
+                      <span class="experiment-analytics-sub">{{ $t('indicatorIde.analyticsRadarHint') }}</span>
+                    </div>
+                    <div ref="experimentRadarChart" class="experiment-analytics-chart"></div>
                   </div>
                 </div>
 
@@ -1163,6 +1268,7 @@ import storage from 'store'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
 import { baseMixin } from '@/store/app-mixin'
 import request from '@/utils/request'
+import { formatBacktestTime } from '@/utils/userTime'
 import { getUserInfo } from '@/api/login'
 import { getWatchlist, addWatchlist, searchSymbols } from '@/api/market'
 import KlineChart from '@/views/indicator-analysis/components/KlineChart.vue'
@@ -1252,6 +1358,10 @@ export default {
       slippage: 0.02,
       tradeDirection: 'long',
       enableMtf: false,
+      // Funding rate simulation (off by default). User may enter 0.10 (=10%/yr)
+      // or 10 (auto-detected as percent). Charged every fundingIntervalHours.
+      fundingRateAnnual: 0,
+      fundingIntervalHours: 8,
 
       startDate: moment().subtract(6, 'months'),
       endDate: moment(),
@@ -1340,7 +1450,10 @@ export default {
 
       eqChartInstance: null,
       elapsedSec: 0,
-      elapsedTimer: null
+      elapsedTimer: null,
+      experimentScatterInstance: null,
+      experimentRadarInstance: null,
+      experimentChartsResizeHandler: null
     }
   },
   computed: {
@@ -1445,6 +1558,87 @@ export default {
     },
     experimentBest () {
       return (this.experimentResult && this.experimentResult.bestStrategyOutput) || null
+    },
+    experimentOosMeta () {
+      return (this.experimentResult && this.experimentResult.oosValidation) || null
+    },
+    experimentScoringWeights () {
+      return (this.experimentResult && this.experimentResult.scoringWeights) || null
+    },
+    experimentTopWeights () {
+      const w = this.experimentScoringWeights
+      if (!w) return []
+      const labels = {
+        return: this.$t('indicatorIde.totalReturn'),
+        annual_return: this.$t('indicatorIde.scoreAnnualReturn'),
+        sharpe: this.$t('indicatorIde.sharpeRatio'),
+        profit_factor: this.$t('indicatorIde.profitFactor'),
+        win_rate: this.$t('indicatorIde.winRate'),
+        drawdown: this.$t('indicatorIde.maxDrawdown'),
+        stability: this.$t('indicatorIde.stability')
+      }
+      return Object.entries(w)
+        .map(([key, value]) => ({ key, label: labels[key] || key, value: Number(value || 0) }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3)
+    },
+    tuneMethodOptions () {
+      return [
+        {
+          value: 'grid',
+          icon: 'appstore',
+          label: this.$t('indicatorIde.structuredTuneGrid'),
+          hint: this.$t('indicatorIde.structuredTuneGridHint'),
+          badge: this.$t('indicatorIde.structuredTuneBadgeBasic')
+        },
+        {
+          value: 'random',
+          icon: 'sync',
+          label: this.$t('indicatorIde.structuredTuneRandom'),
+          hint: this.$t('indicatorIde.structuredTuneRandomHint'),
+          badge: this.$t('indicatorIde.structuredTuneBadgeBasic')
+        },
+        {
+          value: 'de',
+          icon: 'branches',
+          label: this.$t('indicatorIde.structuredTuneDe'),
+          hint: this.$t('indicatorIde.structuredTuneDeHint'),
+          badge: this.$t('indicatorIde.structuredTuneBadgePro')
+        },
+        {
+          value: 'tpe',
+          icon: 'bulb',
+          label: this.$t('indicatorIde.structuredTuneTpe'),
+          hint: this.$t('indicatorIde.structuredTuneTpeHint'),
+          badge: this.$t('indicatorIde.structuredTuneBadgePro')
+        }
+      ]
+    },
+    activeTuneMethodOption () {
+      return this.tuneMethodOptions.find(opt => opt.value === this.structuredTuneMethod) || null
+    },
+    experimentAnalyticsCandidates () {
+      const list = (this.experimentResult && this.experimentResult.rankedStrategies) || []
+      return list.filter(c => c && c.score && c.result)
+    },
+    experimentHasAnalytics () {
+      return this.experimentAnalyticsCandidates.length >= 2
+    },
+    experimentBestComponents () {
+      const best = this.experimentBest
+      if (!best || !best.score || !best.score.components) return null
+      const c = best.score.components
+      const labels = {
+        returnScore: this.$t('indicatorIde.totalReturn'),
+        sharpeScore: this.$t('indicatorIde.sharpeRatio'),
+        profitFactorScore: this.$t('indicatorIde.profitFactor'),
+        winRateScore: this.$t('indicatorIde.winRate'),
+        drawdownScore: this.$t('indicatorIde.maxDrawdown'),
+        stabilityScore: this.$t('indicatorIde.stability')
+      }
+      return Object.keys(labels)
+        .filter(k => typeof c[k] === 'number')
+        .map(k => ({ key: k, label: labels[k], value: Number(c[k] || 0) }))
     },
     experimentRegime () {
       return (this.experimentResult && this.experimentResult.regime) || null
@@ -1564,7 +1758,7 @@ export default {
       return (this.experimentRegime && this.experimentRegime.segments) || []
     },
     experimentCandidateCards () {
-      return this.experimentRankedStrategies.slice(0, 6)
+      return this.experimentRankedStrategies.slice(0, 8)
     },
     experimentColumns () {
       return [
@@ -1626,8 +1820,8 @@ export default {
             type: direction,
             closeType: t.type || '',
             closeReason: t.reason || t.close_reason || '',
-            entryDate: openTrade.time || '',
-            exitDate: t.time || '',
+            entryDate: formatBacktestTime(openTrade.time, { fallback: '' }),
+            exitDate: formatBacktestTime(t.time, { fallback: '' }),
             entryPrice: openTrade.price,
             exitPrice: t.price,
             profit: t.profit || 0,
@@ -1688,6 +1882,7 @@ export default {
       this.eqChartInstance.dispose()
       this.eqChartInstance = null
     }
+    this.disposeExperimentCharts()
     clearInterval(this.elapsedTimer)
     clearTimeout(this.addSearchTimer)
     if (this.ideAiTipTimer) clearInterval(this.ideAiTipTimer)
@@ -2468,6 +2663,9 @@ export default {
       const trailingPct = toFloat(raw.trailingStopPct) ?? 0
       const activationPct = toFloat(raw.trailingActivationPct) ?? 0
 
+      const fundingRateAnnualNum = Number(this.fundingRateAnnual)
+      const fundingIntervalNum = Number(this.fundingIntervalHours)
+
       return {
         risk: {
           stopLossPct,
@@ -2485,6 +2683,15 @@ export default {
           dcaAdd: { enabled: false },
           trendReduce: { enabled: false },
           adverseReduce: { enabled: false }
+        },
+        fees: {
+          // Backend interprets >1.5 as percentage, <=1.5 as decimal. We pass
+          // raw value the user typed. Defaults to 0 = no funding charge,
+          // matching pre-existing backtest behaviour.
+          fundingRateAnnual: Number.isFinite(fundingRateAnnualNum) ? fundingRateAnnualNum : 0,
+          fundingIntervalHours: Number.isFinite(fundingIntervalNum) && fundingIntervalNum > 0
+            ? fundingIntervalNum
+            : 8
         }
       }
     },
@@ -2510,12 +2717,81 @@ export default {
       const leverageBase = Math.max(1, Number(this.leverage || 1))
       const leverageValues = Array.from(new Set([Math.max(1, leverageBase - 1), leverageBase, Math.min(5, leverageBase + 1)])).sort((a, b) => a - b)
 
-      return {
+      const space = {
         'strategyConfig.risk.stopLossPct': stopLossValues,
         'strategyConfig.risk.takeProfitPct': takeProfitValues,
         'strategyConfig.position.entryPct': entryPctValues,
         leverage: leverageValues
       }
+
+      // Merge `@param ... range=lo:hi:step` / `values=a,b,c` declarations
+      // from the indicator source so structured tuning sweeps user-defined
+      // indicator hyperparameters alongside the built-in risk/position knobs.
+      const paramRanges = this.parseIndicatorParamRanges(this.currentCode || '')
+      for (const [name, values] of Object.entries(paramRanges)) {
+        if (Array.isArray(values) && values.length > 1) {
+          space[`indicator_params.${name}`] = values
+        }
+      }
+
+      return space
+    },
+    parseIndicatorParamRanges (code) {
+      const out = {}
+      if (!code || typeof code !== 'string') return out
+      const paramRe = /^\s*#\s*@param\s+(\w+)\s+(int|float|bool|str|string)\s+(\S+)\s*(.*)$/i
+      const rangeRe = /range\s*=\s*(-?\d+(?:\.\d+)?)\s*:\s*(-?\d+(?:\.\d+)?)\s*:\s*(-?\d+(?:\.\d+)?)/i
+      const valuesRe = /values\s*=\s*([^\s]+)/i
+      for (const rawLine of code.split('\n')) {
+        const line = rawLine.trim()
+        const m = paramRe.exec(line)
+        if (!m) continue
+        const name = m[1]
+        const type = (m[2] || '').toLowerCase()
+        const desc = m[4] || ''
+        if (type !== 'int' && type !== 'float') continue
+
+        const vm = valuesRe.exec(desc)
+        if (vm) {
+          const arr = []
+          const seen = new Set()
+          for (const tok of vm[1].split(',')) {
+            const t = tok.trim()
+            if (!t) continue
+            const num = Number(t)
+            if (Number.isFinite(num)) {
+              const v = type === 'int' ? Math.round(num) : num
+              if (!seen.has(v)) { seen.add(v); arr.push(v) }
+            }
+          }
+          if (arr.length > 1) out[name] = arr
+          continue
+        }
+        const rm = rangeRe.exec(desc)
+        if (rm) {
+          const lo = Number(rm[1])
+          const hi = Number(rm[2])
+          const step = Number(rm[3])
+          if (!Number.isFinite(lo) || !Number.isFinite(hi) || !Number.isFinite(step) || step === 0) continue
+          if ((hi - lo) * step < 0) continue
+          const arr = []
+          const seen = new Set()
+          let cursor = lo
+          const maxCount = 64
+          // step is intentionally a loop-invariant direction marker; ESLint's
+          // no-unmodified-loop-condition can't see that `cursor` carries the
+          // termination state, so we silence the rule here.
+          // eslint-disable-next-line no-unmodified-loop-condition
+          while ((step > 0 && cursor <= hi + 1e-9) || (step < 0 && cursor >= hi - 1e-9)) {
+            const v = type === 'int' ? Math.round(cursor) : Number(cursor.toFixed(8))
+            if (!seen.has(v)) { seen.add(v); arr.push(v) }
+            cursor += step
+            if (arr.length >= maxCount) break
+          }
+          if (arr.length > 1) out[name] = arr
+        }
+      }
+      return out
     },
     buildExperimentBase () {
       if (!this.currentCode) return null
@@ -3350,60 +3626,72 @@ export default {
         return isNaN(t) ? 0 : t
       }
 
+      // Floor-snap to the K-line bar that CONTAINS the given timestamp.
+      // Returns 0 if no bars are available so caller can skip.
+      const snapToBar = (ts) => {
+        if (!ts || klineTimestamps.length === 0) return ts || 0
+        let lo = 0; let hi = klineTimestamps.length - 1
+        if (ts < klineTimestamps[0]) return klineTimestamps[0]
+        if (ts >= klineTimestamps[hi]) return klineTimestamps[hi]
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1
+          if (klineTimestamps[mid] <= ts) lo = mid
+          else hi = mid - 1
+        }
+        return klineTimestamps[lo]
+      }
+
+      const createSignalOverlay = (timestamp, price, isBuy, markerStyle) => {
+        if (!timestamp || !price) return
+        try {
+          if (typeof chartInstance.createOverlay !== 'function') return
+          const overlayId = chartInstance.createOverlay({
+            name: 'signalTag',
+            points: [
+              { timestamp, value: price },
+              { timestamp, value: price }
+            ],
+            extendData: {
+              text: isBuy ? 'B' : 'S',
+              color: isBuy ? '#00E676' : '#FF5252',
+              side: isBuy ? 'buy' : 'sell',
+              action: isBuy ? 'buy' : 'sell',
+              price,
+              markerStyle: markerStyle || 'solid'
+            },
+            lock: true
+          }, 'candle_pane')
+          if (overlayId && chart.addedSignalOverlayIds) {
+            chart.addedSignalOverlayIds.push(overlayId)
+          }
+        } catch (_) {}
+      }
+
       for (const trade of trades) {
         const ty = (trade.type || '').toLowerCase()
         const isBuy = ty.startsWith('open_long') || ty === 'buy' || ty === 'close_short'
         const isSell = ty.startsWith('open_short') || ty === 'sell' || ty === 'close_long'
         if (!isBuy && !isSell) continue
 
-        // Prefer bar_time (chart-aligned) over time (may be at finer exec TF in MTF mode)
-        let timestamp = parseBackendTime(trade.bar_time || trade.timestamp || trade.time)
-
-        // Floor-snap to the K-line bar that CONTAINS this timestamp, not nearest.
-        // This avoids a full-bar offset when an intra-bar trigger (SL/TP) happens
-        // in the second half of the signal bar.
-        if (klineTimestamps.length > 0 && timestamp > 0) {
-          // Binary search for the last bar whose start <= timestamp
-          let lo = 0; let hi = klineTimestamps.length - 1
-          if (timestamp < klineTimestamps[0]) {
-            timestamp = klineTimestamps[0]
-          } else if (timestamp >= klineTimestamps[hi]) {
-            timestamp = klineTimestamps[hi]
-          } else {
-            while (lo < hi) {
-              const mid = (lo + hi + 1) >> 1
-              if (klineTimestamps[mid] <= timestamp) lo = mid
-              else hi = mid - 1
-            }
-            timestamp = klineTimestamps[lo]
-          }
-        }
+        // Execution bar: where the fill actually happened (chart-aligned).
+        // Prefer bar_time (already floored to signal_tf by backend) over `time`
+        // which may be at the finer exec TF in MTF mode.
+        const execTs = snapToBar(parseBackendTime(trade.bar_time || trade.timestamp || trade.time))
+        // Signal bar: where the rule fired. Backend backfills `signal_bar_time`
+        // by subtracting one signal_tf from bar_time for pure entries/exits
+        // under `next_bar_open`; for SL/TP/trailing it equals bar_time.
+        const signalTs = trade.signal_bar_time ? snapToBar(parseBackendTime(trade.signal_bar_time)) : execTs
 
         const price = trade.price || 0
-        if (!timestamp || !price) continue
+        if (!execTs || !price) continue
 
-        try {
-          if (typeof chartInstance.createOverlay === 'function') {
-            const overlayId = chartInstance.createOverlay({
-              name: 'signalTag',
-              points: [
-                { timestamp, value: price },
-                { timestamp, value: price }
-              ],
-              extendData: {
-                text: isBuy ? 'B' : 'S',
-                color: isBuy ? '#00E676' : '#FF5252',
-                side: isBuy ? 'buy' : 'sell',
-                action: isBuy ? 'buy' : 'sell',
-                price
-              },
-              lock: true
-            }, 'candle_pane')
-            if (overlayId && chart.addedSignalOverlayIds) {
-              chart.addedSignalOverlayIds.push(overlayId)
-            }
-          }
-        } catch (_) {}
+        // Always draw the execution marker (solid box, original style).
+        createSignalOverlay(execTs, price, isBuy, 'solid')
+        // Only draw the signal marker when it lands on a DIFFERENT bar to avoid
+        // visual noise on bar_close mode or SL/TP triggers (same-bar fills).
+        if (signalTs && signalTs !== execTs) {
+          createSignalOverlay(signalTs, price, isBuy, 'dashed')
+        }
       }
     },
 
@@ -3934,6 +4222,236 @@ export default {
       window.addEventListener('resize', this._onResize)
     },
 
+    // ===== Experiment analytics charts =====
+    disposeExperimentCharts () {
+      if (this.experimentScatterInstance) {
+        try { this.experimentScatterInstance.dispose() } catch { /* ignore */ }
+        this.experimentScatterInstance = null
+      }
+      if (this.experimentRadarInstance) {
+        try { this.experimentRadarInstance.dispose() } catch { /* ignore */ }
+        this.experimentRadarInstance = null
+      }
+      if (this.experimentChartsResizeHandler) {
+        window.removeEventListener('resize', this.experimentChartsResizeHandler)
+        this.experimentChartsResizeHandler = null
+      }
+    },
+    renderExperimentCharts () {
+      if (!this.experimentHasAnalytics) {
+        this.disposeExperimentCharts()
+        return
+      }
+      this.$nextTick(() => {
+        this.renderExperimentScatter()
+        this.renderExperimentRadar()
+        if (!this.experimentChartsResizeHandler) {
+          this.experimentChartsResizeHandler = () => {
+            if (this.experimentScatterInstance) this.experimentScatterInstance.resize()
+            if (this.experimentRadarInstance) this.experimentRadarInstance.resize()
+          }
+          window.addEventListener('resize', this.experimentChartsResizeHandler)
+        }
+      })
+    },
+    renderExperimentScatter () {
+      const dom = this.$refs.experimentScatterChart
+      if (!dom) return
+      if (this.experimentScatterInstance) {
+        try { this.experimentScatterInstance.dispose() } catch { /* ignore */ }
+      }
+      this.experimentScatterInstance = echarts.init(dom)
+      const dk = this.isDarkTheme
+      const list = this.experimentAnalyticsCandidates
+      const bestName = (this.experimentBest && this.experimentBest.name) || ''
+      const selectedName = (this.experimentSelectedCandidate && this.experimentSelectedCandidate.name) || ''
+      const points = list.map((c, idx) => {
+        const r = c.result || {}
+        const s = c.score || {}
+        const ret = Number(r.totalReturn || 0)
+        const dd = Math.abs(Number(r.maxDrawdown || 0))
+        const score = Number(s.overallScore || 0)
+        const isBest = c.name === bestName
+        const isSel = c.name === selectedName && !isBest
+        return {
+          value: [dd, ret, score],
+          name: c.name,
+          itemStyle: {
+            color: isBest ? '#f5a623' : (isSel ? '#58a6ff' : (dk ? 'rgba(82, 196, 26, 0.7)' : 'rgba(82, 196, 26, 0.85)')),
+            borderColor: isBest ? '#ffd591' : (isSel ? '#bae7ff' : 'transparent'),
+            borderWidth: (isBest || isSel) ? 2 : 0,
+            shadowBlur: isBest ? 12 : 0,
+            shadowColor: 'rgba(245,166,35,0.45)'
+          },
+          symbolSize: Math.max(10, Math.min(34, 10 + score / 4)),
+          _meta: { idx, isBest, isSel, ret, dd, score, sharpe: Number(r.sharpeRatio || 0), trades: Number(r.totalTrades || 0) }
+        }
+      })
+      const xVals = points.map(p => p.value[0])
+      const yVals = points.map(p => p.value[1])
+      const xMax = Math.max(1, ...xVals) * 1.1
+      const yMin = Math.min(0, ...yVals) * 1.15
+      const yMax = Math.max(...yVals, 0) * 1.15 || 1
+      this.experimentScatterInstance.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: dk ? '#1f1f1f' : '#fff',
+          borderColor: dk ? '#434343' : '#ddd',
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 },
+          formatter: (p) => {
+            const m = (p.data && p.data._meta) || {}
+            const tag = m.isBest ? ` <span style="color:#f5a623;font-weight:600;">★ Best</span>` : ''
+            return `<div style="min-width:160px;">
+              <div style="font-weight:600; margin-bottom:4px;">${p.data.name}${tag}</div>
+              <div>${this.$t('indicatorIde.totalReturn')}: <b style="color:${m.ret >= 0 ? '#52c41a' : '#f5222d'};">${m.ret.toFixed(2)}%</b></div>
+              <div>${this.$t('indicatorIde.maxDrawdown')}: <b style="color:#f5222d;">${m.dd.toFixed(2)}%</b></div>
+              <div>${this.$t('indicatorIde.sharpeRatio')}: <b>${m.sharpe.toFixed(2)}</b></div>
+              <div>${this.$t('indicatorIde.score')}: <b style="color:#1890ff;">${m.score.toFixed(1)}</b></div>
+            </div>`
+          }
+        },
+        grid: { left: 52, right: 18, top: 20, bottom: 36 },
+        xAxis: {
+          type: 'value',
+          name: this.$t('indicatorIde.maxDrawdown') + ' (%)',
+          nameLocation: 'middle',
+          nameGap: 24,
+          nameTextStyle: { color: dk ? 'rgba(255,255,255,0.55)' : '#666', fontSize: 11 },
+          min: 0,
+          max: Math.ceil(xMax),
+          axisLabel: { color: dk ? 'rgba(255,255,255,0.45)' : '#999', fontSize: 10, formatter: v => v.toFixed(0) + '%' },
+          axisLine: { lineStyle: { color: dk ? '#303030' : '#e0e0e0' } },
+          splitLine: { lineStyle: { color: dk ? 'rgba(255,255,255,0.06)' : '#f0f0f0', type: 'dashed' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: this.$t('indicatorIde.totalReturn') + ' (%)',
+          nameLocation: 'middle',
+          nameGap: 38,
+          nameTextStyle: { color: dk ? 'rgba(255,255,255,0.55)' : '#666', fontSize: 11 },
+          min: Math.floor(yMin),
+          max: Math.ceil(yMax),
+          axisLabel: { color: dk ? 'rgba(255,255,255,0.45)' : '#999', fontSize: 10, formatter: v => v.toFixed(0) + '%' },
+          axisLine: { lineStyle: { color: dk ? '#303030' : '#e0e0e0' } },
+          splitLine: { lineStyle: { color: dk ? 'rgba(255,255,255,0.06)' : '#f0f0f0', type: 'dashed' } }
+        },
+        series: [
+          {
+            type: 'scatter',
+            data: points,
+            emphasis: {
+              focus: 'series',
+              itemStyle: { shadowBlur: 16, shadowColor: 'rgba(24,144,255,0.55)' }
+            },
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              lineStyle: { color: dk ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)', type: 'dashed' },
+              data: [{ yAxis: 0 }]
+            }
+          }
+        ]
+      })
+      this.experimentScatterInstance.off('click')
+      this.experimentScatterInstance.on('click', (p) => {
+        const c = list[(p.data && p.data._meta && p.data._meta.idx) || 0]
+        if (c) this.selectExperimentCandidate(c)
+      })
+    },
+    renderExperimentRadar () {
+      const dom = this.$refs.experimentRadarChart
+      if (!dom) return
+      if (this.experimentRadarInstance) {
+        try { this.experimentRadarInstance.dispose() } catch { /* ignore */ }
+      }
+      this.experimentRadarInstance = echarts.init(dom)
+      const dk = this.isDarkTheme
+      const comps = this.experimentBestComponents
+      if (!comps || !comps.length) {
+        this.experimentRadarInstance.setOption({
+          title: {
+            text: this.$t('indicatorIde.analyticsNoRadar'),
+            left: 'center',
+            top: 'middle',
+            textStyle: { color: dk ? 'rgba(255,255,255,0.45)' : '#999', fontSize: 12, fontWeight: 'normal' }
+          }
+        })
+        return
+      }
+      const indicator = comps.map(c => ({ name: c.label, max: 100 }))
+      const bestVals = comps.map(c => Math.max(0, Math.min(100, Number(c.value) || 0)))
+      const list = this.experimentAnalyticsCandidates
+      const avgVals = comps.map(c => {
+        if (!list.length) return 0
+        let sum = 0; let n = 0
+        list.forEach(item => {
+          const v = item && item.score && item.score.components && item.score.components[c.key]
+          if (typeof v === 'number') { sum += v; n += 1 }
+        })
+        return n ? Math.max(0, Math.min(100, sum / n)) : 0
+      })
+      this.experimentRadarInstance.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: dk ? '#1f1f1f' : '#fff',
+          borderColor: dk ? '#434343' : '#ddd',
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 }
+        },
+        legend: {
+          bottom: 4,
+          itemWidth: 10,
+          itemHeight: 10,
+          textStyle: { color: dk ? 'rgba(255,255,255,0.65)' : '#666', fontSize: 11 },
+          data: [this.$t('indicatorIde.analyticsRadarBest'), this.$t('indicatorIde.analyticsRadarAvg')]
+        },
+        radar: {
+          indicator,
+          radius: '62%',
+          center: ['50%', '48%'],
+          splitNumber: 4,
+          axisName: {
+            color: dk ? 'rgba(255,255,255,0.7)' : '#555',
+            fontSize: 11,
+            backgroundColor: 'transparent',
+            padding: [2, 4]
+          },
+          splitLine: { lineStyle: { color: dk ? 'rgba(255,255,255,0.1)' : '#e8e8e8' } },
+          splitArea: {
+            areaStyle: {
+              color: dk
+                ? ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)']
+                : ['#fafbfc', '#f5f7fa']
+            }
+          },
+          axisLine: { lineStyle: { color: dk ? 'rgba(255,255,255,0.12)' : '#dcdfe6' } }
+        },
+        series: [{
+          type: 'radar',
+          symbol: 'circle',
+          symbolSize: 5,
+          emphasis: { focus: 'self' },
+          data: [
+            {
+              name: this.$t('indicatorIde.analyticsRadarBest'),
+              value: bestVals,
+              lineStyle: { color: '#f5a623', width: 2 },
+              itemStyle: { color: '#f5a623' },
+              areaStyle: { color: 'rgba(245,166,35,0.22)' }
+            },
+            {
+              name: this.$t('indicatorIde.analyticsRadarAvg'),
+              value: avgVals,
+              lineStyle: { color: '#1890ff', width: 1.5, type: 'dashed' },
+              itemStyle: { color: '#1890ff' },
+              areaStyle: { color: 'rgba(24,144,255,0.12)' }
+            }
+          ]
+        }]
+      })
+    },
+
     // ===== Watchlist =====
     filterWatchlistOption (input, option) {
       const val = (option.componentOptions.propsData.value || '').toLowerCase()
@@ -4217,6 +4735,19 @@ export default {
     isDarkTheme () {
       if (this.cmInstance) this.cmInstance.setOption('theme', this.isDarkTheme ? 'monokai' : 'eclipse')
       if (this.hasResult) this.$nextTick(() => this.renderEquityChart())
+      if (this.experimentHasAnalytics) this.renderExperimentCharts()
+    },
+    experimentHasAnalytics (val) {
+      if (val) this.renderExperimentCharts()
+      else this.disposeExperimentCharts()
+    },
+    experimentResult () {
+      if (this.experimentHasAnalytics) this.renderExperimentCharts()
+    },
+    experimentSelectedCandidate () {
+      if (this.experimentHasAnalytics && this.experimentScatterInstance) {
+        this.$nextTick(() => this.renderExperimentScatter())
+      }
     },
     codeDrawerVisible () {
       this.$nextTick(() => {
@@ -5782,6 +6313,162 @@ export default {
   }
 }
 
+.ide-tune-method-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #722ed1;
+  background: linear-gradient(135deg, rgba(114, 46, 209, 0.12) 0%, rgba(82, 196, 26, 0.1) 100%);
+  border: 1px solid rgba(114, 46, 209, 0.18);
+}
+
+.ide-tune-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+.ide-tune-pill {
+  flex: 1 1 calc(50% - 8px);
+  min-width: 110px;
+  appearance: none;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  i {
+    font-size: 14px;
+    margin-right: 6px;
+    color: #94a3b8;
+    transition: color 0.18s ease;
+  }
+  &:hover:not(:disabled) {
+    color: #1f1f1f;
+    border-color: rgba(114, 46, 209, 0.22);
+    box-shadow: 0 2px 8px rgba(114, 46, 209, 0.08);
+    transform: translateY(-1px);
+    i { color: #722ed1; }
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  &.active {
+    color: #fff;
+    border-color: transparent;
+    background: linear-gradient(135deg, #722ed1 0%, #1890ff 100%);
+    box-shadow: 0 6px 16px rgba(114, 46, 209, 0.28);
+    i { color: rgba(255, 255, 255, 0.92); }
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.25), transparent 60%);
+      pointer-events: none;
+    }
+  }
+}
+.ide-tune-pill-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ide-tune-pill-label {
+  white-space: nowrap;
+}
+.ide-tune-method-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.08);
+}
+.ide-tune-method-meta-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ide-tune-run-btn {
+  flex-shrink: 0;
+  border-radius: 10px !important;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.18);
+  &:hover:not([disabled]) {
+    box-shadow: 0 6px 16px rgba(24, 144, 255, 0.28);
+    transform: translateY(-1px);
+  }
+}
+.ide-tune-method-badge--ai {
+  color: #1890ff;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.16) 0%, rgba(114, 46, 209, 0.1) 100%);
+  border-color: rgba(24, 144, 255, 0.28);
+}
+.ide-tune-ai-feature-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 6px 0 2px;
+}
+.ide-tune-ai-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #475569;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(24, 144, 255, 0.06);
+  border: 1px solid rgba(24, 144, 255, 0.12);
+  i {
+    color: #1890ff;
+    font-size: 12px;
+  }
+}
+.ide-tune-method-meta--ai {
+  border-top-style: solid;
+  border-top-color: rgba(24, 144, 255, 0.14);
+}
+.ide-tune-run-btn--ai {
+  min-width: 132px;
+  background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 18px rgba(24, 144, 255, 0.32) !important;
+  &:hover:not([disabled]) {
+    box-shadow: 0 8px 22px rgba(24, 144, 255, 0.42) !important;
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+  }
+}
+
 .experiment-panel {
   display: flex;
   flex-direction: column;
@@ -5792,6 +6479,16 @@ export default {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+@media (max-width: 1280px) {
+  .experiment-candidate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 960px) {
+  .experiment-candidate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .experiment-stage-card,
 .experiment-candidate-card,
@@ -5892,6 +6589,22 @@ export default {
   /deep/ .ant-tag {
     margin-bottom: 6px;
     border-radius: 999px;
+  }
+}
+.experiment-weights-row {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #595959;
+  .experiment-weights-label {
+    margin-right: 4px;
+  }
+  /deep/ .ant-tag {
+    margin: 2px 0;
+    border-radius: 4px;
   }
 }
 .experiment-best-score {
@@ -6061,6 +6774,77 @@ export default {
   gap: 4px;
   font-size: 11px;
   color: #595959;
+}
+.experiment-candidate-oos {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(82, 196, 26, 0.08) 0%, rgba(24, 144, 255, 0.06) 100%);
+  border: 1px solid rgba(82, 196, 26, 0.18);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #2f6f1d;
+  font-variant-numeric: tabular-nums;
+  > span {
+    display: inline-flex;
+    align-items: center;
+  }
+  &.is-overfit {
+    background: linear-gradient(135deg, rgba(245, 34, 45, 0.08) 0%, rgba(250, 140, 22, 0.06) 100%);
+    border-color: rgba(245, 34, 45, 0.22);
+    color: #c0392b;
+  }
+}
+
+.experiment-analytics {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (max-width: 1200px) {
+  .experiment-analytics {
+    grid-template-columns: 1fr;
+  }
+}
+.experiment-analytics-card {
+  border: 1px solid #ececec;
+  border-radius: 12px;
+  background: linear-gradient(165deg, #ffffff 0%, #f9fbff 100%);
+  padding: 12px 14px 8px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+}
+.experiment-analytics-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  i {
+    color: #1890ff;
+    font-size: 14px;
+  }
+}
+.experiment-analytics-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f1f1f;
+}
+.experiment-analytics-sub {
+  margin-left: auto;
+  font-size: 11px;
+  color: #8c8c8c;
+}
+.experiment-analytics-chart {
+  flex: 1;
+  width: 100%;
+  min-height: 240px;
 }
 .experiment-detail-header {
   display: flex;
@@ -6701,6 +7485,84 @@ export default {
   .experiment-candidate-card:hover { border-color: rgba(23, 125, 220, 0.45); background: rgba(23, 125, 220, 0.04); }
   .experiment-candidate-score { color: #58a6ff; }
   .experiment-candidate-stats { color: rgba(255,255,255,0.65); }
+  .experiment-candidate-oos {
+    background: linear-gradient(135deg, rgba(82, 196, 26, 0.14) 0%, rgba(23, 125, 220, 0.1) 100%);
+    border-color: rgba(82, 196, 26, 0.3);
+    color: #95de64;
+    &.is-overfit {
+      background: linear-gradient(135deg, rgba(245, 34, 45, 0.18) 0%, rgba(250, 140, 22, 0.1) 100%);
+      border-color: rgba(245, 34, 45, 0.32);
+      color: #ffa39e;
+    }
+  }
+  .experiment-analytics-card {
+    background: linear-gradient(165deg, #1f1f1f 0%, #181818 100%);
+    border-color: #303030;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+  }
+  .experiment-analytics-head i { color: #58a6ff; }
+  .experiment-analytics-title { color: rgba(255, 255, 255, 0.88); }
+  .experiment-analytics-sub { color: rgba(255, 255, 255, 0.45); }
+
+  .ide-tune-method-badge {
+    color: #b37feb;
+    background: linear-gradient(135deg, rgba(114, 46, 209, 0.22) 0%, rgba(82, 196, 26, 0.14) 100%);
+    border-color: rgba(114, 46, 209, 0.35);
+  }
+  .ide-tune-method-badge--ai {
+    color: #58a6ff;
+    background: linear-gradient(135deg, rgba(24, 144, 255, 0.22) 0%, rgba(114, 46, 209, 0.16) 100%);
+    border-color: rgba(88, 166, 255, 0.4);
+  }
+  .ide-tune-ai-feature {
+    background: rgba(24, 144, 255, 0.1);
+    border-color: rgba(88, 166, 255, 0.22);
+    color: rgba(255, 255, 255, 0.75);
+    i { color: #58a6ff; }
+  }
+  .ide-tune-method-meta--ai {
+    border-top-color: rgba(88, 166, 255, 0.22);
+  }
+  .ide-tune-run-btn--ai {
+    box-shadow: 0 6px 18px rgba(88, 166, 255, 0.4) !important;
+    &:hover:not([disabled]) {
+      box-shadow: 0 8px 22px rgba(88, 166, 255, 0.55) !important;
+    }
+  }
+  .ide-tune-pills {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .ide-tune-pill {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.7);
+    i { color: rgba(255, 255, 255, 0.4); }
+    &:hover:not(:disabled) {
+      background: rgba(114, 46, 209, 0.12);
+      border-color: rgba(179, 127, 235, 0.35);
+      color: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      i { color: #b37feb; }
+    }
+    &.active {
+      color: #fff;
+      background: linear-gradient(135deg, #722ed1 0%, #177ddc 100%);
+      box-shadow: 0 6px 18px rgba(114, 46, 209, 0.4), 0 0 0 1px rgba(179, 127, 235, 0.45);
+      i { color: rgba(255, 255, 255, 0.95); }
+    }
+  }
+  .ide-tune-method-meta {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+  .ide-tune-method-meta-hint {
+    color: rgba(255, 255, 255, 0.55);
+  }
+  .ide-tune-run-btn {
+    box-shadow: 0 4px 14px rgba(23, 125, 220, 0.3) !important;
+    &:hover:not([disabled]) {
+      box-shadow: 0 6px 18px rgba(23, 125, 220, 0.45) !important;
+    }
+  }
   .experiment-feature-card {
     .metric-label { color: rgba(255,255,255,0.45); }
     .metric-value { color: rgba(255,255,255,0.88); }
