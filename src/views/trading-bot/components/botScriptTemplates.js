@@ -8,11 +8,16 @@
  *   ctx._params[name] = val        → 写入持久化参数
  *   ctx.bars(n)                    → 最近 n 根 K 线（ScriptBar: open/high/low/close/volume）
  *   ctx.position                   → ScriptPosition dict (side/size/entry_price)，bool(pos) 表示有仓位
- *   ctx.balance                    → 当前可用余额 (USDT)
- *   ctx.buy(price=, amount=)       → 买入信号（amount 为 USDT 名义金额）
+ *   ctx.balance                    → 当前可用余额（按账户 quote currency 计价: 加密=USDT, 美股=USD, 外汇=账户基础货币）
+ *   ctx.buy(price=, amount=)       → 买入信号（amount 为 quote currency 名义金额，后端按 leverage/market_type 换算成 qty/share/lot）
  *   ctx.sell(price=, amount=)      → 卖出信号
  *   ctx.close_position()           → 平仓
  *   ctx.log(msg)                   → 日志
+ *
+ * 多市场说明：模板逻辑只用 amount=名义金额 + price 接口，后端
+ * trading_executor._to_local_qty 会按市场和杠杆换算成实际下单数量，
+ * 所以同一个模板既能跑 BTC/USDT 也能跑 TSLA、EUR/USD。模板里的
+ * "quote" 字样代表账户基础货币（加密=USDT，美股=USD，外汇=账户币种）。
  */
 
 const TIMEFRAME_MINUTES = {
@@ -189,15 +194,15 @@ def on_bar(ctx, bar):
 
     if not has_pos and layer == 0:
         if not _budget_ok(0, INIT_AMT):
-            ctx.log("Budget exhausted (%.2f), skip opening" % BUDGET)
+            ctx.log("Budget exhausted (%.2f quote), skip opening" % BUDGET)
             return
         entry_qty = INIT_AMT / price if price > 0 else 0
         if DIRECTION == "long":
             ctx.buy(price=price, amount=INIT_AMT)
-            ctx.log("Layer 1: BUY %.2f USDT @ %.4f" % (INIT_AMT, price))
+            ctx.log("Layer 1: BUY %.2f quote @ %.4f" % (INIT_AMT, price))
         else:
             ctx.sell(price=price, amount=INIT_AMT)
-            ctx.log("Layer 1: SELL %.2f USDT @ %.4f" % (INIT_AMT, price))
+            ctx.log("Layer 1: SELL %.2f quote @ %.4f" % (INIT_AMT, price))
         ctx._params["layer"] = 1
         ctx._params["last_entry_price"] = price
         ctx._params["total_cost"] = INIT_AMT
@@ -261,7 +266,7 @@ def on_bar(ctx, bar):
                 drawdown = (price - peak_price) / peak_price
             if drawdown >= TP_CB_PCT:
                 pnl = (price - avg_price) * qty if DIRECTION == "long" else (avg_price - price) * qty
-                ctx.log("TRAILING TP EXIT @ %.4f (peak=%.4f, drawdown=%.2f%%), avg=%.4f, PnL=%.2f USDT"
+                ctx.log("TRAILING TP EXIT @ %.4f (peak=%.4f, drawdown=%.2f%%), avg=%.4f, PnL=%.2f quote"
                         % (price, peak_price, drawdown * 100, avg_price, pnl))
                 ctx.close_position()
                 _reset_state(ctx)
@@ -273,14 +278,14 @@ def on_bar(ctx, bar):
 
     if tp_hit:
         pnl = (price - avg_price) * qty if DIRECTION == "long" else (avg_price - price) * qty
-        ctx.log("TAKE PROFIT @ %.4f, avg=%.4f, PnL=%.2f USDT" % (price, avg_price, pnl))
+        ctx.log("TAKE PROFIT @ %.4f, avg=%.4f, PnL=%.2f quote" % (price, avg_price, pnl))
         ctx.close_position()
         _reset_state(ctx)
         return
 
     if sl_hit:
         pnl = (price - avg_price) * qty if DIRECTION == "long" else (avg_price - price) * qty
-        ctx.log("STOP LOSS @ %.4f, avg=%.4f, PnL=%.2f USDT" % (price, avg_price, pnl))
+        ctx.log("STOP LOSS @ %.4f, avg=%.4f, PnL=%.2f quote" % (price, avg_price, pnl))
         ctx.close_position()
         _reset_state(ctx)
         return
@@ -288,15 +293,15 @@ def on_bar(ctx, bar):
     if add_hit:
         amt = INIT_AMT * (MULTIPLIER ** layer)
         if not _budget_ok(cost, amt):
-            ctx.log("Budget cap reached (cost=%.2f + amt=%.2f > %.2f), skip add layer %d" % (cost, amt, BUDGET, layer + 1))
+            ctx.log("Budget cap reached (cost=%.2f + amt=%.2f > %.2f quote), skip add layer %d" % (cost, amt, BUDGET, layer + 1))
             return
         add_qty = amt / price if price > 0 else 0
         if DIRECTION == "long":
             ctx.buy(price=price, amount=amt)
-            ctx.log("Layer %d: BUY %.2f USDT @ %.4f" % (layer + 1, amt, price))
+            ctx.log("Layer %d: BUY %.2f quote @ %.4f" % (layer + 1, amt, price))
         else:
             ctx.sell(price=price, amount=amt)
-            ctx.log("Layer %d: SELL %.2f USDT @ %.4f" % (layer + 1, amt, price))
+            ctx.log("Layer %d: SELL %.2f quote @ %.4f" % (layer + 1, amt, price))
         ctx._params["layer"] = layer + 1
         ctx._params["last_entry_price"] = price
         ctx._params["total_cost"] = cost + amt
@@ -561,7 +566,7 @@ def on_bar(ctx, bar):
     ctx._params["buy_count"] = buy_count + 1
     ctx._params["last_buy_ts"] = now
     ctx._params["last_buy_price"] = price
-    ctx.log("DCA #%d: BUY %.2f USDT @ %.6f (total: %.2f)" % (buy_count + 1, amount, price, total_spent + amount))
+    ctx.log("DCA #%d: BUY %.2f quote @ %.6f (total: %.2f)" % (buy_count + 1, amount, price, total_spent + amount))
 `
   }
 }

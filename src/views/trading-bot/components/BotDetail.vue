@@ -649,11 +649,16 @@ export default {
     fetchKlineForGrid () {
       const symbol = this.tc.symbol
       if (!symbol) return
+      // Use the bot's actual market_category instead of hard-coding Crypto
+      // so the grid background renders correctly for USStock / Forex bots
+      // too (the kline endpoint dispatches to yfinance / Twelve Data based
+      // on this market parameter).
+      const market = (this.bot && this.bot.market_category) || 'Crypto'
       this.klineLoading = true
       request({
         url: '/api/indicator/kline',
         method: 'get',
-        params: { market: 'Crypto', symbol, timeframe: '1H', limit: 200 }
+        params: { market, symbol, timeframe: '1H', limit: 200 }
       }).then(res => {
         if (res && res.code === 1 && Array.isArray(res.data)) {
           this.klineData = res.data
