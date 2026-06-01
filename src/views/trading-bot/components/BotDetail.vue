@@ -383,8 +383,12 @@
         <a-tab-pane key="positions" :tab="$t('trading-bot.tab.positions')">
           <position-records
             v-if="activeTab === 'positions'"
-            :strategyId="bot.id"
-            :isDark="isDark"
+            :strategy-id="bot.id"
+            :execution-mode="(bot && bot.execution_mode) || 'live'"
+            :market-type="tc.market_type || 'swap'"
+            :leverage="tc.leverage || 1"
+            :credential-id="botCredentialId"
+            :is-dark="isDark"
           />
         </a-tab-pane>
         <a-tab-pane key="trades" :tab="$t('trading-bot.tab.trades')">
@@ -524,6 +528,13 @@ export default {
       }))
     },
     tc () { return this.bot?.trading_config || {} },
+    botCredentialId () {
+      const cfg = this.bot?.exchange_config
+      if (!cfg || typeof cfg !== 'object') return 0
+      const raw = cfg.credential_id || cfg.credentials_id
+      const n = parseInt(raw, 10)
+      return Number.isFinite(n) && n > 0 ? n : 0
+    },
     botParams () { return this.tc.bot_params || {} },
     botDisplay () { return this.bot?.bot_display || {} },
     isMartingaleBot () { return (this.bot?.bot_type || this.tc.bot_type) === 'martingale' },
@@ -856,7 +867,7 @@ export default {
       if (!this.bot?.id || !this.isGridBot) return
       if (!silent) this.restingLoading = true
       try {
-        const res = await getGridRestingOrders(this.bot.id, { limit: 200 })
+        const res = await getGridRestingOrders(this.bot.id, { limit: 200, sync: true })
         if (res && res.code === 1) {
           this.restingOrders = (res.data && (res.data.orders || res.data.items)) || []
         }
