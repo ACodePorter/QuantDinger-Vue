@@ -8,6 +8,7 @@ const marketApi = {
   GetWatchlistPrices: '/api/market/watchlist/prices',
   // AI chat (optional)
   ChatMessage: '/api/ai/chat/message',
+  ExportChatReportPdf: '/api/ai/chat/report/pdf',
   GetChatHistory: '/api/ai/chat/history',
   GetChatSessions: '/api/ai/chat/sessions',
   DeleteChatSession: '/api/ai/chat/sessions',
@@ -67,6 +68,16 @@ export function chatMessage (parameter) {
     url: marketApi.ChatMessage,
     method: 'post',
     data: parameter
+  })
+}
+
+export function exportChatReportPdf (parameter) {
+  return request({
+    url: marketApi.ExportChatReportPdf,
+    method: 'post',
+    data: parameter,
+    responseType: 'blob',
+    timeout: 120000
   })
 }
 

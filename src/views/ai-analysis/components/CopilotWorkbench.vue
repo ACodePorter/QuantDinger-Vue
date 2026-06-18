@@ -49,6 +49,7 @@
             </div>
             <div class="symbol-picker hero-symbol-picker">
               <a-select
+                ref="contextSymbolSelect"
                 v-model="selectedSymbolValue"
                 show-search
                 allow-clear
@@ -109,7 +110,8 @@
             msg.role,
             {
               'report-message': msg.report || msg.reportLoading || msg.reportError,
-              'printing-report-message': printReportId && reportId(msg) === printReportId
+              'printing-report-message': printReportId && reportId(msg) === printReportId,
+              'thinking-message': msg.isThinking
             }
           ]"
         >
@@ -164,6 +166,8 @@
           ref="composerInput"
           v-model="draft"
           :placeholder="text.placeholder"
+          :style="{ height: composerHeight + 'px' }"
+          @input="resizeComposer"
           @keydown.enter.exact.prevent="sendMessage"
           @keydown.ctrl.enter.prevent="sendMessage"
           @keydown.meta.enter.prevent="sendMessage"
@@ -177,7 +181,7 @@
           <div class="composer-actions">
             <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple @change="handleFiles">
             <a-button @click="$refs.fileInput.click()">
-              <a-icon type="picture" /> {{ text.uploadChart }}
+              <a-icon type="picture" /> {{ uploadImageLabel }}
             </a-button>
             <a-button type="primary" :loading="sending" :disabled="!canSend" @click="sendMessage">
               <a-icon type="thunderbolt" /> {{ text.send }}
@@ -434,7 +438,8 @@ import {
   getAiSkillPrompt,
   getUserMemory,
   saveUserMemory,
-  saveCopilotMessage
+  saveCopilotMessage,
+  exportChatReportPdf
 } from '@/api/market'
 import { aiGenerateStrategy } from '@/api/strategy'
 import { getEconomicCalendar } from '@/api/global-market'
@@ -501,6 +506,10 @@ export default {
       savingMonitor: false,
       taskTarget: null,
       taskForm: { interval_min: 240, notify_channels: [] },
+      composerHeight: 98,
+      composerMinHeight: 98,
+      composerMaxHeight: 236,
+      draftContextLock: null,
       printReportId: ''
     }
   },
@@ -578,8 +587,8 @@ export default {
           monitorUpdated: '任务状态已更新',
           monitorDeleted: '任务已删除',
           strategyFlowTitle: '选择要创建的策略类型',
-          indicatorStrategy: '指标 IDE 策略',
-          indicatorStrategyDesc: '生成可在 K 线图展示并可回测的指标脚本',
+          indicatorStrategy: '策略研发',
+          indicatorStrategyDesc: '基于已选标的生成可落地到策略 IDE 的研究、代码和回测方案',
           scriptStrategy: '脚本策略',
           scriptStrategyDesc: '生成 Python ScriptStrategy，适合复杂逻辑和自动执行',
           tradingBot: '模板策略',
@@ -588,7 +597,10 @@ export default {
           analysisComplete: '专业分析报告已生成',
           strategyGenerated: '策略草稿已生成',
           openTargetPage: '打开对应页面',
-          chatUnavailable: 'Chat API 尚未接入，当前先以本地引导回复展示。'
+          chatUnavailable: 'Chat API 尚未接入，当前先以本地引导回复展示。',
+          thinking: '思考中...',
+          selectSymbolFirst: '请先在上方“数据源上下文”选择要诊断的标的。',
+          uploadImage: '上传图片'
         }
       }
       return {
@@ -658,8 +670,8 @@ export default {
         monitorUpdated: 'Task updated',
         monitorDeleted: 'Task deleted',
         strategyFlowTitle: 'Choose Strategy Workflow',
-        indicatorStrategy: 'Indicator IDE Strategy',
-        indicatorStrategyDesc: 'Generate an indicator script for chart display and backtesting',
+        indicatorStrategy: 'Strategy Lab',
+        indicatorStrategyDesc: 'Develop a strategy workflow with research, code draft, and backtest plan',
         scriptStrategy: 'Script Strategy',
         scriptStrategyDesc: 'Generate a Python ScriptStrategy for complex automated logic',
         tradingBot: 'Template Strategy',
@@ -668,8 +680,17 @@ export default {
         analysisComplete: 'Professional analysis report generated',
         strategyGenerated: 'Strategy draft generated',
         openTargetPage: 'Open target page',
-        chatUnavailable: 'Chat API is not implemented yet; showing a local guide response for now.'
+        chatUnavailable: 'Chat API is not implemented yet; showing a local guide response for now.',
+        thinking: 'Thinking...',
+        selectSymbolFirst: 'Choose a symbol in Data context before running diagnosis.',
+        uploadImage: 'Upload image'
       }
+    },
+    uploadImageLabel () {
+      return this.text.uploadImage || (this.isZh ? '上传图片' : 'Upload image')
+    },
+    thinkingText () {
+      return this.text.thinking || (this.isZh ? '思考中...' : 'Thinking...')
     },
     quickPrompts () {
       const symbol = this.context.symbol || (this.isZh ? '当前标的' : 'this symbol')
@@ -732,9 +753,9 @@ export default {
           icon: 'picture',
           tone: 'chart',
           label: this.isZh ? '看图诊断' : 'Chart review',
-          desc: this.isZh ? '粘贴K线图，判断入场与止损' : 'Paste a chart for entry and stop review',
+          desc: this.isZh ? '上传 K 线图，判断入场与止损' : 'Paste a chart for entry and stop review',
           prompt: this.isZh
-            ? '我会粘贴或上传一张K线图。请结合图形结构、趋势位置、量能、支撑阻力和风险收益比，判断当前是否适合入场，并给出止损/止盈/失效条件。'
+            ? '我会上传一张 K 线图。请结合图形结构、趋势位置、量能、支撑阻力和风险收益比，判断当前是否适合入场，并给出止损、止盈和失效条件。'
             : 'I will paste or upload a chart. Review structure, trend location, volume, support/resistance, and risk/reward, then decide whether entry is appropriate with stop/take-profit/invalidation conditions.'
         },
         {
@@ -743,21 +764,21 @@ export default {
           icon: 'code',
           tone: 'strategy',
           label: this.isZh ? '写策略' : 'Write strategy',
-          desc: this.isZh ? '指标IDE、脚本策略、模板策略' : 'Indicator, script, or template strategy workflow',
+          desc: this.isZh ? '指标 IDE、脚本策略、模板策略工作流' : 'Indicator, script, or template strategy workflow',
           prompt: this.isZh
-            ? `请为 ${symbol} 写一个稳健的策略模板，并说明参数、风控和适用市场。`
+            ? `请为 ${symbol} 设计一个稳健的策略模板，并说明参数、风控和适用市场。`
             : `Draft a robust strategy template for ${symbol}, including parameters, risk controls, and suitable market conditions.`
         },
         {
           key: 'monitor',
-          action: 'monitor',
+          action: 'prompt',
           icon: 'clock-circle',
           tone: 'monitor',
           label: this.isZh ? '定时跟踪' : 'Scheduled scan',
           desc: this.isZh ? '按周期自动复盘标的变化' : 'Track a symbol on a schedule',
           prompt: this.isZh
-            ? `请帮我创建一个AI定时分析任务。我想跟踪的标的是 ${symbol}，请先问我周期、通知方式和重点关注条件。`
-            : `Help me create a scheduled AI analysis task for ${symbol}. First ask for interval, notification channel, and conditions to monitor.`
+            ? `请帮我为 ${symbol} 规划一个 AI 定时分析任务。请先判断还缺哪些参数，并询问我周期、通知方式和重点关注条件；如果信息已足够，请整理成可创建任务的配置草案。`
+            : `Help me plan a scheduled AI analysis task for ${symbol}. First identify missing fields and ask for interval, notification channel, and focus conditions; if enough information is present, draft a task configuration.`
         },
         {
           key: 'news',
@@ -767,7 +788,7 @@ export default {
           label: this.isZh ? '新闻研判' : 'News research',
           desc: this.isZh ? '检索新闻、事件和催化因素' : 'Search news, events, and catalysts',
           prompt: this.isZh
-            ? '请围绕当前问题和标的检索最新新闻、公司事件、宏观催化因素，并给出对价格、风险和后续观察点的影响。'
+            ? '请围绕当前问题和标的检索最新新闻、公司事件和宏观催化因素，并说明对价格、风险和后续观察点的影响。'
             : 'Search recent news, company events, and macro catalysts for the current question and symbol, then explain price impact, risks, and follow-up signals.'
         },
         {
@@ -776,7 +797,7 @@ export default {
           icon: 'bug',
           tone: 'debug',
           label: this.isZh ? '排查日志' : 'Debug logs',
-          desc: this.isZh ? '定位策略、机器人、接口异常' : 'Find strategy, bot, or API failures',
+          desc: this.isZh ? '定位策略、机器人或接口异常' : 'Find strategy, bot, or API failures',
           prompt: this.isZh
             ? '我会粘贴策略、模板策略或接口日志。请帮我定位异常原因，说明影响范围，并给出可执行的修复步骤。'
             : 'I will paste strategy, bot, or API logs. Find the root cause, explain impact, and suggest fixes.'
@@ -798,12 +819,84 @@ export default {
           icon: 'radar-chart',
           tone: 'radar',
           label: this.isZh ? '机会雷达' : 'Radar',
-          desc: this.isZh ? '筛选未来24小时触发条件' : 'Find 24h opportunity triggers',
+          desc: this.isZh ? '筛选未来 24 小时触发条件' : 'Find 24h opportunity triggers',
           prompt: this.isZh
-            ? `请基于 ${symbol} 当前上下文，判断未来24小时是否有交易机会，并给出触发条件、失效条件和需要重点观察的数据。`
+            ? `请基于 ${symbol} 当前上下文，判断未来 24 小时是否有交易机会，并给出触发条件、失效条件和需要重点观察的数据。`
             : `Based on ${symbol}, judge whether there is a trading opportunity in the next 24 hours and list trigger conditions.`
         }
       ]
+    },
+    quickTaskDisplayText () {
+      if (this.isZh) {
+        return {
+          market_diagnosis: {
+            label: '诊断标的',
+            desc: '趋势、量能、支撑阻力、资金面和风险'
+          },
+          chart_review: {
+            label: '看图诊断',
+            desc: '上传图表，判断入场、止损和失效条件'
+          },
+          indicator_strategy: {
+            label: '策略研发',
+            desc: '生成可在策略 IDE 展示、回测和发布的策略草稿'
+          },
+          scheduled_analysis: {
+            label: '定时跟踪',
+            desc: '按周期自动复盘标的变化并保存结果'
+          },
+          news_research: {
+            label: '新闻/事件检索',
+            desc: '联网检索公司、资产、宏观事件和行业新闻'
+          },
+          debug_logs: {
+            label: '排查日志',
+            desc: '定位策略、机器人、接口异常'
+          },
+          macro_economic_data: {
+            label: '宏观经济数据',
+            desc: '查询非农、CPI、FOMC、利率、GDP、PCE 等全球宏观事件和市场影响'
+          },
+          opportunity_radar: {
+            label: '机会雷达',
+            desc: '筛选未来 24 小时可能触发的机会条件'
+          }
+        }
+      }
+      return {
+        market_diagnosis: {
+          label: 'Diagnose symbol',
+          desc: 'Trend, volume, key levels, flows, and risks'
+        },
+        chart_review: {
+          label: 'Chart review',
+          desc: 'Upload a chart for entry, stop, and invalidation review'
+        },
+        indicator_strategy: {
+          label: 'Strategy Lab',
+          desc: 'Draft a Strategy IDE workflow for chart display, backtesting, and publishing'
+        },
+        scheduled_analysis: {
+          label: 'Scheduled scan',
+          desc: 'Track symbol changes on schedule and keep results'
+        },
+        news_research: {
+          label: 'News/Event research',
+          desc: 'Search company, asset, macro, and industry events'
+        },
+        debug_logs: {
+          label: 'Debug logs',
+          desc: 'Find strategy, bot, or API failures'
+        },
+        macro_economic_data: {
+          label: 'Macro data',
+          desc: 'Inspect NFP, CPI, FOMC, rates, GDP, PCE, and market impact'
+        },
+        opportunity_radar: {
+          label: 'Opportunity radar',
+          desc: 'Find possible 24h opportunity triggers'
+        }
+      }
     },
     registeredQuickTasks () {
       const registry = Array.isArray(this.skillRegistry) ? this.skillRegistry : []
@@ -825,6 +918,7 @@ export default {
         .filter(Boolean)
         .map(skill => {
           const actionType = skill.action_type || ''
+          const displayText = this.quickTaskDisplayText[skill.id] || {}
           return {
             key: skill.id,
             skillId: skill.id,
@@ -839,8 +933,8 @@ export default {
                     : 'prompt',
             icon: skill.icon || 'appstore',
             tone: (skill.ui && skill.ui.tone) || skill.category || '',
-            label: skill.label,
-            desc: skill.description,
+            label: displayText.label || skill.label,
+            desc: displayText.desc || skill.description,
             prompt: skill.prompt || ''
           }
         })
@@ -925,12 +1019,133 @@ export default {
     this.loadAgentPreflight()
     this.loadAiSkills()
     this.loadUserMemories()
+    this.$nextTick(this.resizeComposer)
   },
   beforeDestroy () {
     if (this.symbolSearchTimer) clearTimeout(this.symbolSearchTimer)
     if (this.addWatchSearchTimer) clearTimeout(this.addWatchSearchTimer)
   },
   methods: {
+    resizeComposer () {
+      const el = this.$refs && this.$refs.composerInput
+      if (!el) return
+      el.style.height = 'auto'
+      const next = Math.max(this.composerMinHeight, Math.min(this.composerMaxHeight, el.scrollHeight || this.composerMinHeight))
+      this.composerHeight = next
+      el.style.height = `${next}px`
+      el.style.overflowY = (el.scrollHeight || 0) > this.composerMaxHeight ? 'auto' : 'hidden'
+    },
+    selectedContextTarget () {
+      return this.normalizeSymbolOption(this.context)
+    },
+    quickTaskRequiresSymbol (item) {
+      const key = String((item && (item.key || item.skillId || item.id)) || '').toLowerCase()
+      const requiredKeys = new Set([
+        'diagnose',
+        'market_diagnosis',
+        'indicator_strategy',
+        'scheduled_analysis',
+        'monitor',
+        'opportunity_radar',
+        'radar'
+      ])
+      return !!item && (item.action === 'analysis' || requiredKeys.has(key))
+    },
+    promptSelectSymbolFirst () {
+      this.$message.warning(this.text.selectSymbolFirst || (this.isZh ? '请先选择要诊断的标的。' : 'Choose a symbol first.'))
+      this.seedSymbolOptions()
+      this.$nextTick(() => {
+        const picker = this.$refs && this.$refs.contextSymbolSelect
+        if (picker && typeof picker.focus === 'function') picker.focus()
+      })
+    },
+    selectedTargetLabel (target) {
+      const item = this.normalizeSymbolOption(target)
+      if (!item) return ''
+      return `${item.market}:${item.symbol}${item.name ? ` (${item.name})` : ''}`
+    },
+    buildLockedQuickPrompt (item, target) {
+      const key = String((item && (item.key || item.skillId || item.id)) || '').toLowerCase()
+      const label = this.selectedTargetLabel(target)
+      if (key === 'indicator_strategy') {
+        return this.isZh
+          ? [
+              `请基于已选数据上下文 ${label} 做一次 QuantDinger 策略研发。`,
+              '',
+              '要求：',
+              '1. 本次任务必须锁定到已选标的，不要因为提示词或示例里出现其他标的而切换上下文。',
+              '2. 生成可落地到策略 IDE 的 Python 策略草稿，当前优先使用指标策略工作流。',
+              '3. 若输出指标策略代码，必须使用 QuantDinger 执行约定：df 四方向布尔列 open_long、close_long、open_short、close_short 是回测和实盘信号来源。',
+              '4. 说明核心参数、买卖信号、止损止盈、失效条件和适用行情。',
+              '5. 代码注释使用英文，解释文字可以使用当前界面语言。'
+            ].join('\n')
+          : [
+              `Run QuantDinger strategy research for the selected data context ${label}.`,
+              '',
+              'Requirements:',
+              '1. Lock this task to the selected symbol; do not switch context because another symbol appears in examples.',
+              '2. Generate a Python strategy draft that can land in Strategy IDE; prefer the indicator-strategy workflow for now.',
+              '3. If you output indicator-strategy code, use the QuantDinger contract: df boolean columns open_long, close_long, open_short, and close_short are the backtest/live signals.',
+              '4. Explain parameters, entry/exit signals, stop/take-profit logic, invalidation, and suitable market regimes.',
+              '5. Keep code comments in English.'
+            ].join('\n')
+      }
+      if (key === 'opportunity_radar' || key === 'radar') {
+        return this.isZh
+          ? [
+              `请基于已选数据上下文 ${label} 做一次机会雷达扫描。`,
+              '',
+              '要求：',
+              '1. 不要切换到其他示例标的，不要因为提示词中的示例词改变分析对象。',
+              '2. 结合系统行情、新闻/事件、宏观环境、关键价位、量能和风险收益比。',
+              '3. 判断未来 24 小时是否存在可执行机会，并区分做多、做空、观望三种场景。',
+              '4. 给出触发条件、失效条件、止损思路、观察指标和优先级。',
+              '5. 如果系统数据缺失，明确说明缺口，并给出用户可以补充的数据。'
+            ].join('\n')
+          : [
+              `Run an opportunity radar scan for the selected data context ${label}.`,
+              '',
+              'Requirements:',
+              '1. Do not switch to another example symbol because of words inside the prompt.',
+              '2. Use system market data, news/events, macro context, key levels, volume, and risk/reward.',
+              '3. Judge whether the next 24 hours offer long, short, or wait scenarios.',
+              '4. Provide triggers, invalidation, stop logic, watch metrics, and priority.',
+              '5. If data is missing, state the gap and what the user should provide.'
+            ].join('\n')
+      }
+      return item && item.prompt ? item.prompt : ''
+    },
+    beginMonitorSetup (target) {
+      const normalized = this.normalizeSymbolOption(target)
+      if (!normalized || !normalized.symbol) {
+        this.promptSelectSymbolFirst()
+        return
+      }
+      this.pendingAgentTask = {
+        type: 'monitor_setup',
+        target: normalized,
+        required: ['interval_min', 'notify_channels', 'focus_conditions']
+      }
+      this.messages.push({
+        localId: `local-${localId++}`,
+        role: 'assistant',
+        content: this.buildMonitorQuestion(normalized),
+        meta: this.isZh ? '等待任务参数' : 'waiting for task parameters',
+        created_at: new Date().toISOString()
+      })
+      this.scrollToBottom()
+    },
+    clearThinkingMessage (assistantMsg) {
+      if (!assistantMsg || !assistantMsg.isThinking) return
+      assistantMsg.content = ''
+      assistantMsg.isThinking = false
+    },
+    replacePendingAssistant (assistantMsg, nextMsg) {
+      const idx = this.messages.indexOf(assistantMsg)
+      if (idx >= 0) this.messages.splice(idx, 1, nextMsg)
+      else this.messages.push(nextMsg)
+      return nextMsg
+    },
     async loadMarketModules () {
       const options = await loadEnabledMarketOptions({ includeFeatures: ['research'] })
       this.markets = options.map(item => ({
@@ -1019,17 +1234,37 @@ export default {
         this.scrollToBottom()
       } catch (_) {}
     },
+    messagePersistContent (message) {
+      if (!message) return ''
+      const content = String(message.content || '').trim()
+      if (content) return content
+      if (message.report) {
+        const report = message.report || {}
+        const target = message.reportTarget || {}
+        const market = report.market || target.market || ''
+        const symbol = report.symbol || target.symbol || ''
+        return `Analysis report: ${[market, symbol].filter(Boolean).join(':') || 'market'}`
+      }
+      if (message.reportError) return `Analysis failed: ${message.reportError}`
+      return String(message.meta || '').trim()
+    },
     async persistCopilotMessage (message, intent = '') {
-      if (!message || !message.content) return null
+      if (!message) return null
+      const content = this.messagePersistContent(message)
+      if (!content && !message.report && !message.reportError) return null
       try {
         const context = this.buildChatContext ? this.buildChatContext(message.content) : {}
         const res = await saveCopilotMessage({
           session_id: this.sessionId,
           message_id: message.id || null,
           role: message.role || 'assistant',
-          content: message.content,
+          content,
           attachments: message.attachments || [],
           actions: message.actions || [],
+          report: message.report || null,
+          reportTarget: message.reportTarget || null,
+          reportError: message.reportError || '',
+          reportErrorTone: message.reportErrorTone || '',
           intent: intent || message.meta || 'local_agent',
           context
         })
@@ -1244,9 +1479,12 @@ export default {
       if (impact === 'low') return 'This event is usually low impact, but it may still support short-term moves if it matches the current market narrative.'
       return 'This event may create moderate volatility. Compare actual, forecast, and prevailing trend before forming a directional view.'
     },
-    usePrompt (prompt) {
+    usePrompt (prompt, options = {}) {
       this.draft = prompt
+      const lockTarget = options && options.contextLock ? this.normalizeSymbolOption(options.contextLock) : null
+      this.draftContextLock = lockTarget ? { ...lockTarget, locked: true } : null
       this.$nextTick(() => {
+        this.resizeComposer()
         if (this.$refs.composerInput) this.$refs.composerInput.focus()
       })
     },
@@ -1274,34 +1512,45 @@ export default {
       if (!blockers.length && !warnings.length) return null
       const lines = []
       const actions = []
-      if (this.isZh) {
-        lines.push('## 开始前检查', '')
-        if (blockers.length) lines.push('这些配置会阻塞 AI 工作流：')
-      } else {
-        lines.push('## Setup Check', '')
-        if (blockers.length) lines.push('These items block the AI workflow:')
+      lines.push(`## ${this.i18nText('aiCopilot.preflight.title', this.isZh ? '开始前检查' : 'Setup Check')}`, '')
+      if (blockers.length) {
+        lines.push(this.i18nText('aiCopilot.preflight.blockersIntro', this.isZh ? '这些问题会影响 AI 工作流：' : 'These items need attention before the AI workflow can run:'))
       }
       blockers.forEach(item => {
-        lines.push(`- **${item.title || item.key}**: ${item.message || ''}`)
-        if (item.action && item.action.path) {
-          actions.push({
+        const isCredits = this.isCreditPreflightItem(item)
+        const title = isCredits
+          ? this.i18nText('aiCopilot.preflight.creditsTitle', this.isZh ? '积分不足' : 'Insufficient credits')
+          : (item.title || item.key)
+        const message = isCredits
+          ? this.i18nText('aiCopilot.preflight.creditsMessage', this.isZh ? '你的积分余额不足，暂时无法运行 AI 分析或策略生成。充值后即可继续使用。' : 'You do not have enough credits to run AI analysis or strategy generation. Top up credits to continue.')
+          : (item.message || '')
+        lines.push(`- **${title}**: ${message}`)
+        if (isCredits) {
+          this.pushPreflightAction(actions, this.setupAction('billing'))
+          this.pushPreflightAction(actions, this.setupAction('credits'))
+        } else if (item.action && item.action.path) {
+          this.pushPreflightAction(actions, {
             key: `fix-${item.key}`,
-            icon: 'setting',
-            label: this.isZh ? '去配置' : 'Configure',
+            icon: item.action.icon || 'setting',
+            label: this.i18nText('aiCopilot.preflight.configureAction', this.isZh ? '去配置' : 'Configure'),
             path: item.action.path,
             query: item.action.query || {}
           })
         }
       })
       if (warnings.length) {
-        lines.push('', this.isZh ? '建议补齐：' : 'Recommended next:')
+        lines.push('', this.i18nText('aiCopilot.preflight.recommendedNext', this.isZh ? '建议补齐：' : 'Recommended next:'))
         warnings.slice(0, 4).forEach(item => {
-          lines.push(`- ${item.message || item.key}`)
-          if (item.action && item.action.path) {
-            actions.push({
+          const isCredits = this.isCreditPreflightItem(item)
+          lines.push(`- ${isCredits ? this.i18nText('aiCopilot.preflight.creditsMessage', this.isZh ? '你的积分余额不足，暂时无法运行 AI 分析或策略生成。充值后即可继续使用。' : 'You do not have enough credits to run AI analysis or strategy generation. Top up credits to continue.') : (item.message || item.key)}`)
+          if (isCredits) {
+            this.pushPreflightAction(actions, this.setupAction('billing'))
+            this.pushPreflightAction(actions, this.setupAction('credits'))
+          } else if (item.action && item.action.path) {
+            this.pushPreflightAction(actions, {
               key: `open-${item.key}`,
-              icon: 'arrow-right',
-              label: this.isZh ? '查看' : 'Open',
+              icon: item.action.icon || 'arrow-right',
+              label: this.i18nText('aiCopilot.preflight.openAction', this.isZh ? '查看' : 'Open'),
               path: item.action.path,
               query: item.action.query || {}
             })
@@ -1309,11 +1558,28 @@ export default {
         })
       }
       if (task) {
-        lines.push('', this.isZh
-          ? '策略设计可以继续讨论，但生成代码和执行前建议先补齐上述配置。'
-          : 'Strategy design can continue, but complete the setup before code generation or execution.')
+        lines.push('', this.i18nText('aiCopilot.preflight.taskContinue', this.isZh ? '你仍然可以继续讨论策略思路，但生成代码、运行分析或创建任务前建议先处理上面的项目。' : 'You can still discuss strategy ideas, but complete the items above before code generation, analysis, or task creation.'))
       }
-      return { content: lines.join('\n'), actions, meta: this.isZh ? '配置预检' : 'setup preflight' }
+      return {
+        content: lines.join('\n'),
+        actions,
+        meta: this.i18nText('aiCopilot.preflight.meta', this.isZh ? '配置预检' : 'setup preflight')
+      }
+    },
+    isCreditPreflightItem (item) {
+      const actionPath = item && item.action && item.action.path ? item.action.path : ''
+      const text = [
+        item && item.key,
+        item && item.title,
+        item && item.message,
+        actionPath
+      ].filter(Boolean).join(' ').toLowerCase()
+      return /credit|credits|billing|quota|payment|top\s*up|vip|积分|余额不足|额度|充值|会员|扣费/.test(text)
+    },
+    pushPreflightAction (actions, action) {
+      if (!action) return
+      const exists = actions.some(item => item.key === action.key || (item.path === action.path && JSON.stringify(item.query || {}) === JSON.stringify(action.query || {})))
+      if (!exists) actions.push(action)
     },
     appendMemoryActions (assistantMsg, candidates) {
       const list = Array.isArray(candidates) ? candidates : []
@@ -1499,7 +1765,7 @@ export default {
       let interval = null
       if (intervalMatch) {
         const n = Number(intervalMatch[1])
-        const unit = intervalMatch[2].toLowerCase()
+        const unit = String(intervalMatch[2] || '').toLowerCase()
         interval = /小时|h|hour/.test(unit) ? n * 60 : n
       } else if (/每天|每日|daily/i.test(value)) {
         interval = 1440
@@ -1507,7 +1773,7 @@ export default {
       const channels = []
       if (/站内|浏览器|browser|site/i.test(value)) channels.push('browser')
       if (/邮件|邮箱|email/i.test(value)) channels.push('email')
-      if (/webhook|机器人|telegram|tg|飞书|钉钉|discord/i.test(value)) channels.push('webhook')
+      if (/webhook|telegram|tg|飞书|钉钉|discord/i.test(value)) channels.push('webhook')
       const focusMatch = value.match(/(?:重点关注|关注条件|focus)[:：]?\s*([\s\S]+)/i)
       const focus = focusMatch ? focusMatch[1].trim() : value.trim()
       return {
@@ -1526,13 +1792,13 @@ export default {
             '',
             '1. **周期**：例如 15分钟 / 30分钟 / 1小时 / 4小时 / 每天',
             '2. **通知方式**：站内消息 / 邮件 / Webhook / 只记录不通知',
-            '3. **重点关注条件**：例如突破放量、跌破支撑、4H趋势转强、假突破风险等',
+            '3. **重点关注条件**：例如突破放量、跌破支撑、4H 趋势转强、假突破风险等',
             '',
             '你可以直接这样回复：',
             '',
             '周期：1小时',
             '通知方式：站内消息',
-            '重点关注：突破上方阻力且放量提醒；跌破关键支撑提醒；4H趋势转强/转弱提醒；假突破单独标风险'
+            '重点关注：突破上方阻力且放量提醒；跌破关键支撑提醒；4H 趋势转强/转弱提醒；假突破单独标风险'
           ].join('\n')
         : [
             'Sure. I will prepare an AI scheduled analysis task for **' + label + '**.',
@@ -1549,8 +1815,8 @@ export default {
           ].join('\n')
     },
     buildMonitorDraftMessage (payload) {
-      const target = this.normalizeSymbolOption(payload.target)
-      const channels = payload.notify_channels || []
+      const target = this.normalizeSymbolOption(payload.target || payload)
+      const channels = payload.notify_channels || payload.channels || []
       return this.isZh
         ? [
             '## AI 定时分析任务草案',
@@ -1612,7 +1878,7 @@ export default {
       const parsed = this.parseMonitorSetup(content)
       const missing = []
       if (!parsed.interval_min) missing.push(this.isZh ? '周期' : 'interval')
-      if (!parsed.notify_channels.length && !/(只记录|不通知|record only|no notification)/i.test(content)) missing.push(this.isZh ? '通知方式' : 'notification')
+      if (!parsed.notify_channels.length && !/(只记录不通知|不通知|record only|no notification)/i.test(content)) missing.push(this.isZh ? '通知方式' : 'notification')
       if (!parsed.focus_conditions || parsed.focus_conditions.length < 8) missing.push(this.isZh ? '重点关注条件' : 'focus conditions')
       if (missing.length) {
         this.messages.push({
@@ -1650,14 +1916,20 @@ export default {
       return true
     },
     async createMonitorFromAction (payload) {
-      const target = this.normalizeSymbolOption(payload.target || this.context)
+      const rawTarget = payload.target || {
+        market: payload.market || payload.selected_market || payload.resolved_market || (this.context && this.context.market),
+        symbol: payload.symbol || payload.ticker || payload.code || payload.resolved_symbol || (this.context && this.context.symbol)
+      }
+      const target = this.normalizeSymbolOption(rawTarget)
       if (!target || !target.symbol) {
         this.$message.warning(this.text.symbolPlaceholder)
         return
       }
       try {
-        const interval = Number(payload.interval_min || 240)
-        const channels = Array.isArray(payload.notify_channels) ? payload.notify_channels : []
+        const interval = Number(payload.interval_min || payload.interval || payload.run_interval_minutes || 240)
+        const channels = Array.isArray(payload.notify_channels)
+          ? payload.notify_channels
+          : (Array.isArray(payload.channels) ? payload.channels : [])
         const res = await addMonitor({
           name: payload.name || ('AI-' + target.symbol + '-' + interval + 'm'),
           position_ids: [],
@@ -1666,7 +1938,7 @@ export default {
             run_interval_minutes: interval,
             symbol: target.symbol,
             market: target.market,
-            focus_conditions: payload.focus_conditions || '',
+            focus_conditions: payload.focus_conditions || payload.focus || '',
             language: this.$store && this.$store.getters ? (this.$store.getters.lang || 'zh-CN') : (this.$i18n ? this.$i18n.locale : 'zh-CN')
           },
           notification_config: { channels },
@@ -1799,10 +2071,11 @@ export default {
           meta: msg.meta || '',
           content: String(msg.content || '').slice(0, 8000)
         }))
+      const locked = resolvedSymbol && resolvedSymbol.locked ? this.normalizeSymbolOption(resolvedSymbol) : null
       const selected = this.normalizeSymbolOption(this.context)
       const mentioned = this.inferSymbolFromText(message)
-      const resolved = this.normalizeSymbolOption(resolvedSymbol)
-      const active = mentioned || resolved || selected
+      const resolved = locked ? locked : this.normalizeSymbolOption(resolvedSymbol)
+      const active = locked || mentioned || resolved || selected
       const activePrice = active ? this.priceFor(active) : null
       const macroContext = this.macroContextForMessage(message)
       return {
@@ -1812,12 +2085,21 @@ export default {
         name: active ? (active.name || '') : '',
         selected_market: selected ? selected.market : '',
         selected_symbol: selected ? selected.symbol : '',
-        mentioned_market: (mentioned || resolved) ? (mentioned || resolved).market : '',
-        mentioned_symbol: (mentioned || resolved) ? (mentioned || resolved).symbol : '',
+        mentioned_market: !locked && (mentioned || resolved) ? (mentioned || resolved).market : '',
+        mentioned_symbol: !locked && (mentioned || resolved) ? (mentioned || resolved).symbol : '',
+        ignored_mentioned_market: locked && mentioned ? mentioned.market : '',
+        ignored_mentioned_symbol: locked && mentioned ? mentioned.symbol : '',
         resolved_market: resolved ? resolved.market : '',
         resolved_symbol: resolved ? resolved.symbol : '',
-        symbol_context_mode: mentioned ? 'mentioned_in_message' : (resolved ? 'resolved_from_message' : (selected ? 'optional_selected_context' : 'auto_infer')),
-        allow_symbol_switch: true,
+        locked_market: locked ? locked.market : '',
+        locked_symbol: locked ? locked.symbol : '',
+        symbol_context_mode: locked ? 'locked_selected_context' : (mentioned ? 'mentioned_in_message' : (resolved ? 'resolved_from_message' : (selected ? 'optional_selected_context' : 'auto_infer'))),
+        allow_symbol_switch: !locked,
+        locked_symbol_policy: locked
+          ? (this.isZh
+              ? `本次任务已锁定到 ${locked.market}:${locked.symbol}。即使用户文本或提示词中出现其他示例标的，也必须以 locked_market/locked_symbol 为准；只有用户明确要求切换标的时才提示重新选择数据上下文。`
+              : `This task is locked to ${locked.market}:${locked.symbol}. Even if the text contains another example symbol, use locked_market/locked_symbol as the target unless the user explicitly asks to switch.`)
+          : '',
         use_system_data_source: true,
         active_price: activePrice || null,
         agent_task: this.pendingAgentTask ? {
@@ -1832,14 +2114,42 @@ export default {
           ? 'For macro/economic-data questions, inspect economic_calendar_context and system data before answering. If exact actual/forecast/previous values are missing, say which field is missing and guide the user to the required data source instead of claiming the system cannot help.'
           : '',
         data_source_policy: this.isZh
-          ? '用户可能不会手动选择数据源。请优先根据用户自然语言自动识别标的，并使用系统数据源/自选/行情上下文回答；如果实时数据缺失，请说明缺口并给出可执行观察方法，不要直接停止回答。'
-          : 'Users may not manually choose a data source. Infer the symbol from natural language first, then use system data/watchlist/market context. If live data is missing, state the gap and still provide actionable next steps instead of stopping.',
+          ? '用户可能不会手动选择数据源。请优先根据自然语言自动识别市场和标的，并结合系统行情、自选列表和市场上下文回答；如果实时数据缺失，请明确说明缺口，同时给出可执行的观察方法，不要直接停止回答。'
+          : 'Users may not manually choose a data source. Infer the market and symbol from natural language first, then use system data/watchlist/market context. If live data is missing, state the gap and still provide actionable next steps instead of stopping.',
         copilot_recent_messages: recent
       }
     },
     async handleQuickPrompt (item) {
       if (!item) return
       const activeItem = { ...item, prompt: await this.resolveSkillPrompt(item) }
+      const target = this.selectedContextTarget()
+      const key = String((activeItem.key || activeItem.skillId || activeItem.id) || '').toLowerCase()
+      const needsTarget = this.quickTaskRequiresSymbol(activeItem)
+      if (needsTarget) {
+        if (!target) {
+          this.promptSelectSymbolFirst()
+          return
+        }
+        if (key === 'indicator_strategy') {
+          this.pendingAgentTask = {
+            type: 'strategy_design',
+            targetType: 'indicator',
+            target,
+            workflow: 'QuantDinger Indicator IDE',
+            originalPrompt: ''
+          }
+          this.usePrompt(this.buildLockedQuickPrompt(activeItem, target), { contextLock: target })
+          return
+        }
+        if (key === 'scheduled_analysis' || key === 'monitor') {
+          this.beginMonitorSetup(target)
+          return
+        }
+        if (key === 'opportunity_radar' || key === 'radar') {
+          this.usePrompt(this.buildLockedQuickPrompt(activeItem, target), { contextLock: target })
+          return
+        }
+      }
       if (activeItem.action === 'analysis') {
         this.runProfessionalAnalysis()
         return
@@ -1853,23 +2163,8 @@ export default {
         return
       }
       if (activeItem.action === 'monitor') {
-        const target = this.normalizeSymbolOption(this.context)
-        if (target && target.symbol) {
-          this.pendingAgentTask = {
-            type: 'monitor_setup',
-            target,
-            required: ['interval_min', 'notify_channels', 'focus_conditions']
-          }
-          this.messages.push({
-            localId: `local-${localId++}`,
-            role: 'assistant',
-            content: this.buildMonitorQuestion(target),
-            meta: this.isZh ? '等待任务参数' : 'waiting for task parameters'
-          })
-          this.scrollToBottom()
-        } else {
-          this.usePrompt(activeItem.prompt)
-        }
+        this.pendingAgentTask = null
+        this.usePrompt(activeItem.prompt)
         return
       }
       if (activeItem.action === 'route') {
@@ -2027,15 +2322,38 @@ export default {
       const symbol = result.symbol || (this.context && this.context.symbol) || ''
       this.$router.push({ path: '/indicator-ide', query: { market, symbol } })
     },
-    exportReportPdf (reportId) {
+    async exportReportPdf (reportId) {
       if (!reportId) return
-      this.printReportId = String(reportId)
-      this.$nextTick(() => {
-        window.print()
-        window.setTimeout(() => {
-          this.printReportId = ''
-        }, 500)
-      })
+      const msg = (this.messages || []).find(item => this.reportId(item) === String(reportId))
+      if (!msg || !msg.report) {
+        this.$message.warning(this.isZh ? '没有可导出的报告数据' : 'No report data to export')
+        return
+      }
+      try {
+        const blob = await exportChatReportPdf({
+          report: msg.report,
+          target: msg.reportTarget || this.context || {},
+          language: (this.$i18n && this.$i18n.locale) || (this.isZh ? 'zh-CN' : 'en-US')
+        })
+        const fileBlob = blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' })
+        const url = window.URL.createObjectURL(fileBlob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = this.reportPdfFilename(msg)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+      } catch (e) {
+        this.$message.error((e && (e.backendMessage || e.message)) || (this.isZh ? 'PDF 导出失败' : 'PDF export failed'))
+      }
+    },
+    reportPdfFilename (msg) {
+      const report = (msg && msg.report) || {}
+      const target = (msg && msg.reportTarget) || this.context || {}
+      const symbol = String(report.symbol || target.symbol || 'report').replace(/[\\/:*?"<>|]+/g, '_')
+      const date = new Date().toISOString().slice(0, 10)
+      return `QuantDinger_${symbol}_${date}.pdf`
     },
     askAboutReport (reportId) {
       const msg = (this.messages || []).find(item => this.reportId(item) === String(reportId))
@@ -2149,8 +2467,8 @@ export default {
       ]
       if (targetKey === 'indicator') {
         return this.isZh
-          ? [...commonZh, '', '目标类型：指标 IDE 策略。需要适合在 K 线图展示、回测，并说明参数、买卖信号、止损止盈和失效条件。'].join('\n')
-          : [...commonEn, '', 'Target type: Indicator IDE strategy. It should support chart display and backtesting, with parameters, buy/sell signals, stop/take-profit, and invalidation conditions.'].join('\n')
+          ? [...commonZh, '', '目标类型：策略研发。当前优先生成可落地到策略 IDE 的指标策略草稿，需要适合在 K 线图展示、回测，并说明参数、买卖信号、止损止盈和失效条件。'].join('\n')
+          : [...commonEn, '', 'Target type: Strategy Lab. Prefer a Strategy IDE-ready indicator strategy draft that supports chart display and backtesting, with parameters, buy/sell signals, stop/take-profit, and invalidation conditions.'].join('\n')
       }
       if (targetKey === 'script') {
         return this.isZh
@@ -2211,8 +2529,8 @@ export default {
         message || ''
       ].filter(Boolean).join('\n')
     },
-    async classifyAgentPlan (content, attachments) {
-      const resolvedSymbol = await this.resolveMessageSymbol(content)
+    async classifyAgentPlan (content, attachments, contextLock = null) {
+      const resolvedSymbol = contextLock || await this.resolveMessageSymbol(content)
       const context = this.buildChatContext(content, resolvedSymbol)
       const res = await classifyAgentIntent({
         message: content,
@@ -2223,18 +2541,18 @@ export default {
       const plan = res && res.data ? res.data : null
       return { plan, resolvedSymbol }
     },
-    async handleBackendAgentIntent (content, attachments) {
+    async handleBackendAgentIntent (content, attachments, contextLock = null) {
       let plan = null
       let resolvedSymbol = null
       try {
-        const classified = await this.classifyAgentPlan(content, attachments)
+        const classified = await this.classifyAgentPlan(content, attachments, contextLock)
         plan = classified.plan
         resolvedSymbol = classified.resolvedSymbol
       } catch (_) {
         return false
       }
       if (!plan || !plan.should_execute || plan.intent !== 'strategy_build') return false
-      const target = this.agentTargetFromPlan(plan, resolvedSymbol || this.context)
+      const target = this.agentTargetFromPlan(plan, contextLock || resolvedSymbol || this.context)
       if (!target || !target.symbol) {
         this.messages.push({
           localId: `local-${localId++}`,
@@ -2302,7 +2620,7 @@ export default {
       if (targetKey === 'indicator') {
         this.$confirm({
           title: this.text.indicatorStrategy,
-          content: this.isZh ? '我会跳转到指标 IDE，你可以在图表与回测面板里继续运行。' : 'Open Indicator IDE so you can run it in the chart and backtest workspace.',
+          content: this.isZh ? '我会跳转到策略 IDE，你可以在图表与回测面板里继续运行。' : 'Open Strategy IDE so you can run it in the chart and backtest workspace.',
           okText: this.text.openTargetPage,
           cancelText: this.text.cancel,
           onOk: () => this.$router.push({ path: '/indicator-ide', query: { symbol: target.symbol, market: target.market } })
@@ -2363,7 +2681,7 @@ export default {
       const assistantMsg = {
         localId: `local-${localId++}`,
         role: 'assistant',
-        content: this.isZh ? '正在生成指标 IDE 策略草稿...' : 'Generating Indicator IDE strategy draft...',
+        content: this.isZh ? '正在生成策略研发草稿...' : 'Generating Strategy Lab draft...',
         meta: 'indicator_strategy'
       }
       this.messages.push(assistantMsg)
@@ -2408,7 +2726,7 @@ export default {
               assistantMsg.content = [
                 `## ${target.symbol} ${this.text.indicatorStrategy}`,
                 '',
-                this.isZh ? '已生成指标策略草稿。你可以继续在本会话里要求我修改入场、出场、风控或参数，满意后再去指标 IDE 运行。' : 'An indicator strategy draft is ready. Keep refining entries, exits, risk controls, or parameters here, then open Indicator IDE when you are satisfied.',
+                this.isZh ? '已生成策略研发草稿。你可以继续在本会话里要求我修改入场、出场、风控或参数，满意后再去策略 IDE 运行。' : 'A Strategy Lab draft is ready. Keep refining entries, exits, risk controls, or parameters here, then open Strategy IDE when you are satisfied.',
                 '',
                 '```python',
                 code,
@@ -2425,7 +2743,7 @@ export default {
           key: 'open-indicator-ide',
           group: 'strategy_workflow',
           icon: 'line-chart',
-          label: this.isZh ? '去指标 IDE 运行' : 'Open Indicator IDE',
+          label: this.isZh ? '去策略 IDE 运行' : 'Open Strategy IDE',
           path: '/indicator-ide',
           storageKey: 'qd_copilot_indicator_code',
           storageValue: code,
@@ -2629,6 +2947,7 @@ export default {
       if (!this.canSend) return
       const content = this.draft.trim()
       const attachments = this.attachments.slice()
+      const contextLock = this.draftContextLock ? { ...this.draftContextLock, locked: true } : null
       const signature = `${content}|${attachments.map(item => item.name || item.data_url || '').join(',')}`
       const now = Date.now()
       if (this.lastSendSignature === signature && now - this.lastSendAt < 1500) return
@@ -2640,14 +2959,16 @@ export default {
       this.messages.push({
         localId: `local-${localId++}`,
         role: 'user',
-        content: content || (this.isZh ? '[已上传图表]' : '[chart uploaded]'),
+        content: content || (this.isZh ? '[已上传图片]' : '[image uploaded]'),
         attachments,
         created_at: createdAt
       })
       this.draft = ''
       this.attachments = []
+      this.draftContextLock = null
+      this.$nextTick(this.resizeComposer)
       this.scrollToBottom()
-      if (await this.handleMonitorAgentMessage(content)) {
+      if (this.pendingAgentTask && this.pendingAgentTask.type === 'monitor_setup' && await this.handleMonitorAgentMessage(content)) {
         const newMessages = this.messages.slice(beforeSendCount)
         for (const message of newMessages) {
           if (!message.id) await this.persistCopilotMessage(message, message.role === 'user' ? 'monitor_user' : 'monitor_agent')
@@ -2659,7 +2980,7 @@ export default {
       if (this.pendingAgentTask) {
         this.pendingAgentTask.originalPrompt = content
       }
-      if (await this.handleBackendAgentIntent(content, attachments)) {
+      if (await this.handleBackendAgentIntent(content, attachments, contextLock)) {
         this.sending = false
         this.scrollToBottom()
         return
@@ -2683,13 +3004,14 @@ export default {
       const assistantMsg = {
         localId: `local-${localId++}`,
         role: 'assistant',
-        content: '',
+        content: this.thinkingText,
+        isThinking: true,
         meta: '',
         created_at: new Date().toISOString()
       }
       this.messages.push(assistantMsg)
       this.scrollToBottom()
-      const resolvedSymbol = await this.resolveMessageSymbol(content)
+      const resolvedSymbol = contextLock || await this.resolveMessageSymbol(content)
       if (resolvedSymbol) {
         const normalized = this.normalizeSymbolOption(resolvedSymbol)
         if (normalized) {
@@ -2700,14 +3022,17 @@ export default {
         }
       }
       const chatContext = this.buildChatContext(content, resolvedSymbol)
-      try {
-        await this.sendMessageStream(content, attachments, assistantMsg, chatContext)
-        this.sending = false
-        this.scrollToBottom()
-        return
-      } catch (_) {
-        const idx = this.messages.indexOf(assistantMsg)
-        if (idx >= 0) this.messages.splice(idx, 1)
+      const preferJsonResponse = this.isMonitorIntent(content)
+      if (!preferJsonResponse) {
+        try {
+          await this.sendMessageStream(content, attachments, assistantMsg, chatContext)
+          this.sending = false
+          this.scrollToBottom()
+          return
+        } catch (_) {
+          assistantMsg.content = this.thinkingText
+          assistantMsg.isThinking = true
+        }
       }
       try {
         const res = await chatMessage({
@@ -2720,29 +3045,30 @@ export default {
         if (res && res.code === 0) throw new Error(res.msg || this.text.chatUnavailable)
         const data = res.data || {}
         this.sessionId = data.session_id || this.sessionId
-        this.messages.push({
+        const fallbackAssistant = this.replacePendingAssistant(assistantMsg, {
           localId: `local-${localId++}`,
           id: data.message_id || undefined,
           role: 'assistant',
           content: data.reply || this.text.chatUnavailable,
+          isThinking: false,
           actions: data.actions || [],
           meta: data.intent ? `${data.intent} · ${data.confidence || 50}%` : ''
         })
-        const fallbackAssistant = this.messages[this.messages.length - 1]
         fallbackAssistant.created_at = fallbackAssistant.created_at || new Date().toISOString()
         this.appendMemoryActions(fallbackAssistant, data.memory_candidates)
         this.appendAgentNextActions(fallbackAssistant)
         this.loadSessions()
       } catch (e) {
         const guide = this.buildSetupGuide(e, chatContext)
-        this.messages.push({
+        const setupMsg = this.replacePendingAssistant(assistantMsg, {
           localId: `local-${localId++}`,
           role: 'assistant',
           content: guide.content,
+          isThinking: false,
           actions: guide.actions,
           meta: guide.meta
         })
-        await this.persistCopilotMessage(this.messages[this.messages.length - 1], 'setup_guide')
+        await this.persistCopilotMessage(setupMsg, 'setup_guide')
       } finally {
         this.sending = false
         this.scrollToBottom()
@@ -2829,6 +3155,9 @@ export default {
           const ts = Date.parse(msg.created_at || msg.createdAt || '')
           if (!prevTs || !ts || Math.abs(ts - prevTs) < 10000) return
         }
+        if (msg.report && (!Array.isArray(msg.actions) || !msg.actions.length)) {
+          msg.actions = this.reportActions(msg)
+        }
         out.push(msg)
       })
       return out
@@ -2891,6 +3220,10 @@ export default {
         this.scrollToBottom()
       }
       if (buffer.trim()) this.handleStreamEvent(buffer, assistantMsg)
+      if (assistantMsg.isThinking) {
+        assistantMsg.content = ''
+        assistantMsg.isThinking = false
+      }
       if (!assistantMsg.content) throw new Error('Empty stream response')
       this.loadSessions()
     },
@@ -2907,6 +3240,7 @@ export default {
         this.sessionId = payload.session_id || this.sessionId
         assistantMsg.meta = payload.intent || ''
       } else if (eventName === 'delta') {
+        if (payload.text) this.clearThinkingMessage(assistantMsg)
         assistantMsg.content += payload.text || ''
       } else if (eventName === 'done') {
         this.sessionId = payload.session_id || this.sessionId
@@ -3081,40 +3415,40 @@ export default {
         ai: {
           key: 'settings-ai',
           icon: 'setting',
-          label: this.isZh ? '去配置 AI/LLM' : 'Configure AI/LLM',
+          label: this.i18nText('aiCopilot.setup.action.ai', this.isZh ? '配置 AI/LLM' : 'Configure AI/LLM'),
           path: '/settings',
           query: { section: 'ai' }
         },
         data: {
           key: 'settings-data',
           icon: 'database',
-          label: this.isZh ? '去配置数据源' : 'Configure data sources',
+          label: this.i18nText('aiCopilot.setup.action.data', this.isZh ? '配置数据源' : 'Configure data sources'),
           path: '/settings',
           query: { section: 'data_source' }
         },
         broker: {
           key: 'broker-accounts',
           icon: 'bank',
-          label: this.isZh ? '去配置券商账户' : 'Configure broker accounts',
+          label: this.i18nText('aiCopilot.setup.action.broker', this.isZh ? '配置券商账户' : 'Configure broker accounts'),
           path: '/broker-accounts'
         },
         billing: {
           key: 'billing',
           icon: 'wallet',
-          label: this.isZh ? '去充值' : 'Top up',
+          label: this.i18nText('aiCopilot.setup.action.billing', this.isZh ? '去充值' : 'Top up'),
           path: '/billing'
         },
         credits: {
           key: 'profile-credits',
           icon: 'profile',
-          label: this.isZh ? '查看消费记录' : 'View credit records',
+          label: this.i18nText('aiCopilot.setup.action.credits', this.isZh ? '查看消费记录' : 'View credit records'),
           path: '/profile',
           query: { tab: 'credits' }
         },
         login: {
           key: 'login',
           icon: 'login',
-          label: this.isZh ? '重新登录' : 'Sign in again',
+          label: this.i18nText('aiCopilot.setup.action.login', this.isZh ? '重新登录' : 'Sign in again'),
           path: '/user/login'
         }
       }
@@ -4083,6 +4417,34 @@ export default {
   background: var(--qd-accent-soft);
 }
 
+.message.thinking-message .bubble {
+  border-style: dashed;
+  color: var(--qd-text-muted);
+}
+
+.message.thinking-message .message-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.message.thinking-message .message-content::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--qd-accent) 18%, transparent);
+  border-top-color: var(--qd-accent);
+  border-radius: 50%;
+  animation: qd-copilot-spin 0.8s linear infinite;
+}
+
+@keyframes qd-copilot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .message-content ::v-deep h3,
 .message-content ::v-deep h4 {
   margin: 14px 0 8px;
@@ -4351,8 +4713,9 @@ export default {
 
 .composer textarea {
   width: 100%;
-  min-height: 86px;
-  max-height: 176px;
+  min-height: 98px;
+  max-height: 236px;
+  overflow-y: hidden;
   resize: none;
   padding: 12px 13px;
   border: 1px solid var(--qd-border);
@@ -5248,7 +5611,7 @@ export default {
 
 .copilot-workbench .welcome {
   max-width: 920px;
-  margin-top: 34px;
+  margin-top: clamp(72px, 10vh, 118px);
 }
 
 .copilot-workbench .welcome > .anticon {

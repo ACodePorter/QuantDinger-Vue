@@ -5244,6 +5244,19 @@ export default {
         }
       })
     },
+    getExperimentTooltipPosition (point, params, dom, rect, size) {
+      const viewWidth = (size && size.viewSize && size.viewSize[0]) || 0
+      const viewHeight = (size && size.viewSize && size.viewSize[1]) || 0
+      const boxWidth = (size && size.contentSize && size.contentSize[0]) || 220
+      const boxHeight = (size && size.contentSize && size.contentSize[1]) || 120
+      let x = point[0] + 14
+      let y = point[1] - boxHeight / 2
+      if (viewWidth && x + boxWidth + 8 > viewWidth) x = point[0] - boxWidth - 14
+      if (x < 8) x = 8
+      if (y < 8) y = 8
+      if (viewHeight && y + boxHeight + 8 > viewHeight) y = Math.max(8, viewHeight - boxHeight - 8)
+      return [x, y]
+    },
     renderExperimentConvergence () {
       const dom = this.$refs.experimentConvergenceChart
       if (!dom) return
@@ -5267,9 +5280,15 @@ export default {
         backgroundColor: 'transparent',
         tooltip: {
           trigger: 'axis',
+          appendToBody: true,
+          confine: true,
+          borderWidth: 1,
+          padding: [8, 10],
+          extraCssText: 'z-index:3000;max-width:260px;white-space:normal;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,0.18);pointer-events:none;',
+          position: this.getExperimentTooltipPosition,
           backgroundColor: dk ? '#1f1f1f' : '#fff',
           borderColor: dk ? '#434343' : '#ddd',
-          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 },
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12, lineHeight: 18 },
           formatter: (params) => {
             const idx = (params && params[0] && params[0].dataIndex) || 0
             const row = rows[idx] || {}
@@ -5281,7 +5300,7 @@ export default {
             </div>`
           }
         },
-        grid: { left: 42, right: 18, top: 20, bottom: 34 },
+        grid: { left: 44, right: 30, top: 24, bottom: 40, containLabel: true },
         xAxis: {
           type: 'category',
           data: rows.map(r => String(r.index)),
@@ -5360,9 +5379,15 @@ export default {
         backgroundColor: 'transparent',
         tooltip: {
           trigger: 'item',
+          appendToBody: true,
+          confine: true,
+          borderWidth: 1,
+          padding: [8, 10],
+          extraCssText: 'z-index:3000;max-width:260px;white-space:normal;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,0.18);pointer-events:none;',
+          position: this.getExperimentTooltipPosition,
           backgroundColor: dk ? '#1f1f1f' : '#fff',
           borderColor: dk ? '#434343' : '#ddd',
-          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 },
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12, lineHeight: 18 },
           formatter: (p) => {
             const m = (p.data && p.data._meta) || {}
             return `<div style="min-width:170px;">
@@ -5374,7 +5399,7 @@ export default {
             </div>`
           }
         },
-        grid: { left: 42, right: 18, top: 22, bottom: 38 },
+        grid: { left: 48, right: 36, top: 28, bottom: 46, containLabel: true },
         xAxis: {
           type: 'value',
           name: 'IS',
@@ -5432,9 +5457,15 @@ export default {
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
+          appendToBody: true,
+          confine: true,
+          borderWidth: 1,
+          padding: [8, 10],
+          extraCssText: 'z-index:3000;max-width:260px;white-space:normal;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,0.18);pointer-events:none;',
+          position: this.getExperimentTooltipPosition,
           backgroundColor: dk ? '#1f1f1f' : '#fff',
           borderColor: dk ? '#434343' : '#ddd',
-          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 },
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12, lineHeight: 18 },
           formatter: (params) => {
             const idx = (params && params[0] && params[0].dataIndex) || 0
             const row = plottedRows[idx] || {}
@@ -5448,7 +5479,7 @@ export default {
             </div>`
           }
         },
-        grid: { left: 108, right: 20, top: 18, bottom: 28 },
+        grid: { left: 116, right: 44, top: 24, bottom: 34, containLabel: true },
         xAxis: {
           type: 'value',
           axisLabel: { color: dk ? 'rgba(255,255,255,0.45)' : '#999', fontSize: 10 },
@@ -5528,9 +5559,15 @@ export default {
         backgroundColor: 'transparent',
         tooltip: {
           trigger: 'item',
+          appendToBody: true,
+          confine: true,
+          borderWidth: 1,
+          padding: [8, 10],
+          extraCssText: 'z-index:3000;max-width:260px;white-space:normal;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,0.18);pointer-events:none;',
+          position: this.getExperimentTooltipPosition,
           backgroundColor: dk ? '#1f1f1f' : '#fff',
           borderColor: dk ? '#434343' : '#ddd',
-          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 },
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12, lineHeight: 18 },
           formatter: (p) => {
             const m = (p.data && p.data._meta) || {}
             const translatedBestTag = m.isBest ? ` <span style="color:#f5a623;font-weight:600;">&#9733; ${this.$t('indicatorIde.analyticsRadarBest')}</span>` : ''
@@ -5543,12 +5580,12 @@ export default {
             </div>`
           }
         },
-        grid: { left: 52, right: 18, top: 20, bottom: 36 },
+        grid: { left: 58, right: 44, top: 28, bottom: 48, containLabel: true },
         xAxis: {
           type: 'value',
           name: this.$t('indicatorIde.maxDrawdown') + ' (%)',
           nameLocation: 'middle',
-          nameGap: 24,
+          nameGap: 30,
           nameTextStyle: { color: dk ? 'rgba(255,255,255,0.55)' : '#666', fontSize: 11 },
           min: 0,
           max: Math.ceil(xMax),
@@ -5560,7 +5597,7 @@ export default {
           type: 'value',
           name: this.$t('indicatorIde.totalReturn') + ' (%)',
           nameLocation: 'middle',
-          nameGap: 38,
+          nameGap: 46,
           nameTextStyle: { color: dk ? 'rgba(255,255,255,0.55)' : '#666', fontSize: 11 },
           min: Math.floor(yMin),
           max: Math.ceil(yMax),
@@ -5631,9 +5668,15 @@ export default {
         backgroundColor: 'transparent',
         tooltip: {
           trigger: 'item',
+          appendToBody: true,
+          confine: true,
+          borderWidth: 1,
+          padding: [8, 10],
+          extraCssText: 'z-index:3000;max-width:260px;white-space:normal;border-radius:8px;box-shadow:0 10px 28px rgba(15,23,42,0.18);pointer-events:none;',
+          position: this.getExperimentTooltipPosition,
           backgroundColor: dk ? '#1f1f1f' : '#fff',
           borderColor: dk ? '#434343' : '#ddd',
-          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12 }
+          textStyle: { color: dk ? 'rgba(255,255,255,0.88)' : '#333', fontSize: 12, lineHeight: 18 }
         },
         legend: {
           bottom: 4,
@@ -5644,8 +5687,8 @@ export default {
         },
         radar: {
           indicator,
-          radius: '62%',
-          center: ['50%', '48%'],
+          radius: '56%',
+          center: ['50%', '45%'],
           splitNumber: 4,
           axisName: {
             color: dk ? 'rgba(255,255,255,0.7)' : '#555',
@@ -8979,31 +9022,41 @@ body.realdark .backtest-panel-toolbar {
   display: flex;
   flex-direction: column;
   min-height: 280px;
+  overflow: visible;
 }
 .experiment-analytics-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+  min-width: 0;
   i {
     color: #1890ff;
     font-size: 14px;
+    flex: 0 0 auto;
   }
 }
 .experiment-analytics-title {
   font-size: 13px;
   font-weight: 700;
   color: #1f1f1f;
+  flex: 0 0 auto;
 }
 .experiment-analytics-sub {
   margin-left: auto;
   font-size: 11px;
   color: #8c8c8c;
+  max-width: 56%;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .experiment-analytics-chart {
   flex: 1;
   width: 100%;
-  min-height: 240px;
+  min-height: 260px;
 }
 .experiment-detail-header {
   display: flex;

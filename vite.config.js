@@ -79,6 +79,17 @@ const fixProLayoutLess = () => ({
   }
 })
 
+const fixAntDesignVueLess = () => ({
+  name: 'fix-ant-design-vue-less-inline-js',
+  enforce: 'pre',
+  transform(code, id) {
+    if (!id.includes('ant-design-vue') || !id.includes('bezierEasing.less')) {
+      return null
+    }
+    return code.replace(/\.bezierEasingMixin\(\);/g, '')
+  }
+})
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const enableMock = env.VITE_ENABLE_MOCK === 'true'
@@ -95,8 +106,8 @@ export default defineConfig(({ mode }) => {
         },
         { find: /^moment$/, replacement: fileURLToPath(new URL('./src/shims/moment.js', import.meta.url)) },
         { find: /^store$/, replacement: 'store/dist/store.modern.js' },
-        { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
-        { find: '@$', replacement: fileURLToPath(new URL('./src', import.meta.url)) }
+        { find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) },
+        { find: /^@$/, replacement: fileURLToPath(new URL('./src', import.meta.url)) }
       ],
       extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.vue']
     },
@@ -125,6 +136,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     plugins: [
+      fixAntDesignVueLess(),
       fixProLayoutLess(),
       vue2(),
       vue2Jsx(),
