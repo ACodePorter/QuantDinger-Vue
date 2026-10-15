@@ -556,6 +556,11 @@ export default {
     },
     statusClass (strategy) { return this.needsAttention(strategy) ? 'warning' : (this.isRunning(strategy) ? 'running' : 'stopped') },
     statusLabel (strategy) { return this.needsAttention(strategy) ? this.healthLabel(strategy) : (this.isRunning(strategy) ? this.$t('systemOverview.running') : this.$t('systemOverview.stopped')) },
+    strategyPnl (strategy) {
+      if (!strategy || strategy.today_pnl == null || strategy.today_pnl === '') return null
+      const value = Number(strategy.today_pnl)
+      return Number.isFinite(value) ? value : null
+    },
     strategyTotalPnl (strategy) {
       if (!strategy || strategy.total_pnl == null || strategy.total_pnl === '') return null
       const value = Number(strategy.total_pnl)
