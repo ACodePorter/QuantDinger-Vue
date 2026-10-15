@@ -93,6 +93,7 @@ const locale = {
   'strategyCenter.console.performanceOverview': 'Runtime performance',
   'strategyCenter.console.winRateSample': '{wins}/{total} profitable',
   'strategyCenter.console.completedTrades': 'Completed trades',
+  'strategyCenter.console.strategyTotalPnl': 'Strategy total P&L',
   'strategyCenter.console.todayPnlEstimated': 'Opening baseline estimated',
   'strategyCenter.console.todayPnlEstimatedHint': 'No equity snapshot was available near local midnight. This value uses the trade ledger as a temporary opening baseline and becomes exact after continuous snapshots cover a day boundary.',
   'strategyCenter.console.netPnlBasis': 'Realized and unrealized P&L, net of recorded fees',
@@ -244,6 +245,7 @@ const enUSFallback = locale
 
 const zhCN = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': '策略总盈亏',
   'strategyRuntime.fillContractMetadataUnavailable': '合约规格暂不可用，成交入账将重试，不会猜测成交数量。',
   'strategyRuntime.unsupportedFillContract': '当前入账模型不支持此合约单位。',
   'strategyRuntime.invalidFillQuantity': '交易所成交数量无效，已暂缓入账。',
@@ -484,6 +486,7 @@ const zhCN = {
 
 const zhTW = {
   ...zhCN,
+  'strategyCenter.console.strategyTotalPnl': '策略總盈虧',
   'strategyCenter.editor.leverageAutoTitle': '永續合約槓桿',
   'strategyCenter.editor.leverageAutoHint': '已根據永續合約自動啟用。直接填寫 1× 至 {max}×；1× 表示不放大曝險。',
   'strategyRuntime.fillContractMetadataUnavailable': '合約規格暫不可用，成交入帳將重試，不會猜測成交數量。',
@@ -597,6 +600,7 @@ const zhTW = {
 
 const ja = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': '戦略累計損益',
   'trading-assistant.logs.level.all': 'すべて',
   'trading-assistant.logs.level.info': '情報',
   'trading-assistant.logs.level.warning': '警告',
@@ -648,6 +652,7 @@ const ja = {
 
 const ko = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': '전략 총 손익',
   'trading-assistant.logs.level.all': '전체',
   'trading-assistant.logs.level.info': '정보',
   'trading-assistant.logs.level.warning': '경고',
@@ -695,6 +700,7 @@ const ko = {
 
 const de = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'Gesamtgewinn/-verlust der Strategie',
   'trading-assistant.logs.level.all': 'Alle',
   'trading-assistant.logs.level.info': 'Info',
   'trading-assistant.logs.level.warning': 'Warnung',
@@ -713,6 +719,7 @@ const de = {
 
 const fr = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'P&L total de la stratégie',
   'trading-assistant.logs.level.all': 'Tous',
   'trading-assistant.logs.level.info': 'Information',
   'trading-assistant.logs.level.warning': 'Avertissement',
@@ -731,6 +738,7 @@ const fr = {
 
 const ru = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'Общая прибыль/убыток стратегии',
   'trading-assistant.logs.level.all': 'Все',
   'trading-assistant.logs.level.info': 'Информация',
   'trading-assistant.logs.level.warning': 'Предупреждение',
@@ -749,6 +757,7 @@ const ru = {
 
 const vi = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'Tổng lãi/lỗ chiến lược',
   'trading-assistant.logs.level.all': 'Tất cả',
   'trading-assistant.logs.level.info': 'Thông tin',
   'trading-assistant.logs.level.warning': 'Cảnh báo',
@@ -767,6 +776,7 @@ const vi = {
 
 const th = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'กำไรขาดทุนรวมของกลยุทธ์',
   'trading-assistant.logs.level.all': 'ทั้งหมด',
   'trading-assistant.logs.level.info': 'ข้อมูล',
   'trading-assistant.logs.level.warning': 'คำเตือน',
@@ -785,6 +795,7 @@ const th = {
 
 const ar = {
   ...enUSFallback,
+  'strategyCenter.console.strategyTotalPnl': 'إجمالي ربح وخسارة الاستراتيجية',
   'trading-assistant.logs.level.all': 'الكل',
   'trading-assistant.logs.level.info': 'معلومات',
   'trading-assistant.logs.level.warning': 'تحذير',

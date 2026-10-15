@@ -30,6 +30,7 @@
       @edit="openEditLive"
       @delete="handleDelete"
       @open-workspace="openStrategyWorkspace"
+      @ownership-reconciled="loadStrategies({ force: true })"
     />
 
     <live-strategy-editor

@@ -35,7 +35,7 @@
         <div class="master-columns">
           <span>{{ $t('strategyCenter.console.strategyAndSymbol') }}</span>
           <span>{{ $t('systemOverview.colStatus') }}</span>
-          <span>{{ $t('strategyCenter.console.todayPnl') }}</span>
+          <span>{{ $t('strategyCenter.console.strategyTotalPnl') }}</span>
         </div>
 
         <div class="strategy-list" :class="{ 'is-loading': loading }">
@@ -55,7 +55,10 @@
               <i :class="statusClass(strategy)"></i>{{ statusLabel(strategy) }}
               <em :class="executionMode(strategy)">{{ executionLabel(strategy) }}</em>
             </span>
-            <span class="row-pnl" :class="pnlClass(strategyPnl(strategy))">{{ formatPnl(strategyPnl(strategy)) }}</span>
+            <span class="row-pnl" :class="pnlClass(strategyTotalPnl(strategy))">
+              <strong>{{ formatPnl(strategyTotalPnl(strategy)) }}</strong>
+              <small>{{ formatPnlPercent(strategyTotalReturn(strategy)) }}</small>
+            </span>
           </button>
           <div v-if="!loading && filteredStrategies.length === 0" class="list-empty">
             <a-icon type="inbox" />
@@ -254,6 +257,7 @@
                 :market-type="tradingConfig(selectedStrategy).market_type || 'swap'"
                 :leverage="tradingConfig(selectedStrategy).leverage || 1"
                 :is-dark="dark"
+                @ownership-reconciled="$emit('ownership-reconciled')"
               />
             </section>
             <section class="equity-panel panel-section overview-equity-panel">
@@ -314,6 +318,7 @@ import AiDecisionRecords from './AiDecisionRecords.vue'
 import { getExchangeDisplayName } from '@/utils/exchangeCredential'
 import {
   normalizeTimestampMilliseconds,
+  strategyCapital,
   strategyExchangeId,
   strategyExecutionMode,
   strategyLeverage,
@@ -551,10 +556,15 @@ export default {
     },
     statusClass (strategy) { return this.needsAttention(strategy) ? 'warning' : (this.isRunning(strategy) ? 'running' : 'stopped') },
     statusLabel (strategy) { return this.needsAttention(strategy) ? this.healthLabel(strategy) : (this.isRunning(strategy) ? this.$t('systemOverview.running') : this.$t('systemOverview.stopped')) },
-    strategyPnl (strategy) {
-      if (!strategy || strategy.today_pnl == null || strategy.today_pnl === '') return null
-      const value = Number(strategy.today_pnl)
+    strategyTotalPnl (strategy) {
+      if (!strategy || strategy.total_pnl == null || strategy.total_pnl === '') return null
+      const value = Number(strategy.total_pnl)
       return Number.isFinite(value) ? value : null
+    },
+    strategyTotalReturn (strategy) {
+      const pnl = this.strategyTotalPnl(strategy)
+      const capital = strategyCapital(strategy)
+      return pnl == null || !Number.isFinite(capital) || capital <= 0 ? null : pnl / capital
     },
     lastActivity (strategy) {
       return this.health(strategy).last_heartbeat_at || strategyLastActivity(strategy)
@@ -564,6 +574,11 @@ export default {
       if (value == null || value === '' || !Number.isFinite(Number(value))) return '—'
       const number = Number(value)
       return `${number > 0 ? '+' : ''}${number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    },
+    formatPnlPercent (value) {
+      if (value == null || value === '' || !Number.isFinite(Number(value))) return '—'
+      const number = Number(value) * 100
+      return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`
     },
     formatPercent (value, signed = true) { const number = Number(value || 0) * 100; return `${signed && number > 0 ? '+' : ''}${number.toFixed(2)}%` },
     formatLiveMoney (value, signed = false) {
@@ -627,7 +642,9 @@ export default {
 .row-status > i { position: absolute; left: 0; top: 4px; width: 6px; height: 6px; border-radius: 50%; }
 .row-status > i.running { background: #28a85f; }.row-status > i.warning { background: #e16b47; }.row-status > i.stopped { background: #858c96; }
 .row-status em { width: max-content; padding: 1px 5px; border: 1px solid #dfe3e8; border-radius: 3px; color: #697382; font-size: 11px; font-style: normal; font-weight: 500; }.row-status em.live { border-color: rgba(222, 164, 24, .35); color: #a66f00; }
-.row-pnl { text-align: right; color: #596273; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.row-pnl { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; color: #596273; font-variant-numeric: tabular-nums; }
+.row-pnl strong { font-size: 13px; font-weight: 650; }
+.row-pnl small { color: currentColor; font-size: 11px; font-weight: 500; opacity: .82; }
 .profit { color: #24a25a !important; }.loss { color: #d95656 !important; }
 .list-empty, .section-empty { display: flex; align-items: center; justify-content: center; min-height: 180px; color: #949ca7; }.section-empty.compact { min-height: 110px; }
 .strategy-master footer { padding: 12px 16px; border-top: 1px solid #e7eaf0; color: #7d8794; font-size: 12px; }

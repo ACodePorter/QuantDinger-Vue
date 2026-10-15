@@ -428,7 +428,10 @@ export default {
   methods: {
     async openOwnershipRepair () {
       this.ownershipVisible = true
-      await this.loadOwnership()
+      if (await this.loadOwnership()) {
+        await this.loadPositions()
+        this.$emit('ownership-reconciled')
+      }
     },
     async loadOwnership () {
       if (!this.strategyId) return
@@ -443,10 +446,12 @@ export default {
           ...row,
           rowKey: `${row.symbol || ''}:${row.side || ''}`
         }))
+        return true
       } catch (error) {
         this.ownershipExchangeId = ''
         this.ownershipRows = []
         this.$message.error((error && error.message) || this.$t('strategyCenter.positionOwnership.loadFailed'))
+        return false
       } finally {
         this.ownershipLoading = false
       }
@@ -462,7 +467,9 @@ export default {
         })
         if (res.code !== 1) throw new Error(res.msg ? this.$t(res.msg) : this.$t('strategyCenter.positionOwnership.repairFailed'))
         this.$message.success(this.$t('strategyCenter.positionOwnership.repairSuccess'))
-        await Promise.all([this.loadOwnership(), this.loadPositions()])
+        await this.loadOwnership()
+        await this.loadPositions()
+        this.$emit('ownership-reconciled')
       } catch (error) {
         this.$message.error((error && error.message) || this.$t('strategyCenter.positionOwnership.repairFailed'))
       } finally {
