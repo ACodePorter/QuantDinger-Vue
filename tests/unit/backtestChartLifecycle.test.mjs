@@ -65,8 +65,12 @@ test('history loads only the active mode and opens the drawer immediately', () =
   assert.doesNotMatch(source, /const \[portfolioResponse, factorResponse\] = await Promise\.all/)
 })
 
-test('backtest center submits only the Strategy API V2 request contract', () => {
-  assert.match(source, /runStrategyBacktest\(\{[\s\S]*?sourceId: this\.form\.sourceId[\s\S]*?startDate:[\s\S]*?endDate:[\s\S]*?params: this\.params/)
+test('backtest center submits the Strategy API V2 contract as an asynchronous job', () => {
+  assert.match(source, /startStrategyBacktestJob\(\{[\s\S]*?sourceId: this\.form\.sourceId[\s\S]*?startDate:[\s\S]*?endDate:[\s\S]*?params: this\.params/)
+  assert.match(source, /getStrategyBacktestJob\(this\.activeJobId\)/)
+  const runMethod = source.match(/async run \(\) \{([\s\S]*?)\n    \},\n    async runFactorResearch/)
+  assert.ok(runMethod)
+  assert.doesNotMatch(runMethod[1], /this\.result = null/)
   assert.doesNotMatch(source, /strategy_config|script_params|strict_mode|strategy_code/)
 })
 
@@ -85,6 +89,12 @@ test('backtest workbench keeps execution controls visible and moves history into
   assert.match(source, /<a-drawer[\s\S]*?backtest-history-drawer/)
   assert.match(source, /v-for="item in history"/)
   assert.doesNotMatch(source, /class="panel history-panel"/)
+})
+
+test('backtest and factor workspaces open settings by default and align the shared research range label', () => {
+  assert.match(source, /settingsVisible: true/)
+  assert.match(source, /\.command-bar__range \.command-label \{ grid-column-start: 1; grid-column-end: 4; \}/)
+  assert.doesNotMatch(source, /grid-column: 1 \/ -1/)
 })
 
 test('saved backtest details expose an in-drawer loading state', () => {

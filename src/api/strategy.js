@@ -28,6 +28,7 @@ const api = {
   executorCreate: '/api/strategies/executors/create',
   strategyAssets: '/api/strategy-assets',
   strategyBacktestRun: '/api/backtest/run',
+  strategyBacktestJobs: '/api/backtest/jobs',
   strategyFactorResearch: '/api/backtest/factor-research',
   strategyFactorResearchHistory: '/api/backtest/factor-research/history',
   strategyFactorResearchGet: '/api/backtest/factor-research/get',
@@ -350,6 +351,31 @@ export function runStrategyBacktest (data) {
     method: 'post',
     data: payload,
     timeout
+  })
+}
+
+export function startStrategyBacktestJob (data) {
+  return request({
+    url: api.strategyBacktestJobs,
+    method: 'post',
+    data,
+    timeout: 30000
+  })
+}
+
+export function getStrategyBacktestJob (jobId) {
+  return request({
+    url: `${api.strategyBacktestJobs}/${jobId}`,
+    method: 'get',
+    timeout: 30000
+  })
+}
+
+export function cancelStrategyBacktestJob (jobId) {
+  return request({
+    url: `${api.strategyBacktestJobs}/${jobId}/cancel`,
+    method: 'post',
+    timeout: 30000
   })
 }
 
