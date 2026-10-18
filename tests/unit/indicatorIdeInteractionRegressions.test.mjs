@@ -51,6 +51,16 @@ test('derived live candles preserve a manually selected historical viewport', ()
   assert.doesNotMatch(klineChartSource, /mergedData\.length > 500 \? mergedData\.slice\(-500\)/)
 })
 
+test('derived live candles restore the viewport before the browser can paint a reset position', () => {
+  const replaceStart = klineChartSource.indexOf('const replaceChartData = (rows, options = {}) => {')
+  const replaceEnd = klineChartSource.indexOf('const flushRealtimeChartBar = (bar) => {', replaceStart)
+  const replaceSource = klineChartSource.slice(replaceStart, replaceEnd)
+
+  assert.ok(replaceStart >= 0 && replaceEnd > replaceStart)
+  assert.match(replaceSource, /const afterApply = \(\) => \{[\s\S]*?restoreChartViewport\(chart, viewport\)/)
+  assert.doesNotMatch(replaceSource, /requestAnimationFrame/)
+})
+
 test('indicator conversion route opens before strategy route initialization can replace it', () => {
   assert.match(
     strategyIdeSource,

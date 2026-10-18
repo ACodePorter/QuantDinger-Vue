@@ -2469,18 +2469,11 @@ registerOverlay({
       if (viewport && !viewport.followingLatest) pendingViewportRestore = viewport
 
       const afterApply = () => {
-        const finalize = () => {
-          if (chartRef.value === chart && viewport && !viewport.followingLatest) {
-            restoreChartViewport(chart, viewport)
-          }
-          if (pendingViewportRestore === viewport) pendingViewportRestore = null
-          if (typeof options.onComplete === 'function') options.onComplete()
+        if (chartRef.value === chart && viewport && !viewport.followingLatest) {
+          restoreChartViewport(chart, viewport)
         }
-        if (viewport && !viewport.followingLatest) {
-          requestAnimationFrame(() => requestAnimationFrame(finalize))
-        } else {
-          finalize()
-        }
+        if (pendingViewportRestore === viewport) pendingViewportRestore = null
+        if (typeof options.onComplete === 'function') options.onComplete()
       }
 
       chart.applyNewData(rows, options.moreData, afterApply)
