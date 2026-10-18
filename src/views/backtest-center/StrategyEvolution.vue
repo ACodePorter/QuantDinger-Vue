@@ -536,13 +536,15 @@ export default {
           active: this.selectedRangeDays === rangeDays
         }
       })
-      if (this.backtestRangeLimitDays !== null) presets.push({
-        key: 'max',
-        startDate: end.clone().subtract(this.backtestRangeLimitDays, 'days'),
-        label: this.$t('strategyEvolution.quickRange.max', { days: this.backtestRangeLimitDays }),
-        disabled: false,
-        active: this.selectedRangeDays === this.backtestRangeLimitDays
-      })
+      if (this.backtestRangeLimitDays !== null) {
+        presets.push({
+          key: 'max',
+          startDate: end.clone().subtract(this.backtestRangeLimitDays, 'days'),
+          label: this.$t('strategyEvolution.quickRange.max', { days: this.backtestRangeLimitDays }),
+          disabled: false,
+          active: this.selectedRangeDays === this.backtestRangeLimitDays
+        })
+      }
       return presets
     },
     canRun () { return Boolean(!this.loadingSource && this.form.sourceId && this.selectedParameterCount && this.parameterRangesValid && this.form.startDate && this.form.endDate && !this.backtestRangeExceeded) }

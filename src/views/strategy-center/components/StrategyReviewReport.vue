@@ -3,7 +3,15 @@
     <header class="review-toolbar">
       <div><h2>{{ $t('strategyReviewV2.title') }}</h2><p class="muted">{{ $t('strategyReviewV2.subtitle') }}</p></div>
       <div class="review-actions">
-        <a-select class="history-select" :value="selectedHistoryId" :loading="historyLoading" :disabled="loading" :placeholder="$t('strategyReviewV2.history')" :aria-label="$t('strategyReviewV2.history')" allow-clear @change="selectHistory">
+        <a-select
+          class="history-select"
+          :value="selectedHistoryId"
+          :loading="historyLoading"
+          :disabled="loading"
+          :placeholder="$t('strategyReviewV2.history')"
+          :aria-label="$t('strategyReviewV2.history')"
+          allow-clear
+          @change="selectHistory">
           <a-select-option v-for="item in history" :key="item.id" :value="item.id">{{ historyLabel(item) }}</a-select-option>
         </a-select>
         <a-select v-model="lookbackDays" :disabled="loading" :aria-label="$t('strategyReviewV2.scope')" class="window-select">
@@ -46,7 +54,13 @@
                 <svg viewBox="0 0 1000 22" preserveAspectRatio="none" aria-hidden="true" focusable="false">
                   <line x1="0" x2="1000" y1="21" y2="21" class="chart-baseline" />
                   <line :x1="chartX(chart, 0)" :x2="chartX(chart, 0)" y1="0" y2="22" class="chart-zero" />
-                  <rect :x="Math.min(chartX(chart, 0), chartX(chart, row.value))" :width="Math.abs(chartX(chart, row.value) - chartX(chart, 0))" y="4" height="13" rx="2" :class="row.value < 0 ? 'bar-negative' : 'bar-positive'" />
+                  <rect
+                    :x="Math.min(chartX(chart, 0), chartX(chart, row.value))"
+                    :width="Math.abs(chartX(chart, row.value) - chartX(chart, 0))"
+                    y="4"
+                    height="13"
+                    rx="2"
+                    :class="row.value < 0 ? 'bar-negative' : 'bar-positive'" />
                 </svg>
               </div>
               <div class="chart-axis"><span>{{ formatNumber(chart.min) }}</span><span>{{ formatNumber(chart.max) }}</span></div>

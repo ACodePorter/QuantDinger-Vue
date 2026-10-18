@@ -54,12 +54,6 @@ export function normalizePercentParamValue (raw) {
   return n
 }
 
-export function percentParamToRatio (value) {
-  const n = Number(value)
-  if (!Number.isFinite(n)) return 0
-  return n
-}
-
 export function formatStrategyInstrument (config = {}) {
   const market = String(config.market_category || config.market || 'Crypto').trim() || 'Crypto'
   const symbol = String(config.symbol || '').trim().toUpperCase()
@@ -544,16 +538,6 @@ export function buildTemplateParamValues (templateOrKey, overrides = {}) {
     } else {
       acc[param.name] = raw
     }
-    return acc
-  }, {})
-}
-
-export function buildRuntimeParamValues (params = [], overrides = {}) {
-  return (params || []).filter(param => param && param.name && !isRuntimeReservedParam(param.name)).reduce((acc, param) => {
-    const raw = Object.prototype.hasOwnProperty.call(overrides, param.name)
-      ? overrides[param.name]
-      : param.default
-    acc[param.name] = param.type === 'percent' ? percentParamToRatio(raw) : raw
     return acc
   }, {})
 }

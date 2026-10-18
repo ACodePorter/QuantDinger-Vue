@@ -1129,42 +1129,12 @@ export default {
       border-bottom: 1px solid #ededed;
       background: #fff;
       color: #262626;
-
-      .header-info {
-        .indicator-name { color: #1f1f1f; }
-        .publish-time { color: #8c8c8c; opacity: 1; }
-
-        .indicator-stats ::v-deep .ant-statistic {
-          .ant-statistic-title { color: #8c8c8c; }
-          .ant-statistic-content { color: #262626; }
-        }
-
-        .rating-text { color: #8c8c8c; opacity: 1; }
-      }
     }
 
     &--strategy {
       border-bottom: 1px solid #ededed;
       background: #fff;
       color: #262626;
-
-      .header-info {
-        .indicator-name { color: #1f1f1f; }
-        .publish-time { color: #8c8c8c; opacity: 1; }
-
-        .strategy-api-badge {
-          border-color: rgba(82, 196, 26, 0.28);
-          background: rgba(82, 196, 26, 0.08);
-          color: #389e0d;
-        }
-
-        .indicator-stats ::v-deep .ant-statistic {
-          .ant-statistic-title { color: #8c8c8c; }
-          .ant-statistic-content { color: #262626; }
-        }
-
-        .rating-text { color: #8c8c8c; opacity: 1; }
-      }
     }
 
     .header-cover {
@@ -1284,6 +1254,42 @@ export default {
           color: #595959;
         }
       }
+    }
+
+    &--indicator,
+    &--strategy {
+      .header-info {
+        .indicator-name,
+        .author-name {
+          color: #1f1f1f;
+        }
+
+        .indicator-meta .publish-time {
+          color: #8c8c8c;
+          opacity: 1;
+        }
+
+        .indicator-stats ::v-deep .ant-statistic {
+          .ant-statistic-title {
+            color: #8c8c8c;
+          }
+
+          .ant-statistic-content {
+            color: #262626;
+          }
+        }
+
+        .indicator-stats .rating-text {
+          color: #8c8c8c;
+          opacity: 1;
+        }
+      }
+    }
+
+    &--strategy .header-info .strategy-title-row .strategy-api-badge {
+      border-color: rgba(82, 196, 26, 0.28);
+      background: rgba(82, 196, 26, 0.08);
+      color: #389e0d;
     }
   }
 
@@ -2063,9 +2069,9 @@ export default {
       .publish-time { color: #8c8c8c; }
 
       .strategy-api-badge {
-        border-color: rgba(82, 196, 26, 0.3);
-        background: rgba(82, 196, 26, 0.12);
-        color: #95de64;
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 32%, transparent);
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
+        color: var(--primary-color-hover, #69c0ff);
       }
 
       .indicator-stats ::v-deep .ant-statistic {
@@ -2092,13 +2098,13 @@ export default {
     }
 
     .strategy-contract-section {
-      border-color: #373d37;
-      background: linear-gradient(145deg, #202320, #202020);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 24%, #303030);
+      background: #202020;
     }
 
     .source-controlled-badge {
-      background: rgba(82, 196, 26, 0.16);
-      color: #95de64;
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
+      color: var(--primary-color-hover, #69c0ff);
     }
 
     .contract-card,
@@ -2114,8 +2120,8 @@ export default {
     }
 
     .contract-card__icon {
-      background: rgba(82, 196, 26, 0.12);
-      color: #8fd96a;
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
+      color: var(--primary-color-hover, #69c0ff);
     }
 
     .contract-logic-card,
@@ -2133,7 +2139,7 @@ export default {
       color: rgba(255, 255, 255, 0.62);
 
       .anticon {
-        color: #95de64;
+        color: var(--primary-color-hover, #69c0ff);
       }
     }
 
@@ -2148,7 +2154,10 @@ export default {
       &__head {
         strong { color: rgba(255, 255, 255, 0.88); }
         span { color: rgba(255, 255, 255, 0.46); }
-        .parameter-count { background: rgba(82, 196, 26, 0.14); color: #95de64; }
+        .parameter-count {
+          background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
+          color: var(--primary-color-hover, #69c0ff);
+        }
       }
     }
 

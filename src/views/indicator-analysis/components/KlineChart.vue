@@ -5871,6 +5871,18 @@ registerOverlay({
       context.textAlign = 'left'
 
       const availableHeight = height - headerHeight
+      const focusX = Math.max(0, Math.min(1, Number.isFinite(Number(options.focusX)) ? Number(options.focusX) : 0.5))
+      const focusY = Math.max(0, Math.min(1, Number.isFinite(Number(options.focusY)) ? Number(options.focusY) : 0.52))
+      const getCoverLayout = (sourceWidth, sourceHeight) => {
+        const scale = Math.max(width / sourceWidth, availableHeight / sourceHeight)
+        const drawWidth = sourceWidth * scale
+        const drawHeight = sourceHeight * scale
+        return {
+          scale,
+          drawX: -(drawWidth - width) * focusX,
+          drawY: headerHeight - (drawHeight - availableHeight) * focusY
+        }
+      }
       const chartContainer = document.getElementById('kline-chart-container')
       const layers = chartContainer
         ? Array.from(chartContainer.querySelectorAll('canvas')).filter(layer => {
@@ -5882,11 +5894,11 @@ registerOverlay({
 
       if (chartContainer && layers.length) {
         const chartRect = chartContainer.getBoundingClientRect()
-        const scale = Math.min(width / chartRect.width, availableHeight / chartRect.height)
-        const drawWidth = chartRect.width * scale
-        const drawHeight = chartRect.height * scale
-        const drawX = (width - drawWidth) / 2
-        const drawY = headerHeight + (availableHeight - drawHeight) / 2
+        const { scale, drawX, drawY } = getCoverLayout(chartRect.width, chartRect.height)
+        context.save()
+        context.beginPath()
+        context.rect(0, headerHeight, width, availableHeight)
+        context.clip()
         layers.forEach(layer => {
           const layerRect = layer.getBoundingClientRect()
           context.drawImage(
@@ -5901,6 +5913,7 @@ registerOverlay({
             layerRect.height * scale
           )
         })
+        context.restore()
       } else {
         const sourceUrl = inst.getConvertPictureUrl(true, 'jpeg', background)
         if (!sourceUrl) return ''
@@ -5910,12 +5923,13 @@ registerOverlay({
           source.onerror = reject
           source.src = sourceUrl
         })
-        const scale = Math.min(width / image.width, availableHeight / image.height)
-        const drawWidth = image.width * scale
-        const drawHeight = image.height * scale
-        const drawX = (width - drawWidth) / 2
-        const drawY = headerHeight + (availableHeight - drawHeight) / 2
-        context.drawImage(image, drawX, drawY, drawWidth, drawHeight)
+        const { scale, drawX, drawY } = getCoverLayout(image.width, image.height)
+        context.save()
+        context.beginPath()
+        context.rect(0, headerHeight, width, availableHeight)
+        context.clip()
+        context.drawImage(image, drawX, drawY, image.width * scale, image.height * scale)
+        context.restore()
       }
       return canvas.toDataURL('image/jpeg', 0.88)
     }

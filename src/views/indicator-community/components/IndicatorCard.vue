@@ -737,11 +737,11 @@ export default {
     }
 
     .strategy-applicability {
-      margin: 2px 0 9px;
+      margin: 2px 0 14px;
       padding: 7px 8px;
-      border: 1px solid rgba(82, 196, 26, 0.16);
+      border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
       border-radius: 6px;
-      background: rgba(82, 196, 26, 0.045);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 5%, transparent);
 
       &__row {
         display: flex;
@@ -920,8 +920,9 @@ export default {
     }
 
     .strategy-applicability {
-      border-color: rgba(82, 196, 26, 0.28);
-      background: rgba(82, 196, 26, 0.09);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, #303030);
+      background: #242424;
+      box-shadow: inset 2px 0 0 var(--primary-color, #1890ff);
 
       &__row {
         span { color: rgba(255, 255, 255, 0.6); }
