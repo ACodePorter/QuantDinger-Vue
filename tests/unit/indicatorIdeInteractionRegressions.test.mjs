@@ -45,6 +45,12 @@ test('initial left-edge layout events do not trigger history loading', () => {
   )
 })
 
+test('derived live candles preserve a manually selected historical viewport', () => {
+  assert.match(klineChartSource, /captureChartViewport\(chart\)/)
+  assert.match(klineChartSource, /replaceChartData\(chartDisplayData\(\), \{ preserveViewport: true \}\)/)
+  assert.doesNotMatch(klineChartSource, /mergedData\.length > 500 \? mergedData\.slice\(-500\)/)
+})
+
 test('indicator conversion route opens before strategy route initialization can replace it', () => {
   assert.match(
     strategyIdeSource,
