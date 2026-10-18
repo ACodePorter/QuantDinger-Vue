@@ -2215,7 +2215,7 @@ registerOverlay({
       let metaText = ''
       if (barCount > 0) {
         metaText = `${barCount}${proxy.$t('dashboard.indicator.drawing.measureBarUnit')}`
-        if (timeSpan) metaText += ` 鐠?${timeSpan}`
+        if (timeSpan) metaText += ` · ${timeSpan}`
       } else if (timeSpan) {
         metaText = timeSpan
       }
