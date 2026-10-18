@@ -53,3 +53,22 @@ test('latest viewport keeps following new bars without forced restoration', () =
   assert.equal(restoreChartViewport(chart, snapshot), false)
   assert.deepEqual(scrolls, [])
 })
+
+test('future whitespace created by dragging candles left survives a data replacement', () => {
+  let rightOffsetDistance = 248
+  const scrolls = []
+  const chart = {
+    getDataList: () => rows(100),
+    getVisibleRange: () => ({ from: 58, to: 100, realFrom: 88, realTo: 130 }),
+    getOffsetRightDistance: () => rightOffsetDistance,
+    getBarSpace: () => 8,
+    scrollByDistance: (distance, duration) => scrolls.push([distance, duration])
+  }
+
+  const snapshot = captureChartViewport(chart)
+  rightOffsetDistance = 64
+
+  assert.deepEqual(snapshot, { followingLatest: false, rightOffsetDistance: 248 })
+  assert.equal(restoreChartViewport(chart, snapshot), true)
+  assert.deepEqual(scrolls, [[-184, 0]])
+})
