@@ -1,12 +1,12 @@
 <template>
   <div class="ai-skill-center qd-workspace-page qd-page-frame">
-    <div class="page-header">
-      <div class="page-header-copy">
-        <h2 class="page-title">
-          <a-icon type="robot" />
+    <div class="page-header qd-page-heading">
+      <div class="page-header-copy qd-page-heading__copy">
+        <h2 class="page-title qd-page-heading__title">
+          <a-icon class="qd-page-heading__icon" type="robot" />
           <span>{{ text.title }}</span>
         </h2>
-        <p class="page-desc">{{ text.subtitle }}</p>
+        <p class="page-desc qd-page-heading__description">{{ text.subtitle }}</p>
       </div>
       <div class="page-actions">
         <a-button icon="reload" :loading="loading" @click="loadAll">{{ text.refresh }}</a-button>
@@ -38,7 +38,7 @@
         >
           <template slot="label" slot-scope="textValue, record">
             <div class="skill-name">
-              <a-icon :type="record.icon || 'experiment'" />
+              <a-icon :type="skillIcon(record)" />
               <div>
                 <strong>{{ record.label }}</strong>
                 <span>{{ record.id }}</span>
@@ -264,6 +264,10 @@ export default {
       if (risk === 'write_draft') return 'blue'
       if (risk === 'write_config') return 'orange'
       return 'default'
+    },
+    skillIcon (record) {
+      if (record?.icon === 'function') return 'file-protect'
+      return record?.icon || 'experiment'
     },
     openSkill (record) {
       this.detailSkill = record
