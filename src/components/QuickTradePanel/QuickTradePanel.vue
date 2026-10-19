@@ -3439,18 +3439,19 @@ export default {
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
-  scrollbar-width: auto;
-  scrollbar-color: var(--primary-color, #52c41a) #e2e8f0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--qd-scrollbar-thumb, rgba(15, 23, 42, 0.22)) transparent;
   overscroll-behavior-x: contain;
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
-  &::-webkit-scrollbar { height: 7px; }
-  &::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 999px; }
+  &::-webkit-scrollbar { height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
     min-width: 34px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid transparent;
     border-radius: 999px;
-    background: var(--primary-color, #52c41a);
+    background: var(--qd-scrollbar-thumb, rgba(15, 23, 42, 0.22));
+    background-clip: padding-box;
   }
   button {
     position: relative;
@@ -4952,9 +4953,7 @@ export default {
   .qt-dock-tabs {
     background: #191919;
     border-bottom-color: #303030;
-    scrollbar-color: var(--primary-color, #52c41a) #303030;
-    &::-webkit-scrollbar-track { background: #303030; }
-    &::-webkit-scrollbar-thumb { border-color: #303030; }
+    scrollbar-color: var(--qd-scrollbar-thumb, rgba(255, 255, 255, 0.22)) transparent;
     button { color: rgba(255, 255, 255, 0.48); }
     button.active { color: var(--primary-color, #52c41a); }
     button.active::after { background: var(--primary-color, #52c41a); }
