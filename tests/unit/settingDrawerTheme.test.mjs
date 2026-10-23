@@ -16,3 +16,10 @@ test('dark setting drawer uses the app black surface from its own theme state', 
   assert.doesNotMatch(source, /--setting-drawer-bg: #11161c;/)
   assert.doesNotMatch(source, /background: #171717 !important;/)
 })
+
+test('setting drawer uses a responsive desktop width and keeps page style labels on one line', () => {
+  assert.match(source, /:width="drawerWidth"/)
+  assert.match(source, /drawerWidth \(\) \{\s*return this\.isMobile \? '100%' : 420\s*\}/)
+  assert.match(source, /> span \{[\s\S]*?font-weight: 600;[\s\S]*?white-space: nowrap;/)
+  assert.doesNotMatch(source, /> span \{[\s\S]*?text-overflow: ellipsis;/)
+})

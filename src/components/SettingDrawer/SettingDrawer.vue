@@ -2,7 +2,7 @@
   <div class="setting-drawer" :class="{ 'setting-drawer--dark': isDarkDrawer }">
     <a-drawer
       v-if="visible"
-      width="360"
+      :width="drawerWidth"
       placement="right"
       @close="onClose"
       :closable="true"
@@ -238,6 +238,9 @@ export default {
     isDarkDrawer () {
       return this.isDarkNavTheme
     },
+    drawerWidth () {
+      return this.isMobile ? '100%' : 420
+    },
     isDarkNavTheme () {
       return this.currentNavTheme === 'dark' || this.currentNavTheme === 'realdark'
     }
@@ -361,7 +364,7 @@ export default {
   }
 
   :deep(.ant-drawer-body) {
-    padding: 18px 16px 24px !important;
+    padding: 20px 18px 28px !important;
   }
 
   :deep(.ant-drawer-close) {
@@ -385,7 +388,7 @@ export default {
 
   .setting-drawer-index-content {
     display: grid;
-    gap: 14px;
+    gap: 16px;
     padding-top: 4px;
   }
 
@@ -435,15 +438,15 @@ export default {
   .setting-drawer-index-item {
     position: relative;
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-columns: 58px minmax(0, 1fr);
     align-items: center;
     gap: 9px;
     min-width: 0;
-    min-height: 64px;
-    padding: 9px;
+    min-height: 72px;
+    padding: 10px;
     color: #64748b;
     font: inherit;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.35;
     text-align: left;
     background: #f8fafc;
@@ -465,10 +468,16 @@ export default {
     }
 
     img {
-      width: 52px;
-      height: 40px;
+      width: 58px;
+      height: 44px;
       object-fit: cover;
       border-radius: 6px;
+    }
+
+    > span {
+      min-width: 0;
+      font-weight: 600;
+      white-space: nowrap;
     }
   }
 
@@ -642,6 +651,27 @@ export default {
       :deep(.ant-list-item-meta-title),
       :deep(.ant-list-item-meta-title > div) {
         color: #b8b8b8 !important;
+      }
+    }
+  }
+
+  @media (max-width: 520px) {
+    :deep(.ant-drawer-body) {
+      padding: 18px 14px 24px !important;
+    }
+
+    .setting-section {
+      padding: 14px;
+    }
+
+    .setting-drawer-index-item {
+      grid-template-columns: 50px minmax(0, 1fr);
+      min-height: 66px;
+      padding: 8px;
+
+      img {
+        width: 50px;
+        height: 38px;
       }
     }
   }

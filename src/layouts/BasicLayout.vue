@@ -58,23 +58,25 @@
 
       <setting-drawer ref="settingDrawer" :settings="settings" @change="handleSettingChange">
         <div class="setting-drawer-support">
-          <div class="support-block">
-            <div class="support-title">{{ $t('menu.footer.contactUs') }}</div>
-            <div class="support-links">
-              <a :href="menuFooterConfig.contact.support_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.support') }}</a>
-              <span class="separator">|</span>
-              <a :href="menuFooterConfig.contact.feature_request_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.featureRequest') }}</a>
+          <div class="support-grid">
+            <div class="support-block">
+              <div class="support-title">{{ $t('menu.footer.contactUs') }}</div>
+              <div class="support-links">
+                <a :href="menuFooterConfig.contact.support_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.support') }}</a>
+                <span class="separator">|</span>
+                <a :href="menuFooterConfig.contact.feature_request_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.featureRequest') }}</a>
+              </div>
+            </div>
+            <div class="support-block">
+              <div class="support-title">{{ $t('menu.footer.getSupport') }}</div>
+              <div class="support-links">
+                <a :href="'mailto:' + menuFooterConfig.contact.email">{{ $t('menu.footer.email') }}</a>
+                <span class="separator">|</span>
+                <a :href="menuFooterConfig.contact.live_chat_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.liveChat') }}</a>
+              </div>
             </div>
           </div>
-          <div class="support-block">
-            <div class="support-title">{{ $t('menu.footer.getSupport') }}</div>
-            <div class="support-links">
-              <a :href="'mailto:' + menuFooterConfig.contact.email">{{ $t('menu.footer.email') }}</a>
-              <span class="separator">|</span>
-              <a :href="menuFooterConfig.contact.live_chat_url" target="_blank" rel="noopener noreferrer">{{ $t('menu.footer.liveChat') }}</a>
-            </div>
-          </div>
-          <div class="support-block" v-if="menuFooterConfig.social_accounts && menuFooterConfig.social_accounts.length > 0">
+          <div class="support-block support-block--social" v-if="menuFooterConfig.social_accounts && menuFooterConfig.social_accounts.length > 0">
             <div class="support-title">{{ $t('menu.footer.socialAccounts') }}</div>
             <div class="support-socials">
               <a
@@ -107,8 +109,10 @@
             >{{ $t('menu.footer.privacyPolicy') }}</a>
             <a v-else @click="showPrivacyModal = true">{{ $t('menu.footer.privacyPolicy') }}</a>
           </div>
-          <div class="support-copy">{{ menuFooterConfig.copyright }}</div>
-          <div class="support-version">V{{ appVersion }}</div>
+          <div class="support-meta">
+            <div class="support-copy">{{ menuFooterConfig.copyright }}</div>
+            <div class="support-version">V{{ appVersion }}</div>
+          </div>
         </div>
       </setting-drawer>
       <template #rightContentRender>
@@ -1387,9 +1391,9 @@ export default {
 }
 
 .setting-drawer-support {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 16px;
   color: #64748b;
   background: #fff;
@@ -1397,15 +1401,27 @@ export default {
   border-radius: 12px;
   box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045);
 
+  .support-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
   .support-block {
     min-width: 0;
     margin: 0;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e7eaf0;
+    border-radius: 9px;
   }
 
-  .support-block:nth-child(3) {
-    grid-column: 1 / -1;
-    padding-top: 13px;
+  .support-block--social {
+    padding: 12px 0 0;
+    background: transparent;
+    border: 0;
     border-top: 1px solid #edf0f3;
+    border-radius: 0;
   }
 
   .support-title {
@@ -1414,6 +1430,7 @@ export default {
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 
   .support-links,
@@ -1428,12 +1445,15 @@ export default {
     a {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      flex: 1 1 auto;
       min-height: 25px;
       padding: 3px 7px;
       color: var(--primary-color, #1890ff);
       background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, #fff);
       border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 15%, #e6e9ee);
       border-radius: 7px;
+      white-space: nowrap;
 
       &:hover {
         background: color-mix(in srgb, var(--primary-color, #1890ff) 11%, #fff);
@@ -1446,9 +1466,12 @@ export default {
   }
 
   .support-legal {
-    grid-column: 1 / -1;
     padding-top: 13px;
     border-top: 1px solid #edf0f3;
+
+    a {
+      flex: 0 0 auto;
+    }
   }
 
   .support-socials {
@@ -1476,24 +1499,37 @@ export default {
     }
   }
 
-  .support-copy {
-    min-width: 0;
+  .support-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding-top: 11px;
-    overflow: hidden;
-    color: #94a3b8;
-    font-size: 10px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     border-top: 1px solid #edf0f3;
   }
 
+  .support-copy,
   .support-version {
-    padding-top: 11px;
     color: #94a3b8;
     font-size: 10px;
+  }
+
+  .support-copy {
+    min-width: 0;
+    line-height: 1.45;
+  }
+
+  .support-version {
+    flex: 0 0 auto;
     letter-spacing: 0.06em;
     text-align: right;
-    border-top: 1px solid #edf0f3;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 380px) {
+    .support-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }
 
@@ -1506,10 +1542,18 @@ body.realdark .setting-drawer-support,
   border-color: #2d2d2d;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 
-  .support-block:nth-child(3),
+  .support-block {
+    background: #181818;
+    border-color: #303030;
+  }
+
+  .support-block--social {
+    background: transparent;
+    border-color: #2d2d2d;
+  }
+
   .support-legal,
-  .support-copy,
-  .support-version {
+  .support-meta {
     border-top-color: #2d2d2d;
   }
 
