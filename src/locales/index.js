@@ -42,6 +42,7 @@ import navigationMessages from './navigation-overrides'
 import bitgetAccountModeMessages from './lang/bitget-account-mode'
 import aiSkillsTaxonomyMessages from './lang/ai-skills-taxonomy'
 import factorResearchUniverseMessages from './lang/factor-research-universe'
+import aiAnalysisWorkbenchMessages from './ai-analysis-workbench-overrides'
 
 Vue.use(VueI18n)
 
@@ -88,7 +89,8 @@ const messages = {
     ...(bitgetAccountModeMessages[defaultLang] || {}),
     ...(aiSkillsTaxonomyMessages[defaultLang] || {}),
     ...(generatedLocaleOverrides[defaultLang] || {}),
-    ...(factorResearchUniverseMessages[defaultLang] || {})
+    ...(factorResearchUniverseMessages[defaultLang] || {}),
+    ...(aiAnalysisWorkbenchMessages[defaultLang] || {})
   }
 }
 
@@ -194,7 +196,8 @@ function mergeLocaleOverrides (lang) {
     ...(bitgetAccountModeMessages[lang] || {}),
     ...(aiSkillsTaxonomyMessages[lang] || {}),
     ...(generatedLocaleOverrides[lang] || {}),
-    ...(factorResearchUniverseMessages[lang] || {})
+    ...(factorResearchUniverseMessages[lang] || {}),
+    ...(aiAnalysisWorkbenchMessages[lang] || {})
   }
   i18n.setLocaleMessage(lang, {
     ...(i18n.getLocaleMessage(lang) || {}),
@@ -251,7 +254,8 @@ export async function loadLanguageAsync (lang = defaultLang) {
       ...(zhTwProductMessages[lang] || {}),
       ...(navigationMessages[lang] || {}),
       ...(generatedLocaleOverrides[lang] || {}),
-      ...(factorResearchUniverseMessages[lang] || {})
+      ...(factorResearchUniverseMessages[lang] || {}),
+      ...(aiAnalysisWorkbenchMessages[lang] || {})
     })
     i18n.setLocaleMessage(lang, locale)
     loadedLanguages.push(lang)

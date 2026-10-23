@@ -63,24 +63,30 @@
     </aside>
 
     <main class="chat-panel">
-      <header class="chat-hero">
-        <button type="button" class="mobile-sessions-trigger" @click="mobileSessionsOpen = true">
-          <a-icon type="history" />
-          <span>{{ text.sessions }}</span>
-        </button>
-        <div class="hero-main">
-          <div class="hero-copy">
-            <span class="eyebrow">{{ text.title }}</span>
-            <p>{{ text.subtitle }}</p>
-          </div>
-        </div>
-      </header>
+      <button type="button" class="mobile-sessions-trigger" @click="mobileSessionsOpen = true">
+        <a-icon type="history" />
+        <span>{{ text.sessions }}</span>
+      </button>
 
-      <div ref="messages" class="messages">
+      <div ref="messages" class="messages" :class="{ 'messages--welcome': messages.length === 0 }">
         <div v-if="messages.length === 0" class="welcome">
           <a-icon type="search" />
           <h3>{{ text.researchWelcomeTitle }}</h3>
           <p>{{ text.researchWelcomeDesc }}</p>
+          <div class="research-mode-bar" role="tablist" :aria-label="text.researchMode">
+            <button
+              v-for="mode in researchModeOptions"
+              :key="mode.key"
+              type="button"
+              role="tab"
+              :aria-selected="activeResearchMode === mode.key ? 'true' : 'false'"
+              :class="{ active: activeResearchMode === mode.key }"
+              @click="selectResearchMode(mode.key)"
+            >
+              <a-icon :type="mode.icon" />
+              {{ mode.label }}
+            </button>
+          </div>
           <div class="welcome-prompts">
             <button
               v-for="item in starterPrompts"
@@ -233,7 +239,6 @@
           <div class="context-status">
             <a-icon type="search" />
             <span>{{ text.focusSymbol }}</span>
-            <strong>{{ currentContextLabel }}</strong>
           </div>
           <div class="symbol-picker hero-symbol-picker">
             <a-select
@@ -276,20 +281,6 @@
           <a-icon type="link" />
           <span>{{ text.followingReport }}</span>
           <button type="button" @click="draftReferencedReportId = null"><a-icon type="close" /></button>
-        </div>
-        <div class="research-mode-bar" role="tablist" :aria-label="text.researchMode">
-          <button
-            v-for="mode in researchModeOptions"
-            :key="mode.key"
-            type="button"
-            role="tab"
-            :aria-selected="activeResearchMode === mode.key ? 'true' : 'false'"
-            :class="{ active: activeResearchMode === mode.key }"
-            @click="selectResearchMode(mode.key)"
-          >
-            <a-icon :type="mode.icon" />
-            {{ mode.label }}
-          </button>
         </div>
         <div v-if="strategyComposerGuide" class="composer-coach">
           <span class="composer-coach-icon"><a-icon :type="strategyComposerGuide.icon" /></span>
@@ -808,8 +799,6 @@ export default {
     text () {
       const t = (key, fallback, values) => this.i18nText(`aiAssetAnalysis.copilot.${key}`, fallback, values)
       return {
-        title: t('title', 'AI Copilot'),
-        subtitle: t('subtitle', this.isZh ? '在一个工作区研究标的、检查事件、比较市场并形成可验证的交易观点。' : 'Research symbols, inspect events, compare markets, and form testable trading views in one workspace.'),
         sessions: t('sessions', 'Chat History'),
         newChat: t('newChat', 'New'),
         noSessions: t('noSessions', 'No conversations yet'),
@@ -924,7 +913,7 @@ export default {
         selectSymbolFirst: t('selectSymbolFirst', 'Choose a symbol to analyze before running this tool.'),
         uploadImage: t('uploadImage', 'Upload image'),
         quickTools: t('quickTools', 'Quick tools'),
-        professionalReport: t('professionalReport', this.isZh ? '专业分析报告' : 'Professional report'),
+        professionalReport: t('professionalReport', ''),
         professionalReportHint: t('professionalReportHint', this.isZh ? '生成含结论、交易计划和风险收益比的结构化报告' : 'Generate a structured report with verdict, plan, and risk/reward.'),
         scheduleHint: t('scheduleHint', this.isZh ? '按指定频率复查当前标的并发送通知' : 'Re-check this symbol on a schedule and notify you.'),
         manageMemory: t('manageMemory', this.isZh ? '对话记忆' : 'Conversation memory'),
@@ -979,7 +968,6 @@ export default {
         copyCode: t('copyCode', 'Copy code'),
         currentSymbol: t('currentSymbol', 'this symbol'),
         free: t('free', 'Free'),
-        contextAutoInfer: t('contextAutoInfer', 'Not fixed; AI will infer from your message'),
         strategyFlowDescribe: t('strategyFlowDescribe', 'Describe'),
         strategyFlowDraft: t('strategyFlowDraft', 'Draft'),
         strategyFlowBacktest: t('strategyFlowBacktest', 'Backtest'),
@@ -1256,11 +1244,6 @@ export default {
     },
     canSend () {
       return !this.sending && (this.draft.trim().length > 0 || this.attachments.length > 0)
-    },
-    currentContextLabel () {
-      const target = this.normalizeSymbolOption(this.context)
-      if (!target || !target.symbol) return this.text.contextAutoInfer
-      return `${target.market}:${target.symbol}`
     },
     hasSessionSummary () {
       return !!(this.sessionMemory && this.sessionMemory.summary && Object.keys(this.sessionMemory.summary).length)
@@ -8830,13 +8813,34 @@ body.realdark .followup-suggestions,
   font-variant-numeric: tabular-nums;
 }
 
-.copilot-workbench .chat-hero {
-  border-bottom: 1px solid var(--qd-border-soft);
+.copilot-workbench .composer-context-bar {
+  grid-template-columns: max-content minmax(220px, 420px) max-content minmax(140px, 1fr);
+}
+
+.copilot-workbench .context-status {
+  height: auto;
+  min-height: 34px;
 }
 
 .copilot-workbench .messages {
   position: relative;
   isolation: isolate;
+}
+
+.copilot-workbench .messages--welcome {
+  display: flex;
+  flex-direction: column;
+  padding: 32px 28px;
+}
+
+.copilot-workbench .messages--welcome .welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  margin: auto;
+  padding: clamp(20px, 3vh, 36px) 0;
 }
 
 .copilot-workbench .messages::before {
@@ -8854,14 +8858,34 @@ body.realdark .followup-suggestions,
 }
 
 .copilot-workbench .welcome > .anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   border: 1px solid color-mix(in srgb, var(--qd-accent) 34%, transparent);
+  border-radius: 10px;
   background: color-mix(in srgb, var(--qd-accent) 13%, var(--qd-panel));
   box-shadow: 0 10px 28px color-mix(in srgb, var(--qd-accent) 16%, transparent);
+  font-size: 20px;
+}
+
+.copilot-workbench .welcome h3 {
+  margin: 12px 0 4px;
+  font-size: 21px;
+  line-height: 1.3;
+}
+
+.copilot-workbench .welcome > p {
+  max-width: 620px;
+  margin: 0 auto;
+  line-height: 1.5;
 }
 
 .copilot-workbench .welcome-prompts {
+  width: 100%;
   gap: 10px;
-  max-width: 780px;
+  max-width: 880px;
 }
 
 .copilot-workbench .welcome-prompts button.research-prompt-pill {
@@ -8911,6 +8935,39 @@ body.realdark .followup-suggestions,
 .copilot-workbench .research-mode-bar button.active {
   border-color: color-mix(in srgb, var(--qd-accent) 46%, var(--qd-border));
   background: color-mix(in srgb, var(--qd-accent) 11%, var(--qd-panel));
+}
+
+.copilot-workbench .welcome .research-mode-bar {
+  justify-content: center;
+  min-width: 0;
+  max-width: 880px;
+  margin: 18px auto 0;
+  padding: 0;
+}
+
+.copilot-workbench .welcome .research-mode-bar button {
+  min-height: 32px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-weight: 650;
+}
+
+.copilot-workbench .welcome .research-mode-bar + .welcome-prompts {
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .copilot-workbench .messages--welcome {
+    padding: 20px 12px;
+  }
+
+  .copilot-workbench .messages--welcome .welcome {
+    padding: 20px 0;
+  }
+
+  .copilot-workbench .welcome .research-mode-bar {
+    justify-content: flex-start;
+  }
 }
 
 .copilot-workbench .composer textarea {
