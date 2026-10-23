@@ -61,6 +61,10 @@ test('factor detail separates model features from strategy signals', () => {
 test('factor filters use visible chips and compact themed scrollbars', () => {
   assert.match(factorLibrarySource, /factor-library-filter-chip--active/)
   assert.match(factorLibrarySource, /familyCounts\[option\.value\]/)
+  assert.match(factorLibrarySource, /--factor-library-accent: var\(--primary-color, #1890ff\)/)
+  assert.match(factorLibrarySource, /factor-library-filter-chip--active \{[\s\S]*?border-color: color-mix\(in srgb, var\(--factor-library-accent\)/)
+  assert.match(factorLibrarySource, /factor-library-modal--dark \{[\s\S]*?factor-library-notice \{[\s\S]*?background: color-mix\(in srgb, var\(--factor-library-accent\)/)
+  assert.doesNotMatch(factorLibrarySource, /rgba\(250, 84, 28, 0\.24\)/)
   assert.match(factorLibrarySource, /scrollbar-width: thin/)
   assert.doesNotMatch(factorLibrarySource, /class="factor-library-family-select"/)
   assert.doesNotMatch(factorLibrarySource, /class="factor-library-scope-select"/)

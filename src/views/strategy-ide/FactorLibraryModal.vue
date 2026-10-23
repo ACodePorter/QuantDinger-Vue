@@ -8,7 +8,6 @@
     :wrap-class-name="isDark ? 'factor-library-modal factor-library-modal--dark' : 'factor-library-modal'"
     @cancel="$emit('close')"
   >
-    <a-alert v-if="typeFilter === 'fundamental' || (selectedFactor && selectedFactor.factor_type === 'fundamental')" type="warning" show-icon :message="$t('fundamentalSync.factorNotice')" />
     <div class="factor-library-tools">
       <div class="factor-library-tools__main">
         <a-input
@@ -63,6 +62,14 @@
             </button>
           </div>
         </div>
+      </div>
+      <div
+        v-if="typeFilter === 'fundamental' || (selectedFactor && selectedFactor.factor_type === 'fundamental')"
+        class="factor-library-notice"
+        role="note"
+      >
+        <span class="factor-library-notice__icon"><a-icon type="database" /></span>
+        <span>{{ $t('fundamentalSync.factorNotice') }}</span>
       </div>
     </div>
 
@@ -744,6 +751,8 @@ export default {
 
 <style lang="less">
 .factor-library-modal {
+  --factor-library-accent: var(--primary-color, #1890ff);
+
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
 
   .ant-modal {
@@ -866,18 +875,47 @@ export default {
 }
 
 .factor-library-filter-chip:hover {
-  color: var(--primary-color, #fa541c);
+  color: var(--factor-library-accent);
+  background: color-mix(in srgb, var(--factor-library-accent) 4%, transparent);
 }
 
 .factor-library-filter-chip--active {
-  border-color: rgba(250, 84, 28, 0.24);
-  color: var(--primary-color, #fa541c);
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  border-color: color-mix(in srgb, var(--factor-library-accent) 32%, transparent);
+  color: var(--factor-library-accent);
+  background: color-mix(in srgb, var(--factor-library-accent) 7%, #fff);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--factor-library-accent) 10%, transparent);
 }
 
 .factor-library-filter-chip--active > span {
   color: inherit;
+}
+
+.factor-library-notice {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 8px 12px 8px 9px;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--factor-library-accent) 18%, #e6e9ef);
+  border-radius: 8px;
+  color: #596274;
+  background: color-mix(in srgb, var(--factor-library-accent) 4%, #f8fafc);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.factor-library-notice__icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--factor-library-accent);
+  background: color-mix(in srgb, var(--factor-library-accent) 10%, transparent);
 }
 
 .factor-library-workspace {
@@ -958,8 +996,8 @@ export default {
 
 .factor-card:hover,
 .factor-card--active {
-  border-color: var(--primary-color, #faad14);
-  box-shadow: inset 3px 0 0 var(--primary-color, #faad14);
+  border-color: var(--factor-library-accent);
+  box-shadow: inset 3px 0 0 var(--factor-library-accent);
 }
 
 .factor-card__top,
@@ -1249,7 +1287,7 @@ export default {
   }
 
   .factor-library-filter-chip--active {
-    border-color: rgba(255, 255, 255, 0.09);
+    border-color: color-mix(in srgb, var(--factor-library-accent) 42%, #303030);
   }
 
   .factor-library-filterbar__label,
@@ -1258,9 +1296,25 @@ export default {
   }
 
   .factor-library-filter-chip--active {
-    color: var(--primary-color, #ff5b21);
-    background: #242424;
-    box-shadow: none;
+    color: color-mix(in srgb, var(--factor-library-accent) 74%, #fff);
+    background: color-mix(in srgb, var(--factor-library-accent) 11%, #181818);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--factor-library-accent) 9%, transparent);
+  }
+
+  .factor-library-filter-chip:hover {
+    color: color-mix(in srgb, var(--factor-library-accent) 74%, #fff);
+    background: color-mix(in srgb, var(--factor-library-accent) 7%, #181818);
+  }
+
+  .factor-library-notice {
+    border-color: color-mix(in srgb, var(--factor-library-accent) 26%, #303030);
+    color: rgba(255, 255, 255, 0.64);
+    background: color-mix(in srgb, var(--factor-library-accent) 7%, #161616);
+  }
+
+  .factor-library-notice__icon {
+    color: color-mix(in srgb, var(--factor-library-accent) 74%, #fff);
+    background: color-mix(in srgb, var(--factor-library-accent) 15%, #1b1b1b);
   }
 
   .factor-library-list,
