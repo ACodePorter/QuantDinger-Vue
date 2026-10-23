@@ -3,7 +3,8 @@
     <div class="positions-section">
       <a-alert
         v-if="showReconciliationAlert"
-        class="position-reconciliation-alert"
+        class="ownership-warning-alert position-reconciliation-alert"
+        :class="{ 'is-dark': isDark }"
         type="warning"
         show-icon
         :message="reconciliationMessage"
@@ -187,7 +188,8 @@
       </a-table>
       <a-alert
         v-if="ownershipRows.some(row => row.repair_kind === 'allocation_shortfall')"
-        class="ownership-shortfall-alert"
+        class="ownership-warning-alert ownership-shortfall-alert"
+        :class="{ 'is-dark': isDark }"
         type="warning"
         show-icon
         :message="$t('strategyCenter.positionOwnership.shortfall')"
@@ -651,7 +653,6 @@ export default {
   .position-reconciliation-alert,
   .virtual-account-alert {
     margin-bottom: 12px;
-    border-radius: 6px;
   }
 
   .ownership-toolbar {
@@ -874,8 +875,100 @@ export default {
   }
 }
 
+.ownership-warning-alert {
+  position: relative;
+  overflow: hidden;
+  padding: 13px 15px 13px 58px;
+  border: 1px solid rgba(217, 169, 40, 0.28);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(217, 169, 40, 0.08) 0%, #fff 72%);
+  box-shadow: inset 3px 0 0 rgba(217, 169, 40, 0.52);
+
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 100%;
+    content: '';
+    pointer-events: none;
+    background: radial-gradient(circle at top right, rgba(217, 169, 40, 0.09), transparent 68%);
+  }
+
+  ::v-deep .ant-alert-icon {
+    top: 13px;
+    left: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: #b7791f;
+    font-size: 14px;
+    background: rgba(217, 169, 40, 0.12);
+    border: 1px solid rgba(217, 169, 40, 0.24);
+    border-radius: 8px;
+  }
+
+  ::v-deep .ant-alert-message {
+    position: relative;
+    color: #463819;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.45;
+  }
+
+  ::v-deep .ant-alert-description {
+    position: relative;
+    margin-top: 4px;
+    color: #766943;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  ::v-deep .ant-btn-link {
+    height: auto;
+    padding: 2px 0 0;
+    color: #9a6b00;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  &.is-dark {
+    border-color: rgba(217, 169, 40, 0.3);
+    background: linear-gradient(135deg, rgba(217, 169, 40, 0.1) 0%, #1b1d20 72%);
+    box-shadow: inset 3px 0 0 rgba(217, 169, 40, 0.58);
+
+    &::before {
+      background: radial-gradient(circle at top right, rgba(217, 169, 40, 0.08), transparent 68%);
+    }
+
+    ::v-deep .ant-alert-icon {
+      color: #e0b84d;
+      background: rgba(217, 169, 40, 0.13);
+      border-color: rgba(217, 169, 40, 0.28);
+    }
+
+    ::v-deep .ant-alert-message {
+      color: #e8e3d7;
+    }
+
+    ::v-deep .ant-alert-description {
+      color: #aaa394;
+    }
+
+    ::v-deep .ant-btn-link {
+      color: #d9a928;
+
+      &:hover,
+      &:focus {
+        color: #edc85f;
+      }
+    }
+  }
+}
+
 .ownership-shortfall-alert {
   margin-top: 16px;
-  border-radius: 8px;
 }
 </style>
