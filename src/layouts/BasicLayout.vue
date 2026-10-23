@@ -1387,20 +1387,33 @@ export default {
 }
 
 .setting-drawer-support {
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-  color: rgba(15, 23, 42, 0.72);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
+  padding: 16px;
+  color: #64748b;
+  background: #fff;
+  border: 1px solid #e6e9ee;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045);
 
   .support-block {
-    margin-bottom: 14px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .support-block:nth-child(3) {
+    grid-column: 1 / -1;
+    padding-top: 13px;
+    border-top: 1px solid #edf0f3;
   }
 
   .support-title {
-    margin-bottom: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(15, 23, 42, 0.86);
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
   }
 
   .support-links,
@@ -1408,17 +1421,34 @@ export default {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
+    gap: 5px;
+    font-size: 11px;
     line-height: 1.6;
 
     a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 3px 7px;
       color: var(--primary-color, #1890ff);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, #fff);
+      border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 15%, #e6e9ee);
+      border-radius: 7px;
+
+      &:hover {
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 11%, #fff);
+      }
     }
 
     .separator {
-      color: rgba(100, 116, 139, 0.58);
+      display: none;
     }
+  }
+
+  .support-legal {
+    grid-column: 1 / -1;
+    padding-top: 13px;
+    border-top: 1px solid #edf0f3;
   }
 
   .support-socials {
@@ -1431,12 +1461,12 @@ export default {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 6px;
-    color: rgba(15, 23, 42, 0.72);
-    background: rgba(248, 250, 252, 0.85);
+    width: 30px;
+    height: 30px;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e7eaf0;
+    border-radius: 8px;
     transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 
     &:hover {
@@ -1447,18 +1477,23 @@ export default {
   }
 
   .support-copy {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(15, 23, 42, 0.08);
-    font-size: 11px;
-    color: rgba(100, 116, 139, 0.78);
+    min-width: 0;
+    padding-top: 11px;
+    overflow: hidden;
+    color: #94a3b8;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-top: 1px solid #edf0f3;
   }
 
   .support-version {
-    margin-top: 4px;
+    padding-top: 11px;
+    color: #94a3b8;
     font-size: 10px;
     letter-spacing: 0.06em;
-    color: rgba(100, 116, 139, 0.58);
+    text-align: right;
+    border-top: 1px solid #edf0f3;
   }
 }
 
@@ -1466,24 +1501,38 @@ body.dark .setting-drawer-support,
 body.realdark .setting-drawer-support,
 .basic-layout-wrapper.dark .setting-drawer-support,
 .basic-layout-wrapper.realdark .setting-drawer-support {
-  border-top-color: rgba(255, 255, 255, 0.1);
-  color: rgba(226, 232, 240, 0.72);
+  color: #a8a8a8;
+  background: #111;
+  border-color: #2d2d2d;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+
+  .support-block:nth-child(3),
+  .support-legal,
+  .support-copy,
+  .support-version {
+    border-top-color: #2d2d2d;
+  }
 
   .support-title {
-    color: rgba(248, 250, 252, 0.9);
+    color: #ededed;
   }
 
   .support-links,
   .support-legal {
-    .separator {
-      color: rgba(148, 163, 184, 0.58);
+    a {
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, #171717);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 22%, #2d2d2d);
+
+      &:hover {
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 16%, #171717);
+      }
     }
   }
 
   .support-social {
-    color: rgba(226, 232, 240, 0.74);
-    border-color: rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    color: #b8b8b8;
+    background: #181818;
+    border-color: #303030;
 
     &:hover {
       color: var(--primary-color, #1890ff);
@@ -1493,12 +1542,11 @@ body.realdark .setting-drawer-support,
   }
 
   .support-copy {
-    border-top-color: rgba(255, 255, 255, 0.1);
-    color: rgba(148, 163, 184, 0.75);
+    color: #737373;
   }
 
   .support-version {
-    color: rgba(148, 163, 184, 0.58);
+    color: #737373;
   }
 }
 
