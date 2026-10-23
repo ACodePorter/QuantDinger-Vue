@@ -2,25 +2,33 @@
   <div class="indicator-ide" :class="{ 'theme-dark': isDarkTheme }">
     <!-- Main split panels -->
     <div class="ide-main">
-      <div
+      <button
+        v-if="!codeDrawerVisible"
+        type="button"
         class="ide-code-rail"
-        :class="{ 'is-open': codeDrawerVisible }"
-        role="button"
-        tabindex="0"
-        :title="codeDrawerVisible ? $t('indicatorIde.hideCode') : $t('indicatorIde.showCode')"
+        :title="$t('indicatorIde.showCode')"
+        :aria-label="$t('indicatorIde.showCode')"
         @click="toggleCodeDrawer"
-        @keyup.enter="toggleCodeDrawer"
       >
         <a-icon type="code" class="ide-code-rail__icon" />
-        <a-icon :type="codeDrawerVisible ? 'double-left' : 'double-right'" class="ide-code-rail__arrow" />
-        <span class="ide-code-rail__label">{{ $t('indicatorIde.codeRailLabel') }}</span>
-      </div>
+        <a-icon type="right" class="ide-code-rail__arrow" />
+      </button>
       <!-- Left panel (collapsible drawer) -->
       <div v-show="codeDrawerVisible" ref="editorFullscreenEl" class="ide-left" :class="{ 'ide-panel--fullscreen': editorFullscreen }">
         <!-- Code Editor -->
         <div class="code-panel">
           <div class="panel-title">
             <div class="panel-title__leading">
+              <a-tooltip :title="$t('indicatorIde.hideCode')">
+                <button
+                  type="button"
+                  class="code-panel-collapse"
+                  :aria-label="$t('indicatorIde.hideCode')"
+                  @click="toggleCodeDrawer"
+                >
+                  <a-icon type="double-left" />
+                </button>
+              </a-tooltip>
               <a-icon type="code" />
               <a-tag v-if="codeDirty && !selectedIndicatorCodeHidden" color="orange" size="small">{{ $t('indicatorIde.modified') }}</a-tag>
             </div>
@@ -5172,67 +5180,39 @@ body.dark .ide-signal-alert-modal-wrap {
 .ide-main { display: flex; flex: 1 1 auto; overflow: hidden; min-height: 0; align-items: stretch; }
 
 .ide-code-rail {
-  flex: 0 0 34px;
-  width: 34px;
-  min-width: 34px;
+  flex: 0 0 30px;
+  width: 30px;
+  min-width: 30px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 12px 0;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
   cursor: pointer;
   user-select: none;
+  font: inherit;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
   border-right: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
-  color: #475569;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-  box-shadow: 2px 0 8px rgba(15, 23, 42, 0.04);
+  background: #f8fafc;
+  color: #94a3b8;
+  transition: background 0.16s ease, color 0.16s ease;
   &:hover {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--primary-color, #1890ff) 10%, #fff) 0%, color-mix(in srgb, var(--primary-color, #1890ff) 16%, #fff) 100%);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, #f8fafc);
     color: var(--primary-color, @primary-color);
-    box-shadow: 2px 0 12px color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
   }
-  &:focus {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--primary-color-ring, color-mix(in srgb, var(--primary-color, #1890ff) 35%, transparent));
-  }
-  &.is-open {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--primary-color, #1890ff) 12%, #fff) 0%, color-mix(in srgb, var(--primary-color, #1890ff) 20%, #fff) 100%);
-    color: var(--primary-color, @primary-color);
-    box-shadow: inset -2px 0 0 var(--primary-color, @primary-color);
+  &:focus-visible {
+    outline: 2px solid var(--primary-color-ring, color-mix(in srgb, var(--primary-color, #1890ff) 35%, transparent));
+    outline-offset: -2px;
   }
 }
 .ide-code-rail__icon {
-  font-size: 16px;
-  color: var(--primary-color, @primary-color);
+  font-size: 14px;
 }
 .ide-code-rail__arrow {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #64748b;
-  background: rgba(15, 23, 42, 0.05);
-  transition: color 0.2s, background 0.2s, transform 0.2s;
-}
-.ide-code-rail:hover .ide-code-rail__arrow,
-.ide-code-rail.is-open .ide-code-rail__arrow {
-  color: var(--primary-color, @primary-color);
-  background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
-}
-.ide-code-rail__label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  line-height: 1.2;
-  max-height: 120px;
-  overflow: hidden;
+  font-size: 9px;
 }
 
 .ide-left {
@@ -5414,6 +5394,28 @@ body.dark .ide-signal-alert-modal-wrap {
   flex: 1;
   min-width: 0;
   justify-content: flex-end;
+}
+
+.code-panel-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  transition: color .16s ease, background .16s ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--primary-color, @primary-color);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 10%, transparent);
+    outline: none;
+  }
 }
 .panel-title-actions {
   display: flex;
@@ -7355,28 +7357,15 @@ body.dark .ide-signal-alert-modal-wrap {
   }
   .ide-code-rail {
     border-right-color: #303030;
-    background: linear-gradient(180deg, #1f1f1f 0%, #181818 100%);
-    color: rgba(255, 255, 255, 0.5);
-    box-shadow: 2px 0 14px rgba(0, 0, 0, 0.5);
+    background: #181818;
+    color: rgba(255, 255, 255, 0.38);
     &:hover {
-      background: linear-gradient(180deg, color-mix(in srgb, var(--primary-color, #1890ff) 18%, #1f1f1f) 0%, color-mix(in srgb, var(--primary-color, #1890ff) 8%, #181818) 100%);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, #181818);
       color: var(--primary-color, #1890ff);
     }
-    &:focus {
-      box-shadow: inset 0 0 0 2px var(--primary-color-ring, color-mix(in srgb, var(--primary-color, #1890ff) 38%, transparent));
-    }
   }
-  .ide-code-rail__icon {
-    color: var(--primary-color, #1890ff);
-  }
-  .ide-code-rail__arrow {
-    color: rgba(255, 255, 255, 0.56);
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .ide-code-rail:hover .ide-code-rail__arrow,
-  .ide-code-rail.is-open .ide-code-rail__arrow {
-    color: var(--primary-color, #1890ff);
-    background: color-mix(in srgb, var(--primary-color, #1890ff) 16%, transparent);
+  .code-panel-collapse {
+    color: rgba(255, 255, 255, .48);
   }
   .code-hidden-mask {
     color: rgba(255, 255, 255, 0.9);
