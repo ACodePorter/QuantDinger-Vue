@@ -320,6 +320,40 @@ const messages = {
   }
 }
 
+const membershipPageMessages = {
+  'en-US': ['Choose your membership', 'Compare the cost and included credits before checkout.', 'Best value', 'Flexible access with no long commitment', 'US$ {price} per 30 days', 'Save {percent}% vs monthly', 'One payment for lifetime VIP access', 'Included', 'Choose lifetime', 'Choose annual', 'Choose monthly'],
+  'zh-CN': ['选择会员套餐', '先比较价格和赠送积分，再决定适合你的方案。', '性价比推荐', '低门槛体验，按需开通', '折合每 30 天 US$ {price}', '比月付节省 {percent}%', '一次购买，长期享有 VIP 权益', '套餐包含', '选择永久会员', '选择年费会员', '选择月费会员'],
+  'zh-TW': ['選擇會員方案', '先比較價格與贈送積分，再決定適合你的方案。', '性價比推薦', '低門檻體驗，按需開通', '平均每 30 天 US$ {price}', '比月付節省 {percent}%', '一次購買，長期享有 VIP 權益', '方案包含', '選擇永久會員', '選擇年費會員', '選擇月費會員'],
+  'ja-JP': ['メンバーシップを選択', '購入前に料金と付与クレジットを比較できます。', 'おすすめ', '長期契約なしで柔軟に利用', '30日あたり US$ {price}', '月払いより {percent}% お得', '一度の支払いで生涯 VIP アクセス', '含まれる内容', '永久会員を選択', '年額プランを選択', '月額プランを選択'],
+  'ko-KR': ['멤버십 선택', '결제 전에 가격과 제공 크레딧을 비교하세요.', '추천 요금제', '장기 약정 없이 유연하게 이용', '30일당 US$ {price}', '월간 결제 대비 {percent}% 절약', '한 번 결제로 평생 VIP 이용', '포함 사항', '평생 멤버십 선택', '연간 멤버십 선택', '월간 멤버십 선택'],
+  'de-DE': ['Mitgliedschaft wählen', 'Vergleichen Sie Preis und enthaltene Punkte vor dem Kauf.', 'Bestes Preis-Leistungs-Verhältnis', 'Flexibler Zugang ohne lange Bindung', 'US$ {price} pro 30 Tage', '{percent}% günstiger als monatlich', 'Einmal zahlen und VIP dauerhaft nutzen', 'Enthalten', 'Lebenslang wählen', 'Jahrestarif wählen', 'Monatstarif wählen'],
+  'fr-FR': ['Choisir votre adhésion', 'Comparez le prix et les crédits inclus avant le paiement.', 'Meilleur rapport qualité-prix', 'Accès flexible sans engagement long', 'US$ {price} par 30 jours', 'Économisez {percent}% par rapport au mensuel', 'Un paiement pour un accès VIP à vie', 'Inclus', 'Choisir à vie', 'Choisir l’offre annuelle', 'Choisir l’offre mensuelle'],
+  'ru-RU': ['Выберите подписку', 'Сравните цену и включённые баллы перед оплатой.', 'Выгодный выбор', 'Гибкий доступ без длительных обязательств', 'US$ {price} за 30 дней', 'Экономия {percent}% по сравнению с месяцем', 'Один платёж за пожизненный VIP-доступ', 'Включено', 'Выбрать навсегда', 'Выбрать годовой тариф', 'Выбрать месячный тариф'],
+  'th-TH': ['เลือกแพ็กเกจสมาชิก', 'เปรียบเทียบราคาและเครดิตที่ได้รับก่อนชำระเงิน', 'คุ้มค่าที่สุด', 'ใช้งานยืดหยุ่นโดยไม่ผูกมัดระยะยาว', 'US$ {price} ต่อ 30 วัน', 'ประหยัด {percent}% เทียบกับรายเดือน', 'ชำระครั้งเดียวเพื่อใช้ VIP ตลอดชีพ', 'สิ่งที่รวมอยู่', 'เลือกตลอดชีพ', 'เลือกรายปี', 'เลือกรายเดือน'],
+  'vi-VN': ['Chọn gói thành viên', 'So sánh giá và điểm tặng trước khi thanh toán.', 'Giá trị tốt nhất', 'Linh hoạt sử dụng, không cam kết dài hạn', 'US$ {price} mỗi 30 ngày', 'Tiết kiệm {percent}% so với gói tháng', 'Thanh toán một lần để dùng VIP trọn đời', 'Bao gồm', 'Chọn trọn đời', 'Chọn gói năm', 'Chọn gói tháng'],
+  'ar-SA': ['اختر العضوية', 'قارن السعر والرصيد المضمّن قبل الدفع.', 'أفضل قيمة', 'وصول مرن بلا التزام طويل', 'US$ {price} لكل 30 يومًا', 'وفّر {percent}% مقارنة بالدفع الشهري', 'دفعة واحدة لوصول VIP مدى الحياة', 'يتضمن', 'اختر مدى الحياة', 'اختر الخطة السنوية', 'اختر الخطة الشهرية']
+}
+
+const membershipPageKeys = [
+  'billing.choosePlan',
+  'billing.choosePlanHint',
+  'billing.recommended',
+  'billing.flexiblePlan',
+  'billing.monthlyEquivalent',
+  'billing.saveComparedMonthly',
+  'billing.lifetimeValue',
+  'billing.included',
+  'billing.chooseLifetime',
+  'billing.chooseRecommended',
+  'billing.choosePlanAction'
+]
+
+for (const [locale, values] of Object.entries(membershipPageMessages)) {
+  membershipPageKeys.forEach((key, index) => {
+    messages[locale][key] = values[index]
+  })
+}
+
 const paymentMethodMessages = {
   'en-US': ['Choose a secure payment method for this order', 'USDT stablecoin', 'Transfer from a crypto wallet on supported networks', 'USDC stablecoin', 'Circle stablecoin on Ethereum or Solana', 'Card payment', 'Visa, Mastercard and other cards, securely processed by Stripe'],
   'zh-CN': ['选择适合本次订单的安全支付方式', 'USDT 稳定币', '通过链上钱包转账，支持多条网络', 'USDC 稳定币', 'Circle 官方稳定币，支持 Ethereum 与 Solana', '银行卡支付', '支持 Visa、Mastercard 等银行卡，由 Stripe 安全处理'],
