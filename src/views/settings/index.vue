@@ -16,16 +16,6 @@
       </template>
     </a-alert>
 
-    <div class="settings-header qd-page-heading qd-page-heading--sticky">
-      <div class="qd-page-heading__copy">
-        <h2 class="page-title qd-page-heading__title">
-          <a-icon class="qd-page-heading__icon" type="setting" />
-          <span>{{ $t('settings.title') }}</span>
-        </h2>
-        <p class="page-desc qd-page-heading__description">{{ $t('settings.description') }}</p>
-      </div>
-    </div>
-
     <a-spin :spinning="loading">
       <div class="settings-layout">
         <aside class="settings-nav">
@@ -2113,37 +2103,6 @@ export default {
     border-radius: 8px;
   }
 
-  .settings-header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    margin: -16px -16px 16px;
-    padding: 16px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      color: #1e3a5f;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .anticon {
-        font-size: 28px;
-        color: var(--primary-color, #1890ff);
-      }
-    }
-
-    .page-desc {
-      color: #64748b;
-      font-size: 14px;
-      margin: 0;
-    }
-  }
-
   .settings-layout {
     display: flex;
     gap: 20px;
@@ -2157,7 +2116,7 @@ export default {
     // 240px and forced a horizontal scrollbar in the side rail).
     flex: 0 0 280px;
     position: sticky;
-    top: 88px;
+    top: 16px;
     background: #fff;
     border-radius: @border-radius;
     box-shadow: @card-shadow;
@@ -2689,19 +2648,6 @@ export default {
       .contact-link {
         color: #69c0ff;
         &:hover { color: #91d5ff; }
-      }
-    }
-
-    .settings-header {
-      background: #101010;
-      border-bottom-color: #262626;
-
-      .page-title {
-        color: #e0e6ed;
-      }
-
-      .page-desc {
-        color: #8b949e;
       }
     }
 

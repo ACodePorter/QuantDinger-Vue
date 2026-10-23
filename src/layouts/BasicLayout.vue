@@ -325,7 +325,7 @@ export default {
       return {
         ...this.settings,
         theme,
-        siderWidth: 184,
+        siderWidth: 208,
         collapsedWidth: 60
       }
     },
@@ -574,7 +574,15 @@ export default {
     }
   },
   methods: {
-    i18nRender,
+    i18nRender (key) {
+      const label = i18nRender(key)
+      return this.$createElement('span', {
+        class: 'sidebar-menu-label',
+        attrs: {
+          title: label
+        }
+      }, [label])
+    },
     buildSideMenu (routes) {
       const order = [
         '/ai-asset-analysis',

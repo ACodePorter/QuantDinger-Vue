@@ -1,15 +1,5 @@
 <template>
   <div class="profile-page qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
-    <div class="page-header qd-page-heading">
-      <div class="qd-page-heading__copy">
-        <h2 class="page-title qd-page-heading__title">
-          <a-icon class="qd-page-heading__icon" type="user" />
-          <span>{{ $t('profile.title') || 'My Profile' }}</span>
-        </h2>
-        <p class="page-desc qd-page-heading__description">{{ $t('profile.description') || 'Manage your account settings and preferences' }}</p>
-      </div>
-    </div>
-
     <div class="profile-overview-grid" :class="{ 'billing-disabled': !billingEnabled }">
       <a-card :bordered="false" class="profile-card">
         <div class="profile-identity">
@@ -2015,31 +2005,6 @@ export default {
   min-height: calc(100vh - 120px);
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 
-  .page-header {
-    margin-bottom: 24px;
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      color: #1e3a5f;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .anticon {
-        font-size: 28px;
-        color: @primary-color;
-      }
-    }
-
-    .page-desc {
-      color: #64748b;
-      font-size: 14px;
-      margin: 0;
-    }
-  }
-
   // Profile cards row - make cards same height
   .profile-cards-row {
     display: flex;
@@ -2722,15 +2687,6 @@ export default {
   // Dark theme
   &.theme-dark {
     background: linear-gradient(180deg, #141414 0%, #1c1c1c 100%);
-
-    .page-header {
-      .page-title {
-        color: #e0e6ed;
-      }
-      .page-desc {
-        color: #8b949e;
-      }
-    }
 
     .profile-card,
     .edit-card {
@@ -3609,22 +3565,6 @@ export default {
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .page-header {
-      margin-bottom: 16px;
-
-      .page-title {
-        font-size: 20px;
-
-        .anticon {
-          font-size: 22px;
-        }
-      }
-
-      .page-desc {
-        font-size: 13px;
-      }
-    }
-
     // Profile cards row - stack vertically
     .profile-cards-row {
       flex-direction: column;
@@ -3954,19 +3894,6 @@ export default {
   .profile-page {
     padding: 8px;
 
-    .page-header {
-      margin-bottom: 12px;
-
-      .page-title {
-        font-size: 18px;
-        gap: 8px;
-
-        .anticon {
-          font-size: 20px;
-        }
-      }
-    }
-
     // Credits card
     .credits-card {
       .credits-body {
@@ -4042,20 +3969,6 @@ export default {
 
   background: var(--profile-page-bg);
   color: var(--profile-text);
-
-  .page-header {
-    margin-bottom: 18px;
-
-    .page-title {
-      color: var(--profile-text);
-      font-size: 22px;
-      letter-spacing: -0.02em;
-    }
-
-    .page-desc {
-      color: var(--profile-text-secondary);
-    }
-  }
 
   .profile-overview-grid > .ant-card,
   .profile-settings-shell .edit-card {

@@ -1,15 +1,5 @@
 <template>
   <div class="user-manage-page qd-workspace-page qd-page-frame" :class="{ 'theme-dark': isDarkTheme }">
-    <div class="page-header qd-page-heading">
-      <div class="qd-page-heading__copy">
-        <h2 class="page-title qd-page-heading__title">
-          <a-icon class="qd-page-heading__icon" type="team" />
-          <span>{{ $t('userManage.title') || 'User Management' }}</span>
-        </h2>
-        <p class="page-desc qd-page-heading__description">{{ $t('userManage.description') || 'Manage system users, roles and permissions' }}</p>
-      </div>
-    </div>
-
     <!-- Tabs -->
     <a-tabs :activeKey="activeTab" @change="handleTabChange" class="manage-tabs">
       <!-- Tab 1: User Management -->
@@ -3416,32 +3406,6 @@ export default {
   min-height: calc(100vh - 120px);
   background: var(--qd-surface-subtle);
 
-  .page-header {
-    margin-bottom: 24px;
-    max-width: 720px;
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      color: #1e3a5f;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .anticon {
-        font-size: 28px;
-        color: var(--primary-color, #1890ff);
-      }
-    }
-
-    .page-desc {
-      color: #64748b;
-      font-size: 14px;
-      margin: 0;
-    }
-  }
-
   .manage-tabs {
     ::v-deep .ant-tabs-bar {
       margin-bottom: 20px;
@@ -4086,15 +4050,6 @@ export default {
       color: #8b949e;
     }
 
-    .page-header {
-      .page-title {
-        color: #e0e6ed;
-      }
-      .page-desc {
-        color: #8b949e;
-      }
-    }
-
     .manage-tabs {
       ::v-deep .ant-tabs-bar {
         border-bottom-color: #2a2a2a;
@@ -4523,22 +4478,6 @@ export default {
       grid-template-columns: 1fr;
     }
 
-    .page-header {
-      margin-bottom: 16px;
-
-      .page-title {
-        font-size: 20px;
-
-        .anticon {
-          font-size: 22px;
-        }
-      }
-
-      .page-desc {
-        font-size: 13px;
-      }
-    }
-
     .summary-cards {
       grid-template-columns: 1fr;
       gap: 12px;
@@ -4620,10 +4559,6 @@ export default {
 
   @media (max-width: 480px) {
     padding: 12px 8px;
-
-    .page-header .page-title {
-      font-size: 18px;
-    }
 
     .toolbar .toolbar-left {
       flex-direction: column;
