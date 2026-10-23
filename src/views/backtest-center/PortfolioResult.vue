@@ -1139,9 +1139,12 @@ export default {
 .audit-summary div { display: flex; flex-direction: column; }
 .audit-summary span { color: #7c8ca1; font-size: 11px; }
 .portfolio-result.theme-dark .metrics-grid, .portfolio-result.theme-dark .assumption-strip { border-color: #2d2d2d; }
-.portfolio-result.theme-dark .benchmark-analysis-card { border-color: #26364a; background: linear-gradient(135deg, #111820 0%, #10151b 100%); }
-.portfolio-result.theme-dark .benchmark-analysis-heading h3, .portfolio-result.theme-dark .benchmark-analysis-metric strong { color: #e5e7eb; }
-.portfolio-result.theme-dark .benchmark-analysis-metric { border-color: #2b3948; background: rgba(21, 21, 21, .86); }
+.portfolio-result.theme-dark .benchmark-analysis-card { border-color: #2d2d2d; background: #101010; }
+.portfolio-result.theme-dark .benchmark-analysis-heading h3, .portfolio-result.theme-dark .benchmark-analysis-metric strong { color: #e8e8e8; }
+.portfolio-result.theme-dark .benchmark-analysis-heading p, .portfolio-result.theme-dark .benchmark-analysis-note, .portfolio-result.theme-dark .benchmark-analysis-metric > span { color: #8c8c8c; }
+.portfolio-result.theme-dark .benchmark-analysis-metric { border-color: #303030; background: #171717; }
+.portfolio-result.theme-dark .benchmark-analysis-metric small, .portfolio-result.theme-dark .benchmark-analysis-metric .anticon { color: #737373; }
+.portfolio-result.theme-dark .benchmark-analysis-meta /deep/ .ant-tag { border-color: #3a3a3a; color: #bfbfbf; background: #1f1f1f; }
 .portfolio-result.theme-dark .metric-card, .portfolio-result.theme-dark .overview-card, .portfolio-result.theme-dark .status-card, .portfolio-result.theme-dark .assumption-strip div, .portfolio-result.theme-dark .review-facts div { border-color: #2d2d2d; background: #151515; }
 .portfolio-result.theme-dark .portfolio-contribution-panel { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
 .portfolio-result.theme-dark .contribution-heading strong, .portfolio-result.theme-dark .contribution-item b, .portfolio-result.theme-dark .contribution-symbol { color: #e5e7eb; }
