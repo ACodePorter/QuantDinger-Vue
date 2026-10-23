@@ -2,6 +2,7 @@ import request from '@/utils/request'
 
 const billingApi = {
   Plans: '/api/billing/plans',
+  CommunityIndicators: '/api/community/indicators',
   CryptoChains: '/api/billing/crypto/chains',
   CryptoCreate: '/api/billing/crypto/create',
   CryptoOrder: (id) => `/api/billing/crypto/order/${id}`,
@@ -15,6 +16,32 @@ const billingApi = {
   UsdtChains: '/api/billing/usdt/chains',
   UsdtCreate: '/api/billing/usdt/create',
   UsdtOrder: (id) => `/api/billing/usdt/order/${id}`
+}
+
+export function getFreeMarketAssetCounts () {
+  const baseParams = { page: 1, page_size: 1, sort_by: 'newest' }
+  return Promise.all([
+    request({
+      url: billingApi.CommunityIndicators,
+      method: 'get',
+      params: { ...baseParams, pricing_type: 'free' }
+    }),
+    request({
+      url: billingApi.CommunityIndicators,
+      method: 'get',
+      params: { ...baseParams, pricing_type: 'paid', vip_free: 1 }
+    })
+  ]).then(([freeResponse, vipFreeResponse]) => {
+    const freeCounts = freeResponse?.data?.asset_type_counts || {}
+    const vipFreeCounts = vipFreeResponse?.data?.asset_type_counts || {}
+    return {
+      code: 1,
+      data: {
+        strategy_count: Number(freeCounts.script_template || 0) + Number(vipFreeCounts.script_template || 0),
+        indicator_count: Number(freeCounts.indicator || 0) + Number(vipFreeCounts.indicator || 0)
+      }
+    }
+  })
 }
 
 export function listCryptoChains (currency) {

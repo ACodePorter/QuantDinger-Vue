@@ -3,7 +3,7 @@
     <section class="billing-hero">
       <div class="hero-copy">
         <h2 class="page-title">{{ $t('billing.title') }}</h2>
-        <p class="page-desc">{{ $t('billing.desc') }}</p>
+        <p class="page-desc">{{ $t('billing.valueDesc') }}</p>
         <div class="hero-rule">
           <span class="rule-label">{{ $t('billing.vipRule.title') }}</span>
           <span>{{ $t('billing.vipRule.desc') }}</span>
@@ -46,6 +46,25 @@
           <h3>{{ $t('billing.choosePlan') }}</h3>
           <p>{{ $t('billing.choosePlanHint') }}</p>
         </div>
+      </div>
+
+      <div class="library-entitlement" :class="{ 'is-loading': freeAssetCountsLoading }">
+        <div class="library-entitlement-copy">
+          <span class="library-entitlement-label">{{ $t('billing.libraryEntitlement.label') }}</span>
+          <strong>{{ $t('billing.libraryEntitlement.title') }}</strong>
+        </div>
+        <div class="library-entitlement-counts">
+          <span>
+            <b>{{ freeAssetCountsLoading ? '—' : formatCredits(freeAssetCounts.strategy_count) }}</b>
+            {{ $t('billing.libraryEntitlement.strategies') }}
+          </span>
+          <i />
+          <span>
+            <b>{{ freeAssetCountsLoading ? '—' : formatCredits(freeAssetCounts.indicator_count) }}</b>
+            {{ $t('billing.libraryEntitlement.indicators') }}
+          </span>
+        </div>
+        <span class="library-entitlement-note">{{ $t('billing.libraryEntitlement.note') }}</span>
       </div>
 
       <div class="plans-grid">
@@ -93,8 +112,16 @@
               <a-icon type="check-circle" theme="filled" />
               <span>{{ $t('billing.lifetimeMonthly') }} +{{ formatCredits(plan.credits_monthly) }} {{ $t('billing.credits') }}</span>
             </div>
+            <div class="plan-benefit is-primary">
+              <a-icon type="check-circle" theme="filled" />
+              <span>{{ $t('billing.benefitVipLibrary') }}</span>
+            </div>
             <div class="plan-benefit">
-              <a-icon type="check-circle" />
+              <a-icon type="check-circle" theme="filled" />
+              <span>{{ $t('billing.benefitUpdates') }}</span>
+            </div>
+            <div class="plan-benefit">
+              <a-icon type="check-circle" theme="filled" />
               <span>{{ $t('billing.strategyLimit', { count: plan.strategy_limit }) }}</span>
             </div>
           </div>
@@ -397,7 +424,7 @@
 
 <script>
 import { mapState } from 'vuex'
-import { getMembershipPlans, listCryptoChains, createCryptoOrder, getCryptoOrder, createStripeCheckout } from '@/api/billing'
+import { getMembershipPlans, getFreeMarketAssetCounts, listCryptoChains, createCryptoOrder, getCryptoOrder, createStripeCheckout } from '@/api/billing'
 
 export default {
   name: 'BillingPage',
@@ -517,6 +544,11 @@ export default {
       methodPickerVisible: false,
       paymentMethods: [],
       selectedCurrency: 'USDT',
+      freeAssetCountsLoading: true,
+      freeAssetCounts: {
+        strategy_count: 0,
+        indicator_count: 0
+      },
       billing: {
         credits: 0,
         is_vip: false,
@@ -528,9 +560,15 @@ export default {
   },
   created () {
     this.load()
+    this.loadFreeMarketAssetCounts()
     if (this.$route.query.payment === 'stripe_success') {
       this.$message.success(this.tr('billing.stripeSuccess', 'Payment completed. Credits will refresh after Stripe confirms it.'))
       window.setTimeout(() => this.load(), 2000)
+    }
+  },
+  activated () {
+    if (!this.freeAssetCountsLoading) {
+      this.loadFreeMarketAssetCounts()
     }
   },
   beforeDestroy () {
@@ -572,6 +610,22 @@ export default {
         this.$message.error(e?.response?.data?.msg || 'Load failed')
       } finally {
         this.loading = false
+      }
+    },
+    async loadFreeMarketAssetCounts () {
+      this.freeAssetCountsLoading = true
+      try {
+        const res = await getFreeMarketAssetCounts()
+        if (res && res.code === 1 && res.data) {
+          this.freeAssetCounts = {
+            strategy_count: Number(res.data.strategy_count || 0),
+            indicator_count: Number(res.data.indicator_count || 0)
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load free marketplace asset counts', e)
+      } finally {
+        this.freeAssetCountsLoading = false
       }
     },
     formatCredits (v) {
@@ -1015,6 +1069,77 @@ export default {
     }
   }
 
+  .library-entitlement {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto minmax(180px, auto);
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    border: 1px solid var(--billing-accent-border);
+    border-radius: 12px;
+    background: var(--billing-accent-soft);
+
+    &.is-loading {
+      opacity: .72;
+    }
+  }
+
+  .library-entitlement-copy {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+
+    strong {
+      color: var(--billing-text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+  }
+
+  .library-entitlement-label {
+    flex: 0 0 auto;
+    color: var(--primary-color, #13c2c2);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .library-entitlement-counts {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--billing-secondary);
+    font-size: 13px;
+    font-weight: 650;
+
+    span {
+      white-space: nowrap;
+    }
+
+    b {
+      margin-right: 4px;
+      color: var(--primary-color, #13c2c2);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    i {
+      width: 1px;
+      height: 18px;
+      background: var(--billing-accent-border);
+    }
+  }
+
+  .library-entitlement-note {
+    justify-self: end;
+    color: var(--billing-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
   .plans-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1025,7 +1150,7 @@ export default {
     position: relative;
     display: flex;
     flex-direction: column;
-    min-height: 360px;
+    min-height: 410px;
     padding: 26px;
     border: 1px solid var(--billing-border);
     border-radius: 14px;
@@ -1161,7 +1286,7 @@ export default {
 
     .anticon {
       margin-top: 3px;
-      color: var(--billing-muted);
+      color: var(--primary-color, #13c2c2);
     }
 
     &.is-primary {
@@ -1266,6 +1391,15 @@ export default {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .library-entitlement {
+      grid-template-columns: 1fr auto;
+    }
+
+    .library-entitlement-note {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+
     .plan-card:last-child:nth-child(odd) {
       grid-column: 1 / -1;
     }
@@ -1278,6 +1412,20 @@ export default {
       min-height: auto;
       padding: 24px 20px;
       border-radius: 14px;
+    }
+
+    .library-entitlement {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 15px 16px;
+    }
+
+    .library-entitlement-copy {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
     }
 
     .page-title {
