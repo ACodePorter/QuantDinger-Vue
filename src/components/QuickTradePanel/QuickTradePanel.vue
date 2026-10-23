@@ -898,16 +898,27 @@
                 <span>{{ $t(activeDockTab === 'openOrders' ? 'quickTrade.requestedPrice' : 'quickTrade.averageFillPrice') }}</span>
                 <span>{{ $t(activeDockTab === 'openOrders' && isStockMarket ? 'quickTrade.requestedQuantityOrValue' : activeDockTab === 'openOrders' ? 'quickTrade.requestedAmount' : 'quickTrade.filledAmount') }}</span>
                 <span>{{ $t(activeDockTab === 'openOrders' ? 'quickTrade.filledAmount' : 'quickTrade.commission') }}</span>
-                <span></span>
+                <span class="qtc-record-actions-head">{{ $t('common.actions') }}</span>
               </div>
               <div :class="floatingConsole ? 'qtc-record-item' : 'qt-trade-item qt-trade-item--dock'" v-for="t in dockTradeRows" :key="t.id">
                 <div v-if="floatingConsole" class="qtc-record-grid qtc-record-row">
                   <time :title="formatFullTime(t.created_at)">{{ formatTime(t.created_at) }}</time>
-                  <div class="qtc-record-action"><strong :style="{ color: tradeActionColor(t) }">{{ tradeActionLabel(t) }}</strong><small>{{ tradeStatusLabel(t.status) }}</small><a-button v-if="activeDockTab === 'openOrders' && canCancelTrade(t)" type="link" size="small" :loading="cancellingTradeId === t.id" @click="handleCancelTrade(t)">{{ $t('brokerAccounts.cancelOrder') }}</a-button></div>
+                  <div class="qtc-record-action"><strong :style="{ color: tradeActionColor(t) }">{{ tradeActionLabel(t) }}</strong><small>{{ tradeStatusLabel(t.status) }}</small></div>
                   <span>{{ activeDockTab === 'openOrders' ? requestedOrderPriceLabel(t) : tradeFillPrice(t) > 0 ? formatPrice(tradeFillPrice(t)) : '—' }}</span>
                   <span>{{ activeDockTab === 'openOrders' ? formatRequestedOrderSize(t) : t.filled_amount > 0 ? formatQuantity(t.filled_amount) : '—' }}</span>
                   <span>{{ activeDockTab === 'openOrders' ? formatQuantity(t.filled_amount) : formatTradeCommission(t) }}</span>
-                  <button type="button" class="qt-trade-detail-toggle" :aria-label="$t(isTradeDetailsExpanded(t.id) ? 'quickTrade.hideDetails' : 'quickTrade.details')" :aria-expanded="isTradeDetailsExpanded(t.id)" @click="toggleTradeDetails(t.id)"><a-icon :type="isTradeDetailsExpanded(t.id) ? 'up' : 'down'" /></button>
+                  <div class="qtc-record-actions">
+                    <a-button
+                      v-if="activeDockTab === 'openOrders' && canCancelTrade(t)"
+                      type="danger"
+                      ghost
+                      size="small"
+                      class="qtc-cancel-order-btn"
+                      :loading="cancellingTradeId === t.id"
+                      @click="handleCancelTrade(t)"
+                    >{{ $t('brokerAccounts.cancelOrder') }}</a-button>
+                    <button type="button" class="qt-trade-detail-toggle" :aria-label="$t(isTradeDetailsExpanded(t.id) ? 'quickTrade.hideDetails' : 'quickTrade.details')" :aria-expanded="isTradeDetailsExpanded(t.id)" @click="toggleTradeDetails(t.id)"><a-icon :type="isTradeDetailsExpanded(t.id) ? 'up' : 'down'" /></button>
+                  </div>
                 </div>
                 <div v-if="!floatingConsole" class="qt-trade-card-head">
                   <div class="qt-trade-card-identity">
@@ -1112,6 +1123,7 @@ export default {
       credLoading: false,
       balanceLoading: false,
       balanceRequestId: 0,
+      quickTradeWarmupTimer: null,
       balance: {
         available: 0,
         total: 0,
@@ -1139,9 +1151,11 @@ export default {
       closingPositionSide: null, // 'long' | 'short' | null
       tradeFeedback: null,
       currentPrice: 0,
+      currentPriceUpdatedAt: 0,
       currentPositions: [],
       strategyConflict: null,
       recentTrades: [],
+      marketOrderConfirmations: {},
       historyCollapsed: true,
       activeDockTab: 'positions',
       positionEditor: null,
@@ -1325,7 +1339,9 @@ export default {
     },
     openOrderRows () {
       const activeStatuses = new Set(['new', 'open', 'pending', 'submitted', 'partially_filled', 'partially-filled', 'accepted', 'cancel_pending'])
-      return this.scopedTradeRows.filter(item => activeStatuses.has(String(item.status || '').toLowerCase()))
+      return this.scopedTradeRows
+        .filter(item => activeStatuses.has(String(item.status || '').toLowerCase()))
+        .filter(item => !this.isMarketOrderPositionConfirmed(item))
     },
     dockTradeRows () {
       if (this.activeDockTab === 'openOrders') return this.openOrderRows
@@ -1472,6 +1488,7 @@ export default {
         this.loadPrice()
         if (this.selectedCredentialId) {
           this.loadPosition()
+          this.loadBalance()
         }
         // Emit symbol change to parent
         if (!this.symbolLocked) this.$emit('update:symbol', val)
@@ -1484,6 +1501,7 @@ export default {
       this.resetBalance()
       this.currentPositions = []
       this.recentTrades = []
+      this.marketOrderConfirmations = {}
       this.positionEditor = null
       this.loadCredentials()
       this.loadWatchlistSymbols()
@@ -1510,6 +1528,7 @@ export default {
       this.resetBalance()
       this.currentPositions = []
       this.recentTrades = []
+      this.marketOrderConfirmations = {}
       this.positionEditor = null
       if (val && this.isCryptoMarket) {
         const credential = this.credentials.find(c => c.id === val)
@@ -1534,9 +1553,16 @@ export default {
     orderType (value) {
       if (value === 'limit' && this.currentPrice > 0) this.limitPrice = this.currentPrice
     },
+    leverage () {
+      this.scheduleQuickTradeWarmup()
+    },
+    marginMode () {
+      this.scheduleQuickTradeWarmup()
+    },
     presetPrice (val) {
       if (val > 0) {
         this.currentPrice = val
+        this.currentPriceUpdatedAt = Date.now()
         if (this.orderType !== 'limit' || !(this.limitPrice > 0)) this.limitPrice = val
       }
     },
@@ -1557,6 +1583,7 @@ export default {
       }
       this.currentPositions = []
       this.recentTrades = []
+      this.marketOrderConfirmations = {}
       this.positionEditor = null
       this.$nextTick(() => {
         if (this.selectedCredentialId) {
@@ -1587,12 +1614,61 @@ export default {
     }
   },
   methods: {
+    scheduleQuickTradeWarmup () {
+      if (this.quickTradeWarmupTimer) clearTimeout(this.quickTradeWarmupTimer)
+      if (!this.selectedCredentialId || !this.currentSymbol || !this.isSwapMode) return
+      this.quickTradeWarmupTimer = setTimeout(() => {
+        this.quickTradeWarmupTimer = null
+        this.loadBalance()
+      }, 250)
+    },
     normalizeLeverage () {
       this.leverage = Math.max(1, Math.min(125, Math.round(Number(this.leverage) || 1)))
     },
     positionCostHint (position) {
       if (this.isSwapMode) return ''
       return this.$t(position.entry_price > 0 ? 'quickTrade.floating.costEstimate' : 'quickTrade.floating.costUnavailable')
+    },
+    positionSizeForSide (side) {
+      const target = String(side || '').toLowerCase()
+      return this.currentPositions.reduce((total, position) => {
+        if (String(position.side || '').toLowerCase() !== target) return total
+        const size = Number(position.size ?? position.qty ?? position.quantity ?? 0)
+        return total + (Number.isFinite(size) ? Math.max(0, size) : 0)
+      }, 0)
+    },
+    rememberMarketOrderConfirmation (tradeId, positionSide, baselineSize, direction) {
+      const key = String(tradeId || '')
+      if (!key) return
+      this.marketOrderConfirmations = {
+        ...this.marketOrderConfirmations,
+        [key]: {
+          positionSide: String(positionSide || '').toLowerCase(),
+          baselineSize: Math.max(0, Number(baselineSize) || 0),
+          direction: direction === 'decrease' ? 'decrease' : 'increase',
+          expiresAt: Date.now() + 20000
+        }
+      }
+    },
+    isMarketOrderPositionConfirmed (trade) {
+      if (!trade || String(trade.order_type || '').toLowerCase() !== 'market') return false
+      const marker = this.marketOrderConfirmations[String(trade.id || '')]
+      if (!marker || Date.now() > Number(marker.expiresAt || 0)) return false
+      const currentSize = this.positionSizeForSide(marker.positionSide)
+      const baselineSize = Math.max(0, Number(marker.baselineSize) || 0)
+      const tolerance = Math.max(1e-12, baselineSize * 1e-9)
+      return marker.direction === 'decrease'
+        ? currentSize < baselineSize - tolerance
+        : currentSize > baselineSize + tolerance
+    },
+    pruneMarketOrderConfirmations () {
+      const terminal = new Set(['filled', 'cancelled', 'canceled', 'failed', 'rejected', 'expired'])
+      const statusById = new Map(this.scopedTradeRows.map(row => [String(row.id || ''), String(row.status || '').toLowerCase()]))
+      const now = Date.now()
+      this.marketOrderConfirmations = Object.entries(this.marketOrderConfirmations).reduce((next, [key, marker]) => {
+        if (now <= Number(marker.expiresAt || 0) && !terminal.has(statusById.get(key))) next[key] = marker
+        return next
+      }, {})
     },
     selectDockTab (key, event) {
       this.activeDockTab = key
@@ -1673,6 +1749,7 @@ export default {
       this.syncTradeModeFromProps()
       if (this.presetPrice > 0) {
         this.currentPrice = this.presetPrice
+        this.currentPriceUpdatedAt = Date.now()
         this.limitPrice = this.presetPrice
       }
       await this.loadCredentials()
@@ -1870,6 +1947,7 @@ export default {
       const parsed = parseFloat(price || 0)
       if (parsed > 0) {
         this.currentPrice = parsed
+        this.currentPriceUpdatedAt = Date.now()
         if (this.orderType !== 'limit' || !(this.limitPrice > 0)) {
           this.limitPrice = parsed
         }
@@ -2102,6 +2180,9 @@ export default {
         const res = await getQuickTradeBalance({
           credential_id: credentialId,
           market_type: marketType,
+          symbol: this.currentSymbol,
+          leverage: this.leverage,
+          margin_mode: this.marginMode,
           refresh: fresh === true ? '1' : undefined
         })
         if (!isCurrent()) return
@@ -2253,6 +2334,7 @@ export default {
         ) return
         if (res.code === 1 && res.data) {
           this.recentTrades = res.data.trades || []
+          this.pruneMarketOrderConfirmations()
         }
       } catch (e) {
         console.warn('loadHistory error:', e)
@@ -2372,6 +2454,8 @@ export default {
             ? (sellByQuantity ? 0 : Number(this.sellAmount))
             : (buyByQuantity ? 0 : Number(this.amount)),
           price: this.orderType === 'limit' ? this.limitPrice : 0,
+          reference_price: this.orderType === 'market' ? Number(this.currentPrice || 0) : 0,
+          reference_price_at_ms: this.orderType === 'market' ? Number(this.currentPriceUpdatedAt || 0) : 0,
           leverage: this.isSwapMode ? this.leverage : 1,
           market_type: this.effectiveMarketType,
           margin_mode: this.isSwapMode ? this.marginMode : undefined,
@@ -2385,6 +2469,16 @@ export default {
         if (res.code === 1) {
           // Emit event for parent component (parent will show success message)
           this.$emit('order-success', res.data)
+
+          if (this.orderType === 'market' && res.data && res.data.trade_id) {
+            const positionSide = side === 'buy' ? 'long' : 'short'
+            this.rememberMarketOrderConfirmation(
+              res.data.trade_id,
+              positionSide,
+              this.positionSizeForSide(positionSide),
+              'increase'
+            )
+          }
 
           if (this.selectedCredentialId === payload.credential_id && this.currentSymbol === payload.symbol && this.effectiveMarketType === payload.market_type) {
             this.refreshAfterTrade()
@@ -2536,7 +2630,7 @@ export default {
           credential_id: this.selectedCredentialId,
           symbol: this.currentSymbol,
           market_type: this.effectiveMarketType,
-          size: 0,
+          size: this.isSwapMode ? Math.max(0, Number(pos.size || pos.qty || 0)) : 0,
           close_scope: this.floatingConsole ? 'full' : (this.isSwapMode ? this.closeScope : 'full'),
           order_type: exitType,
           price: exitPrice,
@@ -2573,6 +2667,14 @@ export default {
             this.$message.success(this.$t(closeData.status === 'filled' ? 'quickTrade.workflow.exitFilled' : 'quickTrade.workflow.orderAccepted'))
           }
           if (this.selectedCredentialId === payload.credential_id && this.currentSymbol === payload.symbol && this.effectiveMarketType === payload.market_type) {
+            if (exitType === 'market' && closeData.trade_id) {
+              this.rememberMarketOrderConfirmation(
+                closeData.trade_id,
+                leg,
+                Number(pos.size || pos.qty || 0),
+                'decrease'
+              )
+            }
             this.applyConfirmedClose(closeData, leg)
             this.positionEditor = null
             if (exitType === 'limit') this.activeDockTab = 'openOrders'
@@ -2804,6 +2906,7 @@ export default {
     }
   },
   beforeDestroy () {
+    if (this.quickTradeWarmupTimer) clearTimeout(this.quickTradeWarmupTimer)
     this.stopPolling()
     this.$emit('position-overlay-change', { symbol: this.currentSymbol, marketType: this.effectiveMarketType, positions: [] })
   }

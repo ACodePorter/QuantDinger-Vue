@@ -186,7 +186,7 @@ test('full Binance close retries only the verified residual once', async () => {
   await component.methods.handleClosePosition.call(state, state.currentPositions[0])
 
   assert.equal(calls.length, 2)
-  assert.equal(calls[0].size, 0)
+  assert.equal(calls[0].size, 4.76)
   assert.equal(calls[0].close_scope, 'full')
   assert.equal(calls[1].size, 1.9)
   assert.equal(calls[1].position_side, 'short')
@@ -636,7 +636,7 @@ test('full close is market by default and refreshes fresh snapshots without hidi
   await component.methods.handleClosePosition.call(state, pos)
   assert.equal(calls[0].order_type, 'market')
   assert.equal(calls[0].close_scope, 'full')
-  assert.equal(calls[0].size, 0)
+  assert.equal(calls[0].size, 0.0061)
   assert.equal(state.currentPositions[0], pos)
   assert.equal(state.closingPositionSide, null)
   release()
@@ -766,6 +766,32 @@ test('order acknowledgement releases the ticket without waiting for account refr
   await component.methods.handleSubmit.call(state, 'buy')
   assert.equal(refreshing, true)
   assert.equal(state.submitting, false)
+})
+
+test('market order leaves current orders as soon as the position snapshot confirms the size change', () => {
+  const component = options('components/QuickTradePanel/QuickTradePanel.vue')
+  const state = {
+    currentPositions: [],
+    marketOrderConfirmations: {},
+    positionSizeForSide: side => component.methods.positionSizeForSide.call(state, side)
+  }
+  component.methods.rememberMarketOrderConfirmation.call(state, 41, 'long', 0, 'increase')
+  const trade = { id: 41, order_type: 'market', status: 'submitted' }
+  assert.equal(component.methods.isMarketOrderPositionConfirmed.call(state, trade), false)
+  state.currentPositions = [{ side: 'long', size: 0.01 }]
+  assert.equal(component.methods.isMarketOrderPositionConfirmed.call(state, trade), true)
+})
+
+test('position confirmation does not hide limit orders or an unchanged market position', () => {
+  const component = options('components/QuickTradePanel/QuickTradePanel.vue')
+  const state = {
+    currentPositions: [{ side: 'long', size: 0.01 }],
+    marketOrderConfirmations: {},
+    positionSizeForSide: side => component.methods.positionSizeForSide.call(state, side)
+  }
+  component.methods.rememberMarketOrderConfirmation.call(state, 42, 'long', 0.01, 'increase')
+  assert.equal(component.methods.isMarketOrderPositionConfirmed.call(state, { id: 42, order_type: 'market' }), false)
+  assert.equal(component.methods.isMarketOrderPositionConfirmed.call(state, { id: 42, order_type: 'limit' }), false)
 })
 
 test('post-trade account refresh is bounded instead of forcing every poll to hit the exchange', () => {
