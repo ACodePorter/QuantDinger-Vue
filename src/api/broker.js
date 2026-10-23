@@ -11,6 +11,7 @@ import request from '@/utils/request'
  *   broker.<id>.account()
  *   broker.<id>.positions()
  *   broker.<id>.orders()
+ *   broker.<id>.tradeHistory()
  *   broker.<id>.placeOrder(payload)
  *   broker.<id>.cancelOrder(id)
  *   broker.<id>.quote(symbol, params)
@@ -37,6 +38,7 @@ const ENDPOINTS = {
     account: '/api/alpaca/account',
     positions: '/api/alpaca/positions',
     orders: '/api/alpaca/orders',
+    fills: '/api/alpaca/fills',
     order: '/api/alpaca/order',
     quote: '/api/alpaca/quote'
   }
@@ -68,6 +70,9 @@ function makeBrokerClient (id) {
     },
     orders (params = {}) {
       return request({ url: ep.orders, method: 'get', params })
+    },
+    tradeHistory (params = {}) {
+      return request({ url: ep.fills || ep.orders, method: 'get', params })
     },
     placeOrder (data = {}) {
       return request({ url: ep.order, method: 'post', data })

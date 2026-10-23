@@ -891,6 +891,10 @@
 
           <!-- Trade Records -->
           <div v-if="embeddedDock && ['openOrders', 'tradeRecords'].includes(activeDockTab)" v-show="!floatingConsole || floatingActivityExpanded" class="qt-history-section qt-dock-history">
+            <div v-if="activeDockTab === 'tradeRecords' && historyRecordSource === 'local_fallback'" class="qt-history-source-warning">
+              <a-icon type="exclamation-circle" />
+              <span>{{ $t('quickTrade.historyLocalFallback') }}</span>
+            </div>
             <div v-if="dockTradeRows.length" class="qt-trade-list">
               <div v-if="floatingConsole" class="qtc-record-grid qtc-record-head">
                 <span>{{ $t('quickTrade.floating.time') }}</span>
@@ -1045,6 +1049,10 @@
                     <span class="qt-history-count">({{ recentTrades.length }})</span>
                   </div>
                 </template>
+                <div v-if="historyRecordSource === 'local_fallback'" class="qt-history-source-warning">
+                  <a-icon type="exclamation-circle" />
+                  <span>{{ $t('quickTrade.historyLocalFallback') }}</span>
+                </div>
                 <div class="qt-trade-list">
                   <div class="qt-trade-item" v-for="t in recentTrades" :key="t.id">
                     <div class="qt-trade-main">
@@ -1155,6 +1163,8 @@ export default {
       currentPositions: [],
       strategyConflict: null,
       recentTrades: [],
+      recentOpenOrders: [],
+      historyRecordSource: '',
       marketOrderConfirmations: {},
       historyCollapsed: true,
       activeDockTab: 'positions',
@@ -1339,7 +1349,17 @@ export default {
     },
     openOrderRows () {
       const activeStatuses = new Set(['new', 'open', 'pending', 'submitted', 'partially_filled', 'partially-filled', 'accepted', 'cancel_pending'])
-      return this.scopedTradeRows
+      const rows = this.isStockMarket
+        ? (this.recentOpenOrders || [])
+          .filter(item => !this.currentSymbol || String(item.symbol || '').toUpperCase() === String(this.currentSymbol).toUpperCase())
+          .map(item => ({
+            ...item,
+            price: parseFloat(item.price || 0) || 0,
+            avg_fill_price: parseFloat(item.avg_fill_price || item.filled_avg_price || 0) || 0,
+            filled_amount: parseFloat(item.filled_amount || item.filled_qty || item.filled || 0) || 0
+          }))
+        : this.scopedTradeRows
+      return rows
         .filter(item => activeStatuses.has(String(item.status || '').toLowerCase()))
         .filter(item => !this.isMarketOrderPositionConfirmed(item))
     },
@@ -1475,6 +1495,7 @@ export default {
     currentSymbol (val) {
       this.tradeFeedback = null
       this.positionEditor = null
+      this.historyRecordSource = ''
       this.limitPrice = 0
       this.tpPrice = null
       this.slPrice = null
@@ -1501,6 +1522,7 @@ export default {
       this.resetBalance()
       this.currentPositions = []
       this.recentTrades = []
+      this.recentOpenOrders = []
       this.marketOrderConfirmations = {}
       this.positionEditor = null
       this.loadCredentials()
@@ -1528,6 +1550,7 @@ export default {
       this.resetBalance()
       this.currentPositions = []
       this.recentTrades = []
+      this.recentOpenOrders = []
       this.marketOrderConfirmations = {}
       this.positionEditor = null
       if (val && this.isCryptoMarket) {
@@ -1583,6 +1606,7 @@ export default {
       }
       this.currentPositions = []
       this.recentTrades = []
+      this.recentOpenOrders = []
       this.marketOrderConfirmations = {}
       this.positionEditor = null
       this.$nextTick(() => {
@@ -1699,6 +1723,7 @@ export default {
         this.resetBalance()
         this.currentPositions = []
         this.recentTrades = []
+        this.recentOpenOrders = []
         return false
       }
       this.onCredentialChange(matchingCredential.id)
@@ -2281,44 +2306,83 @@ export default {
       try {
         if (this.isStockMarket) {
           if (!credentialId) return
-          const res = await broker.alpaca.orders({ limit: 20, status: 'all', credential_id: credentialId })
-          if (this.selectedCredentialId !== credentialId) return
-          const payload = this.apiPayload(res)
-          const items = Array.isArray(payload) ? payload : (payload.orders || payload.items || payload.data || [])
-          this.recentTrades = (items || []).slice(0, 20).map(o => {
-            const requestedPrice = parseFloat(o.limit_price || 0) || 0
-            const fillPrice = parseFloat(o.filled_avg_price || 0) || 0
-            const filledAmount = parseFloat(o.filled_qty || 0) || 0
-            const requestedQty = parseFloat(o.qty || 0) || 0
-            const requestedNotional = parseFloat(o.notional || 0) || 0
-            const notional = requestedNotional || ((filledAmount || requestedQty) * (fillPrice || requestedPrice))
+          const symbol = this.normalizeBrokerSymbol(this.currentSymbol)
+          const [ordersResult, fillsResult] = await Promise.allSettled([
+            broker.alpaca.orders({ limit: 100, status: 'open', credential_id: credentialId }),
+            broker.alpaca.tradeHistory({ limit: 100, symbol, credential_id: credentialId })
+          ])
+          if (
+            this.selectedCredentialId !== credentialId ||
+            this.normalizeBrokerSymbol(this.currentSymbol) !== symbol
+          ) return
+          if (ordersResult.status === 'fulfilled') {
+            const payload = this.apiPayload(ordersResult.value)
+            const items = Array.isArray(payload) ? payload : (payload.orders || payload.items || payload.data || [])
+            this.recentOpenOrders = (items || []).map(o => {
+              const requestedPrice = parseFloat(o.limit_price || 0) || 0
+              const fillPrice = parseFloat(o.filled_avg_price || 0) || 0
+              const filledAmount = parseFloat(o.filled_qty || 0) || 0
+              const requestedQty = parseFloat(o.qty || 0) || 0
+              const requestedNotional = parseFloat(o.notional || 0) || 0
+              const notional = requestedNotional || ((filledAmount || requestedQty) * (fillPrice || requestedPrice))
+              return {
+                id: o.id || o.order_id || `${o.symbol}-${o.created_at || Date.now()}`,
+                symbol: o.symbol || this.currentSymbol,
+                side: o.side || 'buy',
+                amount: notional,
+                requested_notional: requestedNotional,
+                requested_base_qty: requestedQty,
+                filled_amount: filledAmount,
+                price: requestedPrice,
+                avg_fill_price: fillPrice,
+                market_type: 'spot',
+                order_type: o.order_type || o.type || 'market',
+                exchange_order_id: o.id || o.order_id || '',
+                status: o.status || '',
+                created_at: o.submitted_at || o.created_at || o.updated_at
+              }
+            })
+          }
+          if (fillsResult.status !== 'fulfilled') {
+            this.historyRecordSource = ''
+            console.warn('load Alpaca fills error:', fillsResult.reason)
+            return
+          }
+          const fillPayload = this.apiPayload(fillsResult.value)
+          const fills = Array.isArray(fillPayload) ? fillPayload : (fillPayload.fills || fillPayload.items || fillPayload.data || [])
+          this.recentTrades = (fills || []).map(o => {
+            const fillPrice = parseFloat(o.avg_fill_price || o.filled_avg_price || o.price || 0) || 0
+            const filledAmount = parseFloat(o.filled_amount || o.filled_qty || o.qty || 0) || 0
             return {
-              id: o.id || o.order_id || `${o.symbol}-${o.created_at || Date.now()}`,
+              ...o,
+              id: o.id || o.exchange_fill_id || `${o.symbol}-${o.filled_at || Date.now()}`,
               symbol: o.symbol || this.currentSymbol,
               side: o.side || 'buy',
-              amount: notional,
-              requested_notional: requestedNotional,
-              requested_base_qty: requestedQty,
+              amount: parseFloat(o.amount || 0) || (filledAmount * fillPrice),
               filled_amount: filledAmount,
-              price: requestedPrice,
               avg_fill_price: fillPrice,
               market_type: 'spot',
-              order_type: o.order_type || o.type || 'market',
-              exchange_order_id: o.id || o.order_id || '',
-              status: o.status || '',
+              order_type: 'fill',
+              exchange_order_id: o.exchange_order_id || o.order_id || '',
+              status: 'filled',
               commission: parseFloat(o.commission || 0) || 0,
-              commission_ccy: o.commission_ccy || '',
+              commission_ccy: o.commission_ccy || 'USD',
               commission_quote: o.commission_quote === null || o.commission_quote === undefined
                 ? null
                 : (parseFloat(o.commission_quote) || 0),
               fees_by_ccy: o.fees_by_ccy || {},
               fee_status: o.fee_status || 'pending',
-              created_at: o.created_at || o.submitted_at || o.updated_at
+              source: o.source || 'exchange',
+              created_at: o.filled_at || o.transaction_time || o.created_at
             }
           })
+          this.historyRecordSource = 'exchange'
           return
         }
-        if (!credentialId || !this.currentSymbol) return
+        if (!credentialId || !this.currentSymbol) {
+          this.historyRecordSource = ''
+          return
+        }
         const symbol = this.currentSymbol
         const marketType = this.effectiveMarketType
         const res = await getQuickTradeHistory({
@@ -2334,9 +2398,11 @@ export default {
         ) return
         if (res.code === 1 && res.data) {
           this.recentTrades = res.data.trades || []
+          this.historyRecordSource = res.data.source || ''
           this.pruneMarketOrderConfirmations()
         }
       } catch (e) {
+        this.historyRecordSource = ''
         console.warn('loadHistory error:', e)
       }
     },
@@ -2821,7 +2887,9 @@ export default {
       return String((trade && trade.side) || '').toLowerCase() === 'buy' ? '#52c41a' : '#f5222d'
     },
     tradeOrderTypeLabel (trade) {
-      return this.$t(String((trade && trade.order_type) || '').toLowerCase() === 'limit' ? 'quickTrade.limit' : 'quickTrade.market')
+      const orderType = String((trade && trade.order_type) || '').toLowerCase()
+      if (orderType === 'fill') return this.$t('quickTrade.fillRecord')
+      return this.$t(orderType === 'limit' ? 'quickTrade.limit' : 'quickTrade.market')
     },
     tradeMarketLabel (trade) {
       return this.$t(String((trade && trade.market_type) || '').toLowerCase() === 'spot' ? 'quickTrade.spot' : 'quickTrade.contractBadge')
@@ -2831,7 +2899,7 @@ export default {
     },
     tradeSourceLabel (source) {
       const normalized = String(source || 'manual').toLowerCase()
-      const supported = ['manual', 'indicator', 'ai_radar', 'ai_analysis']
+      const supported = ['manual', 'indicator', 'ai_radar', 'ai_analysis', 'exchange']
       const key = `quickTrade.source.${supported.includes(normalized) ? normalized : 'manual'}`
       return this.$t(key)
     },
@@ -4903,6 +4971,26 @@ export default {
     color: #999;
     font-weight: 400;
   }
+}
+
+.qt-history-source-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(250, 173, 20, 0.32);
+  border-radius: 6px;
+  color: #ad6800;
+  background: rgba(250, 173, 20, 0.08);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.theme-dark .qt-history-source-warning {
+  color: #d8a841;
+  background: rgba(250, 173, 20, 0.09);
+  border-color: rgba(250, 173, 20, 0.22);
 }
 
 .qt-position-card {

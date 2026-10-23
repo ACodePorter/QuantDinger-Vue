@@ -34,6 +34,29 @@ test('position history ignores a late response after switching instruments', asy
   assert.equal(state.loading, false)
 })
 
+test('trade history keeps the authoritative source returned by the backend', async () => {
+  const component = options('components/QuickTradePanel/QuickTradePanel.vue', {
+    getQuickTradeHistory: async () => ({
+      code: 1,
+      data: { source: 'local_fallback', trades: [{ id: 'local-1' }] }
+    })
+  })
+  const state = {
+    isStockMarket: false,
+    selectedCredentialId: 7,
+    currentSymbol: 'BTC/USDT',
+    effectiveMarketType: 'swap',
+    recentTrades: [],
+    historyRecordSource: '',
+    pruneMarketOrderConfirmations: () => {}
+  }
+
+  await component.methods.loadHistory.call(state)
+
+  assert.equal(state.historyRecordSource, 'local_fallback')
+  assert.deepEqual(JSON.parse(JSON.stringify(state.recentTrades)), [{ id: 'local-1' }])
+})
+
 test('history refresh preserves visible rows while pending and reports a failed refresh', async () => {
   let reject
   const component = options('components/QuickTradePanel/PositionActivity.vue', {
@@ -663,55 +686,73 @@ test('positions ignore stale market responses and keep last snapshot on failure'
   assert.equal(state.currentPositions[0], position)
 })
 
-test('Alpaca history keeps confirmed zero and broker reported commissions', async () => {
+test('Alpaca history uses individual exchange fills and execution timestamps', async () => {
   const component = options('components/QuickTradePanel/QuickTradePanel.vue', {
-    broker: { alpaca: { orders: async () => ({ success: true, data: [{
-      id: 'alpaca-1', symbol: 'AAPL', side: 'sell', status: 'filled',
-      filled_qty: 2, filled_avg_price: 250, asset_class: 'us_equity',
-      commission: 0, commission_ccy: 'USD', commission_quote: 0,
-      fees_by_ccy: { USD: 0 }, fee_status: 'actual_zero'
-    }] }) } }
+    broker: { alpaca: {
+      orders: async () => ({ success: true, data: [] }),
+      tradeHistory: async () => ({ success: true, data: [
+        {
+          id: 'exchange-alpaca-fill-1', exchange_fill_id: 'fill-1', exchange_order_id: 'order-1',
+          symbol: 'AAPL', side: 'sell', status: 'filled', filled_amount: 1.25,
+          avg_fill_price: 250, filled_at: '2026-10-23T08:30:01Z', fee_status: 'pending'
+        },
+        {
+          id: 'exchange-alpaca-fill-2', exchange_fill_id: 'fill-2', exchange_order_id: 'order-1',
+          symbol: 'AAPL', side: 'sell', status: 'filled', filled_amount: 0.75,
+          avg_fill_price: 251, filled_at: '2026-10-23T08:30:02Z', fee_status: 'pending'
+        }
+      ] })
+    } }
   })
   const state = {
     isStockMarket: true,
     selectedCredentialId: 9,
     currentSymbol: 'AAPL',
     recentTrades: [],
+    recentOpenOrders: [],
+    historyRecordSource: '',
     apiPayload: response => response.data,
     normalizeBrokerSymbol: symbol => symbol
   }
 
   await component.methods.loadHistory.call(state)
 
-  assert.equal(state.recentTrades[0].commission_quote, 0)
-  assert.equal(state.recentTrades[0].commission_ccy, 'USD')
-  assert.equal(state.recentTrades[0].fee_status, 'actual_zero')
+  assert.equal(state.historyRecordSource, 'exchange')
+  assert.deepEqual(state.recentTrades.map(row => row.id), ['exchange-alpaca-fill-1', 'exchange-alpaca-fill-2'])
+  assert.equal(state.recentTrades[0].filled_amount, 1.25)
+  assert.equal(state.recentTrades[0].created_at, '2026-10-23T08:30:01Z')
   const formatted = component.methods.formatTradeCommission.call({
     formatPrice: component.methods.formatPrice,
     formatQuantity: component.methods.formatQuantity
   }, state.recentTrades[0])
-  assert.equal(formatted, '0.00 USD')
+  assert.equal(formatted, '--')
 })
 
 test('Alpaca notional market orders keep their requested value before filling', async () => {
   const component = options('components/QuickTradePanel/QuickTradePanel.vue', {
-    broker: { alpaca: { orders: async () => ({ success: true, data: [{
-      id: 'alpaca-notional-1', symbol: 'NVDA', side: 'sell', status: 'accepted',
-      qty: null, notional: 10000, order_type: 'market', limit_price: null,
-      filled_qty: 0, filled_avg_price: null, asset_class: 'us_equity'
-    }] }) } }
+    broker: { alpaca: {
+      orders: async () => ({ success: true, data: [{
+        id: 'alpaca-notional-1', symbol: 'NVDA', side: 'sell', status: 'accepted',
+        qty: null, notional: 10000, order_type: 'market', limit_price: null,
+        filled_qty: 0, filled_avg_price: null, asset_class: 'us_equity'
+      }] }),
+      tradeHistory: async () => ({ success: true, data: [] })
+    } }
   })
   const state = {
     isStockMarket: true,
     selectedCredentialId: 13,
     currentSymbol: 'NVDA',
     recentTrades: [],
-    apiPayload: response => response.data
+    recentOpenOrders: [],
+    historyRecordSource: '',
+    apiPayload: response => response.data,
+    normalizeBrokerSymbol: symbol => symbol
   }
 
   await component.methods.loadHistory.call(state)
 
-  const order = state.recentTrades[0]
+  const order = state.recentOpenOrders[0]
   assert.equal(order.requested_base_qty, 0)
   assert.equal(order.requested_notional, 10000)
   assert.equal(order.price, 0)
