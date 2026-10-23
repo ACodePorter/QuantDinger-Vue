@@ -10,7 +10,7 @@
         <span class="workspace-toolbar__context">{{ $t('backtest-center.title') }} · {{ modeContextLabel }}</span>
       </div>
       <div v-if="mode !== 'evolution'" class="hero-actions">
-        <span class="hero-stat"><strong>{{ availableSources.length }}</strong>{{ mode === 'factor' ? $t('strategyV2.factorResearch.eligibleSources') : $t('strategyV2.backtest.sources') }}</span>
+        <span class="hero-stat"><strong>{{ mode === 'factor' ? researchableUniverses.length : availableSources.length }}</strong>{{ mode === 'factor' ? $t('strategyV2.factorResearch.eligibleUniverses') : $t('strategyV2.backtest.sources') }}</span>
         <span class="hero-stat"><strong>{{ history.length }}</strong>{{ mode === 'factor' ? $t('strategyV2.factorResearch.runs') : $t('strategyV2.backtest.runs') }}</span>
         <a-button icon="reload" :loading="historyLoading" @click="refreshPage">
           {{ $t('backtest-center.refreshHistory') }}
@@ -25,8 +25,23 @@
     <template v-else>
       <section class="command-bar" data-testid="backtest-command-bar">
         <div class="command-bar__source">
-          <span class="command-label">{{ $t('backtestWorkbench.strategy') }}</span>
+          <span class="command-label">{{ mode === 'factor' ? $t('strategyV2.factorResearch.universe') : $t('backtestWorkbench.strategy') }}</span>
           <a-select
+            v-if="mode === 'factor'"
+            v-model="factorForm.universeId"
+            class="command-source-select"
+            show-search
+            option-filter-prop="children"
+            :loading="universesLoading"
+            :placeholder="$t('strategyV2.factorResearch.universePlaceholder')"
+            @change="handleFactorResearchContextChange"
+          >
+            <a-select-option v-for="item in researchableUniverses" :key="item.id" :value="item.id">
+              {{ universeName(item) }} · {{ item.market }} · {{ $t('strategyV2.symbolCount', { count: item.member_count }) }}
+            </a-select-option>
+          </a-select>
+          <a-select
+            v-else
             v-model="form.sourceId"
             class="command-source-select"
             show-search
@@ -82,9 +97,9 @@
               <div class="panel-heading config-section__heading">
                 <div>
                   <span class="step-badge">1</span>
-                  <h2>{{ $t('strategyV2.sourceTitle') }}</h2>
+                  <h2>{{ mode === 'factor' ? $t('strategyV2.factorResearch.universeTitle') : $t('strategyV2.sourceTitle') }}</h2>
                 </div>
-                <a-tag v-if="manifest" class="theme-ready-tag">{{ $t('strategyV2.backtest.ready') }}</a-tag>
+                <a-tag v-if="mode === 'factor' ? selectedUniverse : manifest" class="theme-ready-tag">{{ $t('strategyV2.backtest.ready') }}</a-tag>
               </div>
               <a-radio-group
                 v-if="mode === 'portfolio'"
@@ -106,6 +121,22 @@
                 </a-radio-button>
               </a-radio-group>
               <a-select
+                v-if="mode === 'factor'"
+                v-model="factorForm.universeId"
+                class="full-width"
+                show-search
+                option-filter-prop="children"
+                data-testid="factor-universe-select"
+                :loading="universesLoading"
+                :placeholder="$t('strategyV2.factorResearch.universePlaceholder')"
+                @change="handleFactorResearchContextChange"
+              >
+                <a-select-option v-for="item in researchableUniverses" :key="item.id" :value="item.id">
+                  {{ universeName(item) }} · {{ item.market }} · {{ $t('strategyV2.symbolCount', { count: item.member_count }) }}
+                </a-select-option>
+              </a-select>
+              <a-select
+                v-else
                 v-model="form.sourceId"
                 class="full-width"
                 show-search
@@ -129,7 +160,19 @@
                 :description="$t('strategyV2.backtest.noPortfolioSourceHint')"
               />
 
-              <div v-if="manifest" class="manifest-card">
+              <div v-if="mode === 'factor' && selectedUniverse" class="manifest-card">
+                <div class="manifest-title">
+                  <a-icon type="global" />
+                  {{ $t('strategyV2.factorResearch.universeMode') }}
+                </div>
+                <div class="manifest-grid">
+                  <div><span>{{ $t('strategyV2.factorResearch.universe') }}</span><strong>{{ factorUniverseLabel }}</strong></div>
+                  <div><span>{{ $t('strategyV2.markets') }}</span><strong>{{ selectedUniverse.market || '-' }}</strong></div>
+                  <div><span>{{ $t('strategyV2.factorResearch.members') }}</span><strong>{{ selectedUniverse.member_count }}</strong></div>
+                  <div><span>{{ $t('strategyV2.frequency') }}</span><strong>{{ manifestFrequency }}</strong></div>
+                </div>
+              </div>
+              <div v-else-if="mode === 'portfolio' && manifest" class="manifest-card">
                 <div class="manifest-title">
                   <a-icon type="safety-certificate" />
                   {{ $t('strategyV2.manifestTitle') }}
@@ -181,7 +224,7 @@
                     </a-form-item>
                   </div>
                   <div
-                    v-if="backtestRangePolicy"
+                    v-if="backtestRangeLimitDays !== null"
                     class="range-policy-note"
                     :class="{ 'is-error': backtestRangeExceeded }"
                   >
@@ -264,16 +307,23 @@
                     <span class="step-badge">3</span>
                     <h3>{{ $t('strategyV2.factorResearch.settings') }}</h3>
                   </div>
-                  <span>{{ $t('strategyV2.factorResearch.independentMode') }}</span>
+                  <span>{{ $t('strategyV2.factorResearch.universeMode') }}</span>
                 </div>
                 <div class="factor-contract-note">
                   <a-icon type="info-circle" />
                   <div>
-                    <strong>{{ $t('strategyV2.factorResearch.universeContractTitle') }}</strong>
-                    <span>{{ $t('strategyV2.factorResearch.universeContractDesc') }}</span>
+                    <strong>{{ $t('strategyV2.factorResearch.universeMode') }}</strong>
+                    <span>{{ $t('strategyV2.factorResearch.universeModeDesc') }}</span>
                   </div>
                 </div>
                 <div class="form-grid">
+                  <a-form-item :label="$t('strategyV2.factorResearch.frequency')">
+                    <a-select v-model="factorForm.frequency" class="full-width" @change="handleFactorResearchContextChange">
+                      <a-select-option v-for="frequency in factorFrequencyOptions" :key="frequency" :value="frequency">
+                        {{ frequency }}
+                      </a-select-option>
+                    </a-select>
+                  </a-form-item>
                   <a-form-item :label="$t('strategyV2.factorResearch.factor')">
                     <a-select
                       v-model="factorForm.factorId"
@@ -371,7 +421,7 @@
           <div class="panel-heading result-heading">
             <div>
               <h2>{{ mode === 'factor' ? $t('strategyV2.factorResearch.workspace') : $t('backtest-center.resultOverview') }}</h2>
-              <span v-if="source" class="result-source-name">{{ source.name }}</span>
+              <span v-if="mode === 'factor' ? selectedUniverse : source" class="result-source-name">{{ mode === 'factor' ? factorUniverseLabel : source.name }}</span>
             </div>
             <span v-if="selectedRun" class="run-id">{{ mode === 'factor' ? 'FR-' : '#' }}{{ selectedRun.id || selectedRun.runId }}</span>
           </div>
@@ -383,7 +433,7 @@
             <a-progress class="run-progress" :percent="runProgressPercent" :show-info="true" status="active" />
             <strong>{{ $t('strategyV2.backtest.elapsed', { seconds: runElapsedSeconds }) }}</strong>
             <div class="running-contract">
-              <span><a-icon type="check-circle" />{{ $t('strategyV2.backtest.sourceCheck') }}</span>
+              <span><a-icon type="check-circle" />{{ mode === 'factor' ? $t('strategyV2.factorResearch.universeCheck') : $t('strategyV2.backtest.sourceCheck') }}</span>
               <span><a-icon type="database" />{{ mode === 'factor' ? $t('strategyV2.factorResearch.pointInTimeExecution') : $t('strategyV2.backtest.serverExecution') }}</span>
               <span><a-icon type="safety-certificate" />{{ mode === 'factor' ? $t('strategyV2.factorResearch.metricsBeforeReturn') : $t('strategyV2.backtest.auditBeforeReturn') }}</span>
             </div>
@@ -395,21 +445,21 @@
               <h3>{{ emptyResultTitle }}</h3>
               <p>{{ emptyResultDescription }}</p>
               <div class="empty-checks">
-                <span :class="{ done: manifest }"><a-icon :type="manifest ? 'check-circle' : 'clock-circle'" />{{ $t('strategyV2.backtest.sourceCheck') }}</span>
+                <span :class="{ done: mode === 'factor' ? selectedUniverse : manifest }"><a-icon :type="(mode === 'factor' ? selectedUniverse : manifest) ? 'check-circle' : 'clock-circle'" />{{ mode === 'factor' ? $t('strategyV2.factorResearch.universeCheck') : $t('strategyV2.backtest.sourceCheck') }}</span>
                 <span><a-icon type="safety-certificate" />{{ mode === 'factor' ? $t('strategyV2.factorResearch.crossSectionCheck') : $t('strategyV2.backtest.safeFill') }}</span>
                 <span><a-icon type="database" />{{ $t('strategyV2.backtest.persisted') }}</span>
               </div>
             </div>
-            <div v-if="manifest" class="empty-preview-grid">
+            <div v-if="mode === 'factor' ? selectedUniverse : manifest" class="empty-preview-grid">
               <div class="empty-preview-card">
-                <a-icon type="code" />
-                <span>{{ $t('strategyV2.sourceTitle') }}</span>
-                <strong>{{ source && source.name }}</strong>
+                <a-icon :type="mode === 'factor' ? 'global' : 'code'" />
+                <span>{{ mode === 'factor' ? $t('strategyV2.factorResearch.universe') : $t('strategyV2.sourceTitle') }}</span>
+                <strong>{{ mode === 'factor' ? factorUniverseLabel : (source && source.name) }}</strong>
               </div>
               <div class="empty-preview-card">
                 <a-icon type="global" />
-                <span>{{ $t('strategyV2.universe') }}</span>
-                <strong>{{ universeLabel }}</strong>
+                <span>{{ mode === 'factor' ? $t('strategyV2.markets') : $t('strategyV2.universe') }}</span>
+                <strong>{{ mode === 'factor' ? (selectedUniverse && selectedUniverse.market) : universeLabel }}</strong>
               </div>
               <div class="empty-preview-card">
                 <a-icon type="clock-circle" />
@@ -472,7 +522,7 @@
           @click="openRun(item)"
         >
           <span class="run-card__top">
-            <strong><a-icon v-if="historyDetailLoading && Number(historyDetailRunId) === Number(item.id)" type="loading" />{{ mode === 'factor' ? (item.source_name || item.factor_id) : (item.strategy_name || item.symbol) }}</strong>
+            <strong><a-icon v-if="historyDetailLoading && Number(historyDetailRunId) === Number(item.id)" type="loading" />{{ mode === 'factor' ? (item.universe_name || item.source_name || item.factor_id) : (item.strategy_name || item.symbol) }}</strong>
             <em>{{ mode === 'factor' ? 'FR-' : '#' }}{{ item.id }}</em>
           </span>
           <span class="run-card__meta">{{ item.market }} · {{ item.timeframe }} · {{ formatDate(item.created_at) }}</span>
@@ -526,6 +576,7 @@ import {
 } from '@/utils/strategyParameterPresentation'
 import { ratioPercentInputFormatter, ratioPercentInputParser } from '@/utils/numberFormat'
 import { getFactorCatalog } from '@/api/factor'
+import { getUniverses } from '@/api/universe'
 
 export default {
   name: 'BacktestCenter',
@@ -536,6 +587,8 @@ export default {
       mode: 'portfolio',
       sources: [],
       sourcesLoading: false,
+      universes: [],
+      universesLoading: false,
       portfolioHistory: [],
       factorHistory: [],
       source: null,
@@ -576,6 +629,8 @@ export default {
         leverage: 1
       },
       factorForm: {
+        universeId: null,
+        frequency: '1d',
         factorId: 'momentum_20',
         groups: 5,
         holdingPeriod: 5,
@@ -613,7 +668,6 @@ export default {
       return this.$t('backtest-center.resultOverview')
     },
     availableSources () {
-      if (this.mode === 'factor') return this.portfolioSources
       if (this.sourceCategory === 'all') return this.sources
       return this.sources.filter(item => item.asset_type === this.sourceCategory)
     },
@@ -623,13 +677,20 @@ export default {
     portfolioSources () {
       return this.sources.filter(item => item.asset_type === 'portfolio_strategy')
     },
+    researchableUniverses () {
+      return this.universes.filter(item => Number(item.member_count || 0) >= 3)
+    },
+    selectedUniverse () {
+      return this.universes.find(item => Number(item.id) === Number(this.factorForm.universeId)) || null
+    },
+    factorFrequencyOptions () {
+      return ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1d', '1w']
+    },
     history () {
       return this.mode === 'factor' ? this.factorHistory : this.portfolioHistory
     },
     factorCompatible () {
-      if (!this.manifest || this.manifest.strategyType !== 'portfolio') return false
-      const universe = this.manifest.universe || {}
-      return Boolean(universe.reference) || (universe.instruments || []).length >= 3
+      return Boolean(this.selectedUniverse && Number(this.selectedUniverse.member_count || 0) >= 3)
     },
     researchFactorOptions () {
       const legacy = [
@@ -656,7 +717,7 @@ export default {
     },
     emptyResultTitle () {
       if (this.mode === 'factor') {
-        if (!this.manifest) return this.$t('strategyV2.factorResearch.selectPortfolioTitle')
+        if (!this.selectedUniverse) return this.$t('strategyV2.factorResearch.selectUniverseTitle')
         if (!this.factorCompatible) return this.$t('strategyV2.factorResearch.incompatibleTitle')
         return this.$t('strategyV2.factorResearch.readyTitle')
       }
@@ -664,7 +725,7 @@ export default {
     },
     emptyResultDescription () {
       if (this.mode === 'factor') {
-        if (!this.manifest) return this.$t('strategyV2.factorResearch.selectPortfolioDesc')
+        if (!this.selectedUniverse) return this.$t('strategyV2.factorResearch.selectUniverseDesc')
         if (!this.factorCompatible) return this.$t('strategyV2.factorResearch.incompatibleDesc')
         return this.$t('strategyV2.factorResearch.readyDesc')
       }
@@ -677,18 +738,19 @@ export default {
       return Number((this.manifest && this.manifest.maxLeverage) || 1)
     },
     manifestFrequency () {
+      if (this.mode === 'factor') return this.factorForm.frequency || '1d'
       const subscriptions = (this.manifest && this.manifest.subscriptions) || []
       return (this.manifest && this.manifest.primaryFrequency) || (subscriptions[0] && subscriptions[0].frequency) || '-'
     },
     fundamentalDependencies () {
+      if (this.mode === 'factor') return []
       const dependencies = this.manifest && this.manifest.fundamentalDependencies
       return Array.isArray(dependencies) ? dependencies : []
     },
     backtestRangeLimitDays () {
+      if (this.mode === 'factor') return null
       if (!this.backtestRangePolicy) return null
-      const value = Number(this.mode === 'factor'
-        ? this.backtestRangePolicy.factorMaxSelectedDays
-        : this.backtestRangePolicy.maxSelectedDays)
+      const value = Number(this.backtestRangePolicy.maxSelectedDays)
       return Number.isFinite(value) ? Math.max(0, value) : null
     },
     selectedRangeDays () {
@@ -717,9 +779,7 @@ export default {
     estimatedBacktestBars () {
       if (!this.backtestRangePolicy || this.selectedRangeDays === null || this.selectedRangeDays < 0) return 0
       const seconds = Number(this.backtestRangePolicy.timeframeSeconds || 86400)
-      const warmupBars = Number(this.mode === 'factor'
-        ? this.backtestRangePolicy.factorWarmupBars
-        : this.backtestRangePolicy.warmupBars) || 0
+      const warmupBars = Number(this.backtestRangePolicy.warmupBars) || 0
       return Math.ceil((this.selectedRangeDays * 86400) / Math.max(1, seconds)) + warmupBars
     },
     backtestRangeExceeded () {
@@ -744,13 +804,15 @@ export default {
       })
     },
     runDisabled () {
-      return this.sourceContractLoading || !this.manifest || this.backtestRangeExceeded || (this.mode === 'factor' && !this.factorCompatible)
+      if (this.mode === 'factor') return this.universesLoading || this.backtestRangeExceeded || !this.factorCompatible
+      return this.sourceContractLoading || !this.manifest || this.backtestRangeExceeded
     },
     strategyTypeLabel () {
       const type = String((this.manifest && this.manifest.strategyType) || 'cta')
       return this.$t(type === 'portfolio' ? 'strategyV2.portfolio' : 'strategyV2.cta')
     },
     universeLabel () {
+      if (this.mode === 'factor') return this.factorUniverseLabel
       const universe = (this.manifest && this.manifest.universe) || {}
       if (universe.reference) return universe.reference
       const instruments = Array.isArray(universe.instruments) ? universe.instruments : []
@@ -758,6 +820,9 @@ export default {
         return instruments.map(this.formatInstrument).join(', ')
       }
       return this.$t('strategyV2.symbolCount', { count: instruments.length })
+    },
+    factorUniverseLabel () {
+      return this.selectedUniverse ? this.universeName(this.selectedUniverse) : '-'
     },
     paramDefinitions () {
       const schema = this.parseObject(this.source && this.source.param_schema)
@@ -871,11 +936,12 @@ export default {
       this.handleModeChange(value)
     },
     '$route.query.sourceId' () {
-      if (this.pageReady) this.syncRouteSource({ fallback: true })
+      if (this.pageReady && this.mode === 'portfolio') this.syncRouteSource({ fallback: true })
     }
   },
   async mounted () {
     await this.loadSources()
+    await this.loadUniverses()
     this.loadResearchFactors().catch(() => {})
     this.pageReady = true
     await this.syncRouteSource({ fallback: true })
@@ -883,7 +949,7 @@ export default {
     window.addEventListener('resize', this.resizeEquityChart)
   },
   activated () {
-    if (this.pageReady) {
+    if (this.pageReady && this.mode === 'portfolio') {
       this.syncRouteSource({ fallback: true, forceReload: true, preserveParams: true }).catch(error => {
         this.$message.error((error && error.backendMessage) || this.$t('strategyV2.backtest.runFailed'))
       })
@@ -999,10 +1065,12 @@ export default {
     async refreshPage () {
       await Promise.all([
         this.loadSources(),
+        this.loadUniverses(),
         this.loadResearchFactors(),
         this.loadHistory({ mode: this.mode, force: true })
       ])
-      await this.syncRouteSource({ fallback: true })
+      if (this.mode === 'portfolio') await this.syncRouteSource({ fallback: true })
+      else this.ensureUniverseSelection()
     },
     async loadSources () {
       this.sourcesLoading = true
@@ -1012,6 +1080,30 @@ export default {
       } finally {
         this.sourcesLoading = false
       }
+    },
+    async loadUniverses () {
+      this.universesLoading = true
+      try {
+        const response = await getUniverses()
+        this.universes = Array.isArray(response.data) ? response.data : []
+        this.ensureUniverseSelection()
+      } finally {
+        this.universesLoading = false
+      }
+    },
+    ensureUniverseSelection () {
+      const currentId = Number(this.factorForm.universeId)
+      if (this.researchableUniverses.some(item => Number(item.id) === currentId)) return
+      const nextUniverse = this.researchableUniverses[0]
+      this.factorForm.universeId = nextUniverse ? Number(nextUniverse.id) : null
+    },
+    universeName (universe) {
+      const key = universe && universe.name_i18n_key
+      if (key) {
+        const translated = this.$t(key)
+        if (translated && translated !== key) return translated
+      }
+      return (universe && (universe.name || universe.code)) || ''
     },
     async loadResearchFactors () {
       this.factorCatalogLoading = true
@@ -1042,6 +1134,11 @@ export default {
     },
     handleResearchFactorChange () {
       this.factorParams = { ...((this.selectedResearchFactor && this.selectedResearchFactor.default_params) || {}) }
+      this.handleFactorResearchContextChange()
+    },
+    handleFactorResearchContextChange () {
+      this.factorResult = null
+      this.selectedRun = null
     },
     onSourceDropdownVisibleChange (visible) {
       if (!visible || this.sourcesLoading) return
@@ -1096,6 +1193,12 @@ export default {
       this.selectedRun = null
       this.historyVisible = false
       if (this.mode === 'evolution') return
+      if (this.mode === 'factor') {
+        this.ensureUniverseSelection()
+        this.loadHistory({ mode: this.mode }).catch(() => {})
+        this.$nextTick(() => this.resizeEquityChart())
+        return
+      }
       const currentId = Number(this.form.sourceId)
       const currentAvailable = this.availableSources.some(item => Number(item.id) === currentId)
       if (!currentAvailable) {
@@ -1396,8 +1499,8 @@ export default {
       }
     },
     async runFactorResearch () {
-      if (!this.form.sourceId) {
-        this.$message.warning(this.$t('strategyV2.sourceContractRequired'))
+      if (!this.factorForm.universeId) {
+        this.$message.warning(this.$t('strategyV2.factorResearch.universeRequired'))
         return
       }
       if (this.form.endDate.isAfter(moment().subtract(1, 'day'), 'day')) {
@@ -1410,7 +1513,8 @@ export default {
       this.startRunTimer()
       try {
         const response = await runStrategyFactorResearch({
-          sourceId: this.form.sourceId,
+          universeId: this.factorForm.universeId,
+          frequency: this.factorForm.frequency,
           startDate: this.form.startDate.format('YYYY-MM-DD'),
           endDate: this.form.endDate.format('YYYY-MM-DD'),
           commission: this.form.commission,
@@ -1496,6 +1600,8 @@ export default {
         this.selectedRun = run
         this.factorResult = run.result || null
         this.factorForm = {
+          universeId: Number(run.universe_id || (run.result && run.result.universeId)) || null,
+          frequency: run.timeframe || (run.result && run.result.frequency) || '1d',
           factorId: run.factor_id || 'momentum_20',
           groups: Number(run.groups_count || 5),
           holdingPeriod: Number(run.holding_period || 5),
@@ -1506,7 +1612,7 @@ export default {
         this.form.slippage = Number(run.slippage || 0)
         if (run.start_date) this.form.startDate = moment(run.start_date)
         if (run.end_date) this.form.endDate = moment(run.end_date)
-        if (run.source_id && Number(this.form.sourceId) !== Number(run.source_id)) {
+        if (!run.universe_id && run.source_id && Number(this.form.sourceId) !== Number(run.source_id)) {
           this.form.sourceId = Number(run.source_id)
           const detail = await getScriptSourceDetail(run.source_id)
           this.source = detail.data

@@ -281,10 +281,21 @@
             :class="{ active: item.symbol === effectiveReviewSymbol }"
             @click="activeReviewSymbol = item.symbol"
           >
-            <span class="contribution-symbol">{{ item.symbol }}</span>
+            <span class="contribution-symbol">
+              <span class="contribution-symbol-text">{{ item.symbol }}</span>
+              <a-tag v-if="item.hasOpenPosition" class="open-position-tag">
+                {{ $t('strategyV2.backtest.status.open_position_only') }}
+              </a-tag>
+            </span>
             <span><small>{{ $t('strategyV2.backtest.closedTrades') }}</small><b>{{ item.trades }}</b></span>
-            <span><small>{{ $t('backtest-center.metrics.winRate') }}</small><b>{{ formatPercent(item.winRate, false) }}</b></span>
-            <span><small>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</small><b :class="profitTone(item.profit)">{{ formatSignedNumber(item.profit) }}</b></span>
+            <span>
+              <small>{{ $t(item.hasOpenPosition && !item.trades ? 'backtest-center.quantity' : 'backtest-center.metrics.winRate') }}</small>
+              <b>{{ item.hasOpenPosition && !item.trades ? formatNumber(item.positionQuantity, 4) : formatPercent(item.winRate, false) }}</b>
+            </span>
+            <span>
+              <small>{{ $t(item.hasOpenPosition && !item.trades ? 'strategyV2.backtest.unrealizedProfit' : 'strategyV2.backtest.tradeReviewProfit') }}</small>
+              <b :class="profitTone(item.profit)">{{ formatSignedNumber(item.profit) }}</b>
+            </span>
             <a-icon :type="item.hasSnapshot ? 'line-chart' : 'info-circle'" />
           </button>
         </div>
@@ -293,7 +304,7 @@
         <div><span>{{ $t('backtest-center.symbol') }}</span><strong>{{ effectiveReviewSymbol }}</strong></div>
         <div><span>{{ $t('strategyV2.backtest.closedTrades') }}</span><strong>{{ reviewTrades.length }}</strong></div>
         <div><span>{{ $t('strategyV2.backtest.tradeReviewTimeframe') }}</span><strong>{{ reviewTimeframe }}</strong></div>
-        <div><span>{{ $t('strategyV2.backtest.tradeReviewProfit') }}</span><strong :class="profitTone(reviewProfit)">{{ formatSignedNumber(reviewProfit) }}</strong></div>
+        <div><span>{{ $t(activeContributionRow && activeContributionRow.hasOpenPosition && !reviewTrades.length ? 'strategyV2.backtest.unrealizedProfit' : 'strategyV2.backtest.tradeReviewProfit') }}</span><strong :class="profitTone(reviewProfit)">{{ formatSignedNumber(reviewProfit) }}</strong></div>
         <div><span>{{ $t('strategyV2.backtest.tradeReviewRange') }}</span><strong>{{ reviewDateRange }}</strong></div>
       </div>
       <div v-if="canRenderTradeReview" class="inline-review-chart">
@@ -607,14 +618,25 @@ export default {
           netContribution: Number(saved.netContribution || 0) + Number(row.netContribution || 0)
         })
       })
+      const positions = new Map()
+      Object.entries(this.result.positions || {}).forEach(([rawSymbol, row]) => {
+        const symbol = normalizeTradeReviewSymbol(rawSymbol)
+        if (!symbol || !row || typeof row !== 'object') return
+        positions.set(symbol, row)
+      })
       const snapshots = this.result.reviewCandles && typeof this.result.reviewCandles === 'object'
         ? this.result.reviewCandles
         : {}
       return this.reviewSymbols.map(symbol => {
-        const trades = this.tradeRows.filter(row => String((row && row.symbol) || '') === symbol)
+        const trades = this.tradeRows.filter(row => normalizeTradeReviewSymbol(row && row.symbol) === symbol)
         const attr = attributed.get(symbol) || {}
+        const hasAttribution = attributed.has(symbol)
+        const position = positions.get(symbol) || {}
+        const positionQuantity = Number(position.amount !== undefined ? position.amount : position.quantity) || 0
+        const hasOpenPosition = Math.abs(positionQuantity) > 1e-12
         const tradeProfit = trades.reduce((sum, row) => sum + Number((row && row.profit) || 0), 0)
-        const attributedProfit = Number(attr.realizedProfit || 0) + Number(attr.unrealizedProfit || 0)
+        const unrealizedProfit = Number(attr.unrealizedProfit || 0)
+        const attributedProfit = Number(attr.realizedProfit || 0) + unrealizedProfit
         const wins = trades.filter(row => Number((row && row.profit) || 0) > 0).length
         const snapshotKey = Object.keys(snapshots).find(key => normalizeTradeReviewSymbol(key) === symbol)
         const snapshot = snapshots[symbol] || (snapshotKey ? snapshots[snapshotKey] : null)
@@ -622,10 +644,16 @@ export default {
           symbol,
           trades: trades.length,
           winRate: trades.length ? wins / trades.length * 100 : 0,
-          profit: trades.length ? tradeProfit : attributedProfit,
+          profit: hasAttribution ? attributedProfit : tradeProfit,
+          unrealizedProfit,
+          positionQuantity,
+          hasOpenPosition,
           hasSnapshot: Boolean(snapshot && Array.isArray(snapshot.candles) && snapshot.candles.length)
         }
       }).sort((left, right) => right.profit - left.profit || right.trades - left.trades || left.symbol.localeCompare(right.symbol))
+    },
+    activeContributionRow () {
+      return this.portfolioContributionRows.find(item => item.symbol === this.effectiveReviewSymbol) || null
     },
     reviewAggregate () {
       return buildAggregateTradeReview(
@@ -634,6 +662,7 @@ export default {
       )
     },
     reviewProfit () {
+      if (this.isPortfolioStrategy && this.activeContributionRow) return this.activeContributionRow.profit
       return this.reviewTrades.reduce((sum, trade) => sum + Number((trade && trade.profit) || 0), 0)
     },
     reviewDateRange () {
@@ -1088,7 +1117,9 @@ export default {
 .contribution-item > span { min-width: 0; }
 .contribution-item small { display: block; color: #8b99aa; font-size: 9px; }
 .contribution-item b { display: block; overflow: hidden; color: #334155; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.contribution-symbol { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.contribution-symbol { display: flex; align-items: center; gap: 6px; overflow: hidden; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.contribution-symbol-text { overflow: hidden; text-overflow: ellipsis; }
+.open-position-tag { flex: none; margin: 0; padding: 0 5px; border-color: rgba(250, 173, 20, .32); border-radius: 999px; background: rgba(250, 173, 20, .08); color: #ad6800; font-size: 8px; font-weight: 600; line-height: 16px; }
 .contribution-item > .anticon { color: #52c41a; }
 .review-facts { display: grid; grid-template-columns: 1.25fr .7fr .7fr .8fr 1.8fr; gap: 8px; margin-top: 10px; }
 .review-facts div { min-width: 0; padding: 8px 10px; border-radius: 7px; background: #f8fafc; }
@@ -1151,6 +1182,7 @@ export default {
 .portfolio-result.theme-dark .contribution-item { border-color: rgba(255,255,255,.1); background: #151515; color: #e5e7eb; }
 .portfolio-result.theme-dark .contribution-item:hover { border-color: #389e0d; }
 .portfolio-result.theme-dark .contribution-item.active { border-color: #52c41a; background: rgba(82,196,26,.12); }
+.portfolio-result.theme-dark .open-position-tag { border-color: rgba(250, 173, 20, .4); background: rgba(250, 173, 20, .12); color: #ffd666; }
 .portfolio-result.theme-dark .metric-card strong, .portfolio-result.theme-dark .overview-card strong, .portfolio-result.theme-dark .status-card strong, .portfolio-result.theme-dark .chart-heading h3, .portfolio-result.theme-dark .trade-review-heading h3, .portfolio-result.theme-dark .review-facts strong, .portfolio-result.theme-dark .assumption-strip strong { color: #e5e7eb; }
 .liquidation-alert { margin-top: 0; margin-bottom: 10px; }
 .portfolio-result.theme-dark .chart-card, .portfolio-result.theme-dark .trade-review-card { border-color: #2d2d2d; background: #111111; }

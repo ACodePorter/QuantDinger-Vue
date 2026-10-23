@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import strategyV2Messages from '../../src/locales/lang/strategy-v2.js'
 
 const componentPath = fileURLToPath(
   new URL('../../src/views/backtest-center/PortfolioResult.vue', import.meta.url)
@@ -35,4 +36,22 @@ test('portfolio chart separates directional exposure and hides ledger cash by de
   assert.match(source, /step: 'end'/)
   assert.match(source, /selected: \{ \[cashName\]: false \}/)
   assert.match(source, /formatPercentagePointValue\(this\.result\.excessReturn\)/)
+})
+
+test('portfolio contribution rows disclose open positions and use attributed profit', () => {
+  assert.match(source, /v-if="item\.hasOpenPosition" class="open-position-tag"/)
+  assert.match(source, /strategyV2\.backtest\.status\.open_position_only/)
+  assert.match(source, /item\.hasOpenPosition && !item\.trades \? 'backtest-center\.quantity'/)
+  assert.match(source, /item\.hasOpenPosition && !item\.trades \? 'strategyV2\.backtest\.unrealizedProfit'/)
+  assert.match(source, /const hasOpenPosition = Math\.abs\(positionQuantity\) > 1e-12/)
+  assert.match(source, /profit: hasAttribution \? attributedProfit : tradeProfit/)
+  assert.match(source, /this\.isPortfolioStrategy && this\.activeContributionRow/)
+})
+
+test('English Strategy V2 interface copy contains no Han text', () => {
+  const leaks = Object.entries(strategyV2Messages['en-US'])
+    .filter(([, value]) => typeof value === 'string' && /\p{Script=Han}/u.test(value))
+    .map(([key]) => key)
+
+  assert.deepEqual(leaks, [])
 })
