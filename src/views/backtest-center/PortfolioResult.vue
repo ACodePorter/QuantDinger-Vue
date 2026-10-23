@@ -350,6 +350,7 @@ import {
   normalizeTradeReviewSymbol
 } from '@/utils/tradeReview'
 import { timestampMillisecondsUtc } from '@/utils/utcInstant'
+import { formatVisibleWeights } from './portfolioResultFormatters'
 import { formatBacktestTime } from '@/utils/userTime'
 
 export default {
@@ -1053,7 +1054,7 @@ export default {
     formatNumber (value, digits = 2) { const number = Number(value || 0); return Number.isFinite(number) ? number.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '-' },
     formatNullableNumber (value, digits = 2) { return value === null || value === undefined ? '-' : this.formatNumber(value, digits) },
     formatSignedNumber (value, digits = 2) { const number = Number(value || 0); return `${number > 0 ? '+' : ''}${this.formatNumber(number, digits)}` },
-    formatWeights (value) { return Object.entries(value || {}).map(([symbol, weight]) => `${symbol.split(':').pop().split('@')[0]} ${this.formatRate(weight)}`).join(' · ') || '-' },
+    formatWeights (value) { return formatVisibleWeights(value, this.formatRate) },
     profitTone (value) { const number = Number(value || 0); return number > 0 ? 'positive' : number < 0 ? 'negative' : 'neutral' },
     signedCell (value) { return this.$createElement('span', { class: this.profitTone(value) }, this.formatSignedNumber(value)) },
     signedPercentCell (value) { return this.$createElement('span', { class: this.profitTone(value) }, this.formatPercent(Number(value || 0) * 100)) },
