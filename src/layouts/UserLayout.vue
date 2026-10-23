@@ -266,7 +266,7 @@ export default {
   }
 
   .brand-story {
-    width: ~"min(620px, 100%)";
+    width: ~"min(680px, 100%)";
     margin: auto 0;
     padding: clamp(38px, 6vh, 54px) 0;
   }
@@ -288,7 +288,7 @@ export default {
   }
 
   h1 {
-    max-width: 620px;
+    max-width: 680px;
     margin: 0;
     color: #fff;
     font-size: clamp(40px, 3.5vw, 60px);
