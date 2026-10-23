@@ -67,7 +67,7 @@
           >
             <span class="row-main">
               <strong>{{ strategy.strategy_name || '-' }}</strong>
-              <small>{{ symbol(strategy) || '-' }}<template v-if="timeframe(strategy)"> · {{ timeframe(strategy) }}</template><template v-if="liveExchangeName(strategy)"> · {{ liveExchangeName(strategy) }}</template></small>
+              <small>{{ strategyTargetLabel(strategy) || '-' }}<template v-if="timeframe(strategy)"> · {{ timeframe(strategy) }}</template><template v-if="liveExchangeName(strategy)"> · {{ liveExchangeName(strategy) }}</template></small>
             </span>
             <span class="row-status">
               <i :class="statusClass(strategy)"></i>{{ statusLabel(strategy) }}
@@ -104,7 +104,10 @@
           <div>
             <div class="detail-title-line">
               <h2>{{ selectedStrategy.strategy_name || '-' }}</h2>
-              <span class="detail-symbol">{{ symbol(selectedStrategy) }}</span>
+              <span class="detail-symbol">{{ strategyTargetLabel(selectedStrategy) }}</span>
+              <span v-if="isPortfolioStrategy" class="portfolio-pill">
+                <a-icon type="pie-chart" />{{ $t('strategyV2.portfolio') }}
+              </span>
               <span class="status-pill" :class="statusClass(selectedStrategy)">{{ statusLabel(selectedStrategy) }}</span>
               <span class="execution-pill" :class="executionMode(selectedStrategy)">{{ executionLabel(selectedStrategy) }}</span>
               <span v-if="liveExchangeName(selectedStrategy)" class="exchange-pill">
@@ -219,7 +222,12 @@
               <strong>{{ formatLiveMoney(performanceSummary.grossExposure) }}</strong>
               <small>{{ financialMetricSuffix }}</small>
             </div>
-            <div>
+            <div v-if="isPortfolioStrategy">
+              <span>{{ $t('strategyCenter.console.currentPositions') }}</span>
+              <strong>{{ positionSummary.count }}</strong>
+              <small>{{ $t('strategyV2.portfolio') }}</small>
+            </div>
+            <div v-else>
               <span>{{ $t('strategyCenter.console.leverage') }}</span>
               <strong>{{ leverageDisplay }}</strong>
               <small>{{ leverageMarketLabel }}</small>
@@ -284,7 +292,9 @@
                 :execution-mode="executionMode(selectedStrategy)"
                 :market-type="tradingConfig(selectedStrategy).market_type || 'swap'"
                 :leverage="tradingConfig(selectedStrategy).leverage || 1"
+                :portfolio="isPortfolioStrategy"
                 :is-dark="dark"
+                @summary-change="positionSummary = $event"
                 @ownership-reconciled="$emit('ownership-reconciled')"
               />
             </section>
@@ -306,6 +316,7 @@
               :strategy-id="Number(selectedStrategy.id)"
               :is-dark="dark"
               :bot-type="selectedStrategy.bot_type || ''"
+              :portfolio="isPortfolioStrategy"
             />
           </a-tab-pane>
           <a-tab-pane v-if="aiDecisionFilterEnabled" key="ai-decisions" :tab="$t('aiDecisionFilter.tab')">
@@ -380,7 +391,8 @@ export default {
       curve: [],
       detailLoading: false,
       chart: null,
-      detailRequestId: 0
+      detailRequestId: 0,
+      positionSummary: { count: 0, cost: 0, marketValue: 0, unrealizedPnl: 0 }
     }
   },
   computed: {
@@ -401,6 +413,9 @@ export default {
       const hasGridParameters = ['gridcount', 'lowerprice', 'upperprice'].every(key => parameterKeys.includes(key))
       const triggerMode = String(this.health(strategy).trigger_mode || '').toLowerCase()
       return type === 'grid' || hasGridParameters || template.includes('robot_v2_grid') || triggerMode === 'exchange_resting_orders'
+    },
+    isPortfolioStrategy () {
+      return this.isPortfolio(this.selectedStrategy)
     },
     gridOrdersTabLabel () {
       return this.$t(this.executionMode(this.selectedStrategy || {}) === 'signal'
@@ -428,7 +443,7 @@ export default {
         ? this.attentionStrategies
         : this.statusTab === 'running' ? this.runningStrategies : this.strategies
       const term = this.keyword.trim().toLowerCase()
-      return source.filter(item => !term || [item.strategy_name, item.id, this.symbol(item)].join(' ').toLowerCase().includes(term))
+      return source.filter(item => !term || [item.strategy_name, item.id, this.symbol(item), this.strategyTargetLabel(item)].join(' ').toLowerCase().includes(term))
     },
     paginatedStrategies () {
       const start = (this.currentPage - 1) * this.pageSize
@@ -536,6 +551,7 @@ export default {
       if (index >= 0) this.currentPage = Math.floor(index / this.pageSize) + 1
       this.selectedId = strategy.id
       this.detailTab = 'overview'
+      this.positionSummary = { count: 0, cost: 0, marketValue: 0, unrealizedPnl: 0 }
       this.loadDetails(strategy.id)
     },
     async loadDetails (id) {
@@ -586,6 +602,40 @@ export default {
       return exchangeId ? getExchangeDisplayName(exchangeId) : ''
     },
     tradingConfig (strategy) { return strategyTradingConfig(strategy) },
+    strategyManifest (strategy) {
+      const config = this.tradingConfig(strategy || {})
+      const raw = config.strategy_manifest || config.strategyManifest || (strategy && strategy.strategy_manifest) || {}
+      return this.parseObject(raw)
+    },
+    parseObject (value) {
+      if (value && typeof value === 'object') return value
+      if (typeof value !== 'string' || !value.trim()) return {}
+      try {
+        const parsed = JSON.parse(value)
+        return parsed && typeof parsed === 'object' ? parsed : {}
+      } catch (_) {
+        return {}
+      }
+    },
+    isPortfolio (strategy) {
+      if (!strategy) return false
+      const manifest = this.strategyManifest(strategy)
+      const config = this.tradingConfig(strategy)
+      const strategyType = String(manifest.strategyType || manifest.strategy_type || config.strategy_type || strategy.strategy_type || '').toLowerCase()
+      const rawSymbol = String(this.symbol(strategy) || '').toLowerCase()
+      return strategyType === 'portfolio' || rawSymbol.startsWith('basket:') || rawSymbol.startsWith('universe:')
+    },
+    strategyTargetLabel (strategy) {
+      if (!strategy) return ''
+      const manifest = this.strategyManifest(strategy)
+      const universe = this.parseObject(manifest.universe)
+      if (universe.reference) return this.$t('strategyV2.dynamicUniverse', { reference: universe.reference })
+      const instruments = Array.isArray(universe.instruments) ? universe.instruments : []
+      if (instruments.length === 1) return String(instruments[0].symbol || this.symbol(strategy) || '')
+      if (instruments.length > 1) return this.$t('strategyV2.symbolCount', { count: instruments.length })
+      const rawSymbol = String(this.symbol(strategy) || '')
+      return this.isPortfolio(strategy) ? rawSymbol.replace(/^(basket|universe):/i, '') : rawSymbol
+    },
     executionLabel (strategy) { return this.executionMode(strategy) === 'live' ? this.$t('systemOverview.live') : this.$t('systemOverview.signal') },
     symbol (strategy) { return strategySymbol(strategy) },
     timeframe (strategy) {
@@ -719,7 +769,7 @@ export default {
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #e6e9ee; }
 .detail-title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }.detail-title-line h2 { margin: 0; color: #151d29; font-size: 21px; font-weight: 700; letter-spacing: -.01em; }.detail-symbol { color: #667085; font-size: 13px; font-weight: 500; }
 .detail-header p { margin: 7px 0 0; color: #778290; font-size: 12px; font-variant-numeric: tabular-nums; }.detail-header p span { margin: 0 6px; }
-.status-pill, .execution-pill, .exchange-pill { padding: 2px 7px; border-radius: 3px; font-size: 12px; font-weight: 500; }.status-pill.running { color: #269d58; background: rgba(38, 157, 88, .09); }.status-pill.warning { color: #cb5f3f; background: rgba(203, 95, 63, .1); }.status-pill.stopped { color: #66717f; background: #eef0f3; }.execution-pill { border: 1px solid #e1e4e8; color: #66717f; }.execution-pill.live { border-color: rgba(225, 164, 22, .38); color: #a86f00; }.exchange-pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(24, 144, 255, .24); color: #1677b8; background: rgba(24, 144, 255, .06); }
+.status-pill, .execution-pill, .exchange-pill, .portfolio-pill { padding: 2px 7px; border-radius: 3px; font-size: 12px; font-weight: 500; }.status-pill.running { color: #269d58; background: rgba(38, 157, 88, .09); }.status-pill.warning { color: #cb5f3f; background: rgba(203, 95, 63, .1); }.status-pill.stopped { color: #66717f; background: #eef0f3; }.execution-pill { border: 1px solid #e1e4e8; color: #66717f; }.execution-pill.live { border-color: rgba(225, 164, 22, .38); color: #a86f00; }.exchange-pill, .portfolio-pill { display: inline-flex; align-items: center; gap: 5px; }.exchange-pill { border: 1px solid rgba(24, 144, 255, .24); color: #1677b8; background: rgba(24, 144, 255, .06); }.portfolio-pill { border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 28%, transparent); color: var(--primary-color, #1890ff); background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, transparent); }
 .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .pause-actions { display: inline-flex; gap: 8px; }
 .delete-strategy-button:not([disabled]) { border-color: rgba(217, 86, 86, .4); color: #d95656; }
@@ -753,6 +803,7 @@ export default {
 .workspace-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 620px; padding: 30px; text-align: center; }.workspace-empty > .anticon { margin-bottom: 18px; color: #d19a18; font-size: 42px; }.workspace-empty h2 { margin: 0 0 8px; }.workspace-empty p { max-width: 430px; margin-bottom: 20px; color: #7b8490; }.detail-empty { display: flex; align-items: center; justify-content: center; }
 .theme-dark { border-color: #2d2d2d; background: #111111; color: #e5e7eb; .strategy-master { border-color: #2d2d2d; background: #141414; }.master-tabs,.strategy-master footer { border-color: #2d2d2d; }.master-tabs b { background: #242424; color: #a5abb4; }.strategy-row { border-color: #2a2a2a; }.strategy-row:hover { background: #181818; }.strategy-row.selected { background: #211d13; }.row-main strong { color: #e7e9ed; }.row-main small,.row-status { color: #818995; }.row-status em { border-color: #3a3a3a; color: #959ca6; }.strategy-detail { background: #0d0d0d; }.detail-header,.section-head { border-color: #2d2d2d; }.detail-title-line h2 { color: #f0f1f3; }.status-pill.stopped { background: #262626; color: #9ba2ab; }.execution-pill { border-color: #3b3b3b; }.runtime-status-bar strong { color: #e1e4e8; }.metric-section-head h3 { color: #d8dce2; }.panel-section { border-color: #2d2d2d; background: #141414; }.section-head h3 { color: #e0e3e7; }.master-search ::v-deep .ant-input { border-color: #333333; background: #181818; color: #e4e7eb; }.master-search ::v-deep .ant-input-search-icon,.master-search ::v-deep .ant-input-clear-icon { color: #8f9baa; }.master-search ::v-deep .ant-input-search-icon:hover,.master-search ::v-deep .ant-input-clear-icon:hover { color: #f1f5f9; }.workspace-empty h2 { color: #eceef1; }}
 .theme-dark .exchange-pill { border-color: rgba(64, 169, 255, .3); color: #69c0ff; background: rgba(24, 144, 255, .1); }
+.theme-dark .portfolio-pill { border-color: color-mix(in srgb, var(--primary-color, #1890ff) 38%, transparent); background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent); }
 
 /* Operational console layout */
 .operations-workspace {
@@ -989,7 +1040,7 @@ export default {
 }
 .detail-title-line h2 { color: var(--sc-heading, #111827); font-size: 20px; font-weight: 700; }
 .detail-symbol, .detail-header p { color: var(--sc-muted, #667085); }
-.status-pill, .execution-pill, .exchange-pill { border-radius: 4px; font-size: 11px; }
+.status-pill, .execution-pill, .exchange-pill, .portfolio-pill { border-radius: 4px; font-size: 11px; }
 .runtime-status-bar { margin: 9px 2px 10px; color: var(--sc-muted, #667085); font-size: 11px; }
 .runtime-status-bar strong { color: var(--sc-text, #182230); font-size: 11px; }
 .metric-section { margin-bottom: 10px; }

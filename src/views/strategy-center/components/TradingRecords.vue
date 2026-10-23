@@ -1,6 +1,9 @@
 <template>
   <div class="trading-records strategy-tab-pane-inner" :class="{ 'theme-dark': isDark }">
-    <p v-if="records.length || hasCostSummary" class="execution-note">{{ $t('trading-assistant.execution.systemSummary') }}</p>
+    <p v-if="records.length || hasCostSummary" class="execution-note">
+      <a-tag v-if="portfolio" color="purple">{{ $t('strategyV2.portfolio') }}</a-tag>
+      {{ $t('trading-assistant.execution.systemSummary') }}
+    </p>
     <div v-if="records.length || hasCostSummary" class="cost-summary-grid">
       <div v-for="item in costSummaryItems" :key="item.key" class="cost-summary-card">
         <span>{{ item.label }}</span>
@@ -174,6 +177,10 @@ export default {
       default: false
     },
     isDark: {
+      type: Boolean,
+      default: false
+    },
+    portfolio: {
       type: Boolean,
       default: false
     },
@@ -670,7 +677,7 @@ export default {
   .ta-pnl.ta-pnl-neg { color: #f6465d !important; }
 }
 
-.execution-note { opacity: 0.7; font-size: 12px; margin: 0 0 12px; }
+.execution-note { display: flex; align-items: center; gap: 6px; opacity: 0.7; font-size: 12px; margin: 0 0 12px; }
 @primary-color: #1890ff;
 @success-color: #0ecb81;
 @danger-color: #f6465d;

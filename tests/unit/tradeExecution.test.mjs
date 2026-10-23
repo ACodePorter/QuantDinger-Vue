@@ -44,7 +44,7 @@ test('records table stays visible alongside its execution note', async () => {
   assert.deepEqual(compiled.errors, [])
   for (const [records, loading, expected] of [[[{ id: 1 }], false, true], [[], false, false], [[], true, true]]) {
     const instance = new Vue({
-      data: () => ({ records, isRecordsLoading: loading, isDark: false, hasCostSummary: false, costSummary: null, costSummaryItems: [], columns: [] }),
+      data: () => ({ records, isRecordsLoading: loading, isDark: false, portfolio: false, hasCostSummary: false, costSummary: null, costSummaryItems: [], columns: [] }),
       methods: { $t: key => key },
       render: new Function(compiled.render),
       staticRenderFns: compiled.staticRenderFns.map(code => new Function(code))

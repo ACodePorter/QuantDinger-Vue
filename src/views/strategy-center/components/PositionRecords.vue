@@ -28,6 +28,24 @@
         show-icon
         :message="$t('strategyCenter.console.virtualPositionsHint')"
       />
+      <div v-if="portfolio && positions.length" class="portfolio-position-summary">
+        <div>
+          <span>{{ $t('strategyCenter.console.currentPositions') }}</span>
+          <strong>{{ positionSummary.count }}</strong>
+        </div>
+        <div>
+          <span>{{ $t('trading-assistant.table.positionCost') }}</span>
+          <strong>{{ formatMoney(positionSummary.cost) }}</strong>
+        </div>
+        <div>
+          <span>{{ $t('trading-assistant.table.marketValue') }}</span>
+          <strong>{{ formatMoney(positionSummary.marketValue) }}</strong>
+        </div>
+        <div>
+          <span>{{ $t('trading-assistant.table.unrealizedPnl') }}</span>
+          <strong :class="pnlClass(positionSummary.unrealizedPnl)">{{ formatSignedMoney(positionSummary.unrealizedPnl) }}</strong>
+        </div>
+      </div>
       <div v-if="positions.length === 0 && !loading" class="empty-state strategy-tab-empty" :class="{ 'is-compact': compact }">
         <template v-if="compact">
           <a-icon type="inbox" />
@@ -43,7 +61,7 @@
         :pagination="false"
         size="small"
         rowKey="id"
-        :scroll="{ x: compact ? 1060 : 1260 }"
+        :scroll="{ x: compact ? (portfolio ? 1130 : 1060) : (portfolio ? 1380 : 1260) }"
       >
         <template slot="symbol" slot-scope="text, record">
           <strong>{{ record.symbol || text }}</strong>
@@ -64,6 +82,9 @@
         </template>
         <template slot="size" slot-scope="text, record">
           {{ parseFloat(record.size || text || 0).toFixed(4) }}
+        </template>
+        <template slot="weight" slot-scope="text, record">
+          <strong class="position-weight">{{ formatPercent(getPositionWeight(record)) }}</strong>
         </template>
         <template slot="positionCost" slot-scope="text, record">
           <span v-if="getPositionCost(record) > 0">{{ formatMoney(getPositionCost(record)) }}</span>
@@ -226,6 +247,10 @@ export default {
       type: [Number, String],
       default: 1
     },
+    portfolio: {
+      type: Boolean,
+      default: false
+    },
     compact: {
       type: Boolean,
       default: false
@@ -273,7 +298,7 @@ export default {
     },
     columns () {
       if (this.compact) {
-        return [
+        const columns = [
           {
             title: this.$t('trading-assistant.table.symbol'),
             dataIndex: 'symbol',
@@ -295,6 +320,14 @@ export default {
             width: 118,
             scopedSlots: { customRender: 'size' }
           },
+          ...(this.portfolio
+            ? [{
+                title: this.$t('strategyV2.backtest.weight'),
+                key: 'weight',
+                width: 92,
+                scopedSlots: { customRender: 'weight' }
+              }]
+            : []),
           {
             title: `${this.$t('trading-assistant.table.positionCost')} / ${this.$t('trading-assistant.table.marketValue')}`,
             key: 'value_summary',
@@ -313,15 +346,18 @@ export default {
             width: 170,
             scopedSlots: { customRender: 'pnlSummary' }
           },
-          {
-            title: this.$t('trading-assistant.form.leverage'),
-            key: 'leverage',
-            width: 86,
-            scopedSlots: { customRender: 'leverage' }
-          }
+          ...(this.portfolio
+            ? []
+            : [{
+                title: this.$t('trading-assistant.form.leverage'),
+                key: 'leverage',
+                width: 86,
+                scopedSlots: { customRender: 'leverage' }
+              }])
         ]
+        return columns
       }
-      return [
+      const columns = [
         {
           title: this.$t('trading-assistant.table.symbol'),
           dataIndex: 'symbol',
@@ -343,6 +379,14 @@ export default {
           width: 120,
           scopedSlots: { customRender: 'size' }
         },
+        ...(this.portfolio
+          ? [{
+              title: this.$t('strategyV2.backtest.weight'),
+              key: 'weight',
+              width: 100,
+              scopedSlots: { customRender: 'weight' }
+            }]
+          : []),
         {
           title: this.$t('trading-assistant.table.positionCost'),
           dataIndex: 'position_cost',
@@ -393,6 +437,7 @@ export default {
           scopedSlots: { customRender: 'capitalContribution' }
         }
       ]
+      return columns
     },
     ownershipColumns () {
       const quantitySlot = { customRender: 'ownershipQty' }
@@ -411,6 +456,15 @@ export default {
       if (String(this.marketType || '').toLowerCase() === 'spot') return 1
       const parsed = parseFloat(this.leverage)
       return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+    },
+    positionSummary () {
+      return this.positions.reduce((summary, position) => {
+        summary.count += 1
+        summary.cost += this.getPositionCost(position)
+        summary.marketValue += this.getMarketValue(position)
+        summary.unrealizedPnl += Number(position.unrealized_pnl || 0)
+        return summary
+      }, { count: 0, cost: 0, marketValue: 0, unrealizedPnl: 0 })
     }
   },
   watch: {
@@ -535,14 +589,20 @@ export default {
               updated_at: position.updated_at || position.updatedAt || ''
             }
           })
+          this.emitSummary()
         } else {
           this.positions = []
           this.reconciliation = { status: 'not_checked', notes: [], account_positions: [] }
+          this.emitSummary()
         }
       } catch (error) {
         this.positions = []
         this.reconciliation = { status: 'not_checked', notes: [], account_positions: [] }
+        this.emitSummary()
       }
+    },
+    emitSummary () {
+      this.$emit('summary-change', { ...this.positionSummary })
     },
     hasValidPrice (price) {
       const value = parseFloat(price)
@@ -592,6 +652,10 @@ export default {
       const cp = parseFloat(record.current_price || 0)
       if (size > 0 && cp > 0) return size * cp
       return this.getPositionCost(record)
+    },
+    getPositionWeight (record) {
+      if (this.positionSummary.marketValue <= 0) return 0
+      return this.getMarketValue(record) / this.positionSummary.marketValue * 100
     },
     startPolling () {
       this.stopPolling()
@@ -671,6 +735,53 @@ export default {
     color: #aeb7c4;
     border-color: #333333;
     background: #181818;
+  }
+
+  .portfolio-position-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+      padding: 9px 11px;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      background: #f8fafc;
+    }
+
+    span {
+      overflow: hidden;
+      color: #7a8594;
+      font-size: 11px;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      color: #243044;
+      font-size: 14px;
+      font-weight: 680;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .position-weight {
+    color: var(--primary-color, #1890ff);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.theme-dark .portfolio-position-summary > div {
+    border-color: #333333;
+    background: #181818;
+
+    span { color: #8f98a5; }
+    strong { color: #e0e4e9; }
   }
 
   ::v-deep .ant-table {
