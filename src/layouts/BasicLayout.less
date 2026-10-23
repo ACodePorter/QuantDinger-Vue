@@ -1,5 +1,18 @@
 @import '@/styles/antd-vars.less';
 
+.basic-layout-wrapper {
+  --qd-navigation-font:
+    'SF Pro Text',
+    'Segoe UI Variable Text',
+    'Inter',
+    'HarmonyOS Sans SC',
+    'MiSans',
+    'PingFang SC',
+    'Noto Sans SC',
+    'Microsoft YaHei UI',
+    sans-serif;
+}
+
 .basic-layout-wrapper .ant-pro-sider,
 .basic-layout-wrapper .ant-pro-sider-menu-sider {
   border-right: 1px solid rgba(148, 163, 184, 0.14);
@@ -60,13 +73,24 @@
   width: auto !important;
   height: 44px !important;
   margin: 2px 0 !important;
-  border-radius: 8px;
+  font-family: var(--qd-navigation-font) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
   line-height: 44px !important;
+  letter-spacing: .01em;
+  text-rendering: optimizelegibility;
+  border-radius: 8px;
 }
 
 .basic-layout-wrapper .ant-pro-sider-menu-sider .ant-menu-item .anticon,
 .basic-layout-wrapper .ant-pro-sider-menu-sider .ant-menu-submenu-title .anticon {
-  font-size: 18px;
+  font-size: 17px;
+}
+
+.basic-layout-wrapper .ant-pro-sider-menu-sider .ant-menu-item-selected,
+.basic-layout-wrapper .ant-pro-sider-menu-sider .ant-menu-item-selected > a,
+.basic-layout-wrapper .ant-pro-sider-menu-sider .ant-menu-item-selected .ant-menu-title-content {
+  font-weight: 650 !important;
 }
 
 .basic-layout-wrapper .ant-pro-sider-menu-sider .ant-menu-item::after {
@@ -1058,19 +1082,28 @@ body.qd-code-ai-resizing * {
   .ant-pro-sider-menu-sider .ant-menu,
   .ant-pro-sider .ant-menu.ant-menu-root,
   .ant-layout-sider-children .ant-menu.ant-menu-root {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
-      'Microsoft YaHei UI', 'Source Han Sans SC', 'Noto Sans SC', sans-serif !important;
-    font-size: 13px !important;
+    font-family: var(--qd-navigation-font) !important;
+    font-size: 14px !important;
     font-weight: 500 !important;
-    letter-spacing: 0.02em !important;
+    font-feature-settings: 'kern' 1, 'liga' 1;
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
+    letter-spacing: .01em !important;
+    text-rendering: optimizelegibility;
+  }
+
+  .ant-pro-sider-menu-sider .ant-menu-item > a,
+  .ant-pro-sider-menu-sider .ant-menu-submenu-title,
+  .ant-pro-sider-menu-sider .ant-menu-title-content {
+    font-family: inherit !important;
+    font-weight: inherit;
+    letter-spacing: inherit;
   }
 
   .ant-pro-sider-menu-sider .ant-menu-item-selected > a,
   .ant-pro-sider-menu-sider .ant-menu-item-selected .ant-menu-title-content,
   .ant-pro-sider .ant-menu-item-selected {
-    font-weight: 600 !important;
+    font-weight: 650 !important;
   }
 
   .ant-pro-sider-menu-logo h1 {
