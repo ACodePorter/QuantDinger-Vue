@@ -846,30 +846,35 @@
         </div>
 
         <div class="ide-param-drawer__footer">
-          <a-button size="small" @click="resetIndicatorParamsToDeclared">
-            <a-icon type="reload" />
-            {{ $t('indicatorIde.paramPanel.reset') }}
-          </a-button>
-          <a-button
-            size="small"
-            :disabled="!currentIndicatorParamSpecs.length"
-            @click="saveIndicatorParamDefaults"
-          >
-            <a-icon type="save" />
-            {{ $t('indicatorIde.paramPanel.saveDefault') }}
-          </a-button>
-          <a-tooltip :title="selectedIndicatorCodeHidden ? $t('indicatorIde.paramPanel.writeBlockedHidden') : $t('indicatorIde.paramPanel.writeBackHint')">
-            <a-button
-              size="small"
-              :disabled="!currentIndicatorParamSpecs.length || selectedIndicatorCodeHidden"
-              @click="writeIndicatorParamsToCode"
-            >
-              <a-icon type="edit" />
-              {{ $t('indicatorIde.paramPanel.writeBack') }}
+          <div class="ide-param-drawer__secondary-actions">
+            <a-button class="ide-param-action-btn ide-param-action-btn--quiet" size="small" @click="resetIndicatorParamsToDeclared">
+              <a-icon type="reload" />
+              {{ $t('indicatorIde.paramPanel.reset') }}
             </a-button>
-          </a-tooltip>
+            <a-button
+              class="ide-param-action-btn ide-param-action-btn--quiet"
+              size="small"
+              :disabled="!currentIndicatorParamSpecs.length"
+              @click="saveIndicatorParamDefaults"
+            >
+              <a-icon type="save" />
+              {{ $t('indicatorIde.paramPanel.saveDefault') }}
+            </a-button>
+            <a-tooltip :title="selectedIndicatorCodeHidden ? $t('indicatorIde.paramPanel.writeBlockedHidden') : $t('indicatorIde.paramPanel.writeBackHint')">
+              <a-button
+                class="ide-param-action-btn ide-param-action-btn--secondary"
+                size="small"
+                :disabled="!currentIndicatorParamSpecs.length || selectedIndicatorCodeHidden"
+                @click="writeIndicatorParamsToCode"
+              >
+                <a-icon type="edit" />
+                {{ $t('indicatorIde.paramPanel.writeBack') }}
+              </a-button>
+            </a-tooltip>
+          </div>
           <a-button
             type="primary"
+            class="ide-param-action-btn ide-param-action-btn--apply"
             size="small"
             :disabled="!currentIndicatorParamSpecs.length"
             @click="applyIndicatorParams"
@@ -1528,7 +1533,7 @@ export default {
       return (trigger) => this.chartToolbarGetPopupContainer(trigger)
     },
     quickTradeFloatingStyle () {
-      if (!this.quickTradePosition) return { top: '58px', right: '16px' }
+      if (!this.quickTradePosition) return { top: '96px', right: '16px' }
       return {
         left: `${this.quickTradePosition.x}px`,
         top: `${this.quickTradePosition.y}px`
@@ -6835,7 +6840,7 @@ body.dark .ide-signal-alert-modal-wrap {
     flex-shrink: 0;
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     min-height: 42px;
     padding: 5px 8px;
@@ -6855,12 +6860,12 @@ body.dark .ide-signal-alert-modal-wrap {
     order: 1;
     flex: 1 1 auto;
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
     min-width: 0;
     .ide-toolbar-group {
-      flex: 0 1 auto;
+      flex: 0 0 auto;
       min-width: 0;
       min-height: 30px;
       box-sizing: border-box;
@@ -6877,7 +6882,7 @@ body.dark .ide-signal-alert-modal-wrap {
     .ide-toolbar-group--preset-indicator { order: 5; }
     .ide-toolbar-group--indicator {
       order: 6;
-      flex: 0 1 190px;
+      flex: 0 0 190px;
       min-width: 140px;
       align-items: center;
       .ide-indicator-multiselect-trigger {
@@ -7044,7 +7049,7 @@ body.dark .ide-signal-alert-modal-wrap {
 .ide-quick-float-launcher {
   position: absolute;
   z-index: 16;
-  top: 58px;
+  top: 96px;
   right: 14px;
   height: 38px;
   display: inline-flex;
@@ -7143,11 +7148,10 @@ body.dark .ide-signal-alert-modal-wrap {
 
 @media (max-width: 1180px) {
   .chart-panel .chart-panel-toolbar {
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: visible;
   }
   .chart-panel .chart-panel-toolbar-controls {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
   }
   .chart-panel .chart-panel-toolbar-top {
     flex: 0 0 auto;
@@ -8477,21 +8481,70 @@ body.dark .ide-publish-modal-wrap,
   }
   .ide-param-drawer__footer {
     position: static;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    margin: 2px 0 0;
-    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin: 4px 0 0;
+    padding: 12px 0 0;
     background: transparent;
-    border-top: 0;
+    border-top: 1px solid #e5e7eb;
     backdrop-filter: none;
-    .ant-btn {
-      width: 100%;
-      height: 32px;
-      padding: 0 8px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+  }
+  .ide-param-drawer__secondary-actions {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ide-param-action-btn.ant-btn {
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 13px;
+    border-radius: 8px;
+    font-family: var(--ide-font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0;
+    box-shadow: none;
+    white-space: nowrap;
+    .anticon {
+      margin: 0;
+      font-size: 13px;
+    }
+    &.ide-param-action-btn--quiet {
+      color: #64748b;
+      border-color: transparent;
+      background: transparent;
+      &:hover,
+      &:focus {
+        color: var(--primary-color, #1890ff);
+        border-color: color-mix(in srgb, var(--primary-color, #1890ff) 28%, transparent);
+        background: color-mix(in srgb, var(--primary-color, #1890ff) 6%, transparent);
+      }
+    }
+    &.ide-param-action-btn--secondary {
+      color: #334155;
+      border-color: #dbe2ea;
+      background: #fff;
+      &:hover,
+      &:focus {
+        color: var(--primary-color, #1890ff);
+        border-color: var(--primary-color, #1890ff);
+      }
+    }
+    &.ide-param-action-btn--apply {
+      min-width: 164px;
+      padding: 0 20px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 6px 16px color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
     }
   }
 }
@@ -8506,7 +8559,17 @@ body.dark .ide-publish-modal-wrap,
       max-height: 56vh;
     }
     .ide-param-drawer__footer {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: stretch;
+      flex-direction: column-reverse;
+    }
+    .ide-param-drawer__secondary-actions {
+      display: flex;
+    }
+    .ide-param-drawer__secondary-actions .ide-param-action-btn.ant-btn {
+      flex: 1 1 140px;
+    }
+    .ide-param-action-btn--apply.ant-btn {
+      width: 100%;
     }
   }
 }
@@ -8624,7 +8687,23 @@ body.dark .ide-param-modal-wrap {
   }
   .ide-param-drawer__footer {
     background: transparent;
-    border-top-color: transparent;
+    border-top-color: #303030;
+  }
+  .ide-param-action-btn.ant-btn.ide-param-action-btn--quiet:not(.ant-btn-primary) {
+    color: rgba(255, 255, 255, 0.56);
+    border-color: transparent;
+    background: transparent;
+    &:hover,
+    &:focus {
+      color: var(--primary-color, #1890ff);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 30%, transparent);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, transparent);
+    }
+  }
+  .ide-param-action-btn.ant-btn.ide-param-action-btn--secondary:not(.ant-btn-primary) {
+    background: #1f1f1f;
+    border-color: #3a3a3a;
+    color: rgba(255, 255, 255, 0.76);
   }
   .ant-btn:not(.ant-btn-primary) {
     background: #1f1f1f;
