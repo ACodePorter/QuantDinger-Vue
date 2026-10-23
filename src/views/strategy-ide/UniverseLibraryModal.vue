@@ -62,7 +62,10 @@
           >
             <span class="universe-card__head">
               <span class="universe-card__name">{{ universeLabel(item) }}</span>
-              <a-tag :color="item.code === 'watchlist' ? 'gold' : item.is_system ? 'blue' : 'green'">{{ scopeLabel(item) }}</a-tag>
+              <a-tag
+                :class="{ 'universe-card__scope--watchlist': item.code === 'watchlist' }"
+                :color="item.code === 'watchlist' ? undefined : item.is_system ? 'blue' : 'green'"
+              >{{ scopeLabel(item) }}</a-tag>
             </span>
             <span class="universe-card__code">{{ item.code }}</span>
             <span class="universe-card__stats">
@@ -490,6 +493,8 @@ export default {
 
 <style lang="less">
 .universe-library-modal {
+  --universe-accent: var(--primary-color, #1890ff);
+
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
 
   .ant-modal { top: 32px; padding-bottom: 32px; }
@@ -521,31 +526,31 @@ export default {
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
     z-index: 1;
-    border-color: #faad14;
-    color: #171717;
-    background: #faad14;
-    box-shadow: -1px 0 0 0 #faad14;
+    border-color: var(--universe-accent);
+    color: #fff;
+    background: var(--universe-accent);
+    box-shadow: -1px 0 0 0 var(--universe-accent);
   }
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover {
-    border-color: #ffc53d;
-    color: #171717;
-    background: #ffc53d;
+    border-color: color-mix(in srgb, var(--universe-accent) 84%, #fff);
+    color: #fff;
+    background: color-mix(in srgb, var(--universe-accent) 84%, #fff);
   }
 
   .universe-apply-button.ant-btn-primary {
     min-height: 36px;
-    border-color: #faad14;
-    color: #171717;
-    background: #faad14;
-    box-shadow: 0 4px 12px rgba(250, 173, 20, .18);
+    border-color: var(--universe-accent);
+    color: #fff;
+    background: var(--universe-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--universe-accent) 18%, transparent);
   }
 
   .universe-apply-button.ant-btn-primary:hover,
   .universe-apply-button.ant-btn-primary:focus {
-    border-color: #ffc53d;
-    color: #171717;
-    background: #ffc53d;
+    border-color: color-mix(in srgb, var(--universe-accent) 84%, #fff);
+    color: #fff;
+    background: color-mix(in srgb, var(--universe-accent) 84%, #fff);
   }
 
   .universe-apply-button.ant-btn-primary[disabled] {
@@ -562,20 +567,20 @@ export default {
   padding: 0 16px;
   align-items: center;
   justify-content: center;
-  border-color: #d48806;
-  color: #874d00;
+  border-color: color-mix(in srgb, var(--universe-accent) 55%, #d8dee8);
+  color: var(--universe-accent);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  background: #fff7e6;
-  box-shadow: 0 2px 8px rgba(250, 173, 20, .12);
+  background: color-mix(in srgb, var(--universe-accent) 7%, #fff);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--universe-accent) 12%, transparent);
 }
 
 .universe-create-button.ant-btn:hover,
 .universe-create-button.ant-btn:focus {
-  border-color: #faad14;
-  color: #613400;
-  background: #fff1b8;
+  border-color: var(--universe-accent);
+  color: var(--universe-accent);
+  background: color-mix(in srgb, var(--universe-accent) 12%, #fff);
 }
 
 .universe-library-tools {
@@ -596,13 +601,21 @@ export default {
 }
 
 .universe-card:hover {
+  border-color: var(--universe-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--universe-accent) 14%, transparent);
   transform: translateY(-1px);
 }
 
 .universe-card--active {
-  border-color: #faad14;
-  background: #fffdf3;
-  box-shadow: inset 3px 0 0 #faad14, 0 0 0 1px rgba(250, 173, 20, .16);
+  border-color: var(--universe-accent);
+  background: color-mix(in srgb, var(--universe-accent) 5%, #fff);
+  box-shadow: inset 3px 0 0 var(--universe-accent), 0 0 0 1px color-mix(in srgb, var(--universe-accent) 16%, transparent);
+}
+
+.universe-card__scope--watchlist {
+  border-color: color-mix(in srgb, var(--universe-accent) 28%, transparent);
+  color: var(--universe-accent);
+  background: color-mix(in srgb, var(--universe-accent) 8%, #fff);
 }
 
 .universe-member-table-wrap {
@@ -612,27 +625,33 @@ export default {
 
 .universe-library-modal--dark {
   .universe-create-button.ant-btn {
-    border-color: rgba(250, 173, 20, .72);
-    color: #ffd666;
-    background: rgba(250, 173, 20, .11);
+    border-color: color-mix(in srgb, var(--universe-accent) 65%, #303030);
+    color: color-mix(in srgb, var(--universe-accent) 72%, #fff);
+    background: color-mix(in srgb, var(--universe-accent) 12%, #181818);
     box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
   }
 
   .universe-create-button.ant-btn:hover,
   .universe-create-button.ant-btn:focus {
-    border-color: #faad14;
-    color: #ffe58f;
-    background: rgba(250, 173, 20, .19);
+    border-color: var(--universe-accent);
+    color: color-mix(in srgb, var(--universe-accent) 62%, #fff);
+    background: color-mix(in srgb, var(--universe-accent) 20%, #181818);
   }
 
   .universe-card--active {
-    border-color: #faad14;
-    background: rgba(250, 173, 20, .075);
-    box-shadow: inset 3px 0 0 #faad14, 0 0 0 1px rgba(250, 173, 20, .14);
+    border-color: var(--universe-accent);
+    background: color-mix(in srgb, var(--universe-accent) 10%, #1d1d1d);
+    box-shadow: inset 3px 0 0 var(--universe-accent), 0 0 0 1px color-mix(in srgb, var(--universe-accent) 16%, transparent);
   }
 
   .universe-card__selected {
-    color: #ffd666;
+    color: color-mix(in srgb, var(--universe-accent) 72%, #fff);
+  }
+
+  .universe-card__scope--watchlist {
+    border-color: color-mix(in srgb, var(--universe-accent) 32%, #303030);
+    color: color-mix(in srgb, var(--universe-accent) 72%, #fff);
+    background: color-mix(in srgb, var(--universe-accent) 12%, #181818);
   }
 
   .universe-apply-button.ant-btn-primary[disabled] {
@@ -643,18 +662,20 @@ export default {
 }
 
 .universe-create-modal {
+  --universe-accent: var(--primary-color, #1890ff);
+
   .ant-btn-primary {
-    border-color: #faad14;
-    color: #171717;
+    border-color: var(--universe-accent);
+    color: #fff;
     font-weight: 700;
-    background: #faad14;
+    background: var(--universe-accent);
   }
 
   .ant-btn-primary:hover,
   .ant-btn-primary:focus {
-    border-color: #ffc53d;
-    color: #171717;
-    background: #ffc53d;
+    border-color: color-mix(in srgb, var(--universe-accent) 84%, #fff);
+    color: #fff;
+    background: color-mix(in srgb, var(--universe-accent) 84%, #fff);
   }
 
   .ant-btn-primary[disabled] {
