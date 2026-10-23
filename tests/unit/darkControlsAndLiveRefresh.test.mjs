@@ -60,6 +60,8 @@ test('position ownership guidance stays compact and theme aware', () => {
   assert.match(positions, /class="ownership-guidance" :class="\{ 'is-dark': isDark \}"/)
   assert.match(positions, /ownership-guidance__main/)
   assert.match(positions, /ownership-guidance__note/)
+  assert.match(positions, /color-mix\(in srgb, var\(--primary-color, #1890ff\) 30%, transparent\)/)
+  assert.doesNotMatch(positions, /fade\(@primary-color/)
   assert.match(positions, /ownership-warning-alert position-reconciliation-alert/)
   assert.match(positions, /ownership-warning-alert ownership-shortfall-alert/)
   assert.match(positions, /background: linear-gradient\(135deg, rgba\(217, 169, 40, 0\.1\) 0%, #1b1d20 72%\)/)

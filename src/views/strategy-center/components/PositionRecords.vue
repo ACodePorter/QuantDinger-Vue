@@ -615,7 +615,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-@primary-color: #1890ff;
 @success-color: #0ecb81;
 @danger-color: #f6465d;
 
@@ -791,9 +790,9 @@ export default {
 .ownership-guidance {
   margin-bottom: 16px;
   overflow: hidden;
-  border: 1px solid fade(@primary-color, 20%);
+  border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
   border-radius: 10px;
-  background: linear-gradient(135deg, fade(@primary-color, 5%) 0%, #ffffff 72%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color, #1890ff) 5%, #fff) 0%, #fff 72%);
 
   &__main {
     display: flex;
@@ -810,10 +809,10 @@ export default {
     width: 30px;
     height: 30px;
     margin-top: 1px;
-    border: 1px solid fade(@primary-color, 20%);
+    border: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 20%, transparent);
     border-radius: 8px;
-    color: @primary-color;
-    background: fade(@primary-color, 9%);
+    color: var(--primary-color, #1890ff);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 9%, transparent);
     font-size: 15px;
   }
 
@@ -841,25 +840,25 @@ export default {
     align-items: flex-start;
     gap: 8px;
     padding: 9px 15px 10px 57px;
-    border-top: 1px solid fade(@primary-color, 12%);
+    border-top: 1px solid color-mix(in srgb, var(--primary-color, #1890ff) 12%, transparent);
     color: #758095;
-    background: fade(@primary-color, 2%);
+    background: color-mix(in srgb, var(--primary-color, #1890ff) 2%, transparent);
     font-size: 12px;
     line-height: 1.5;
 
     .anticon {
       margin-top: 3px;
-      color: @primary-color;
+      color: var(--primary-color, #1890ff);
     }
   }
 
   &.is-dark {
-    border-color: fade(@primary-color, 30%);
-    background: linear-gradient(135deg, fade(@primary-color, 10%) 0%, #1b1d20 72%);
+    border-color: color-mix(in srgb, var(--primary-color, #1890ff) 30%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color, #1890ff) 10%, #1b1d20) 0%, #1b1d20 72%);
 
     .ownership-guidance__icon {
-      border-color: fade(@primary-color, 30%);
-      background: fade(@primary-color, 14%);
+      border-color: color-mix(in srgb, var(--primary-color, #1890ff) 30%, transparent);
+      background: color-mix(in srgb, var(--primary-color, #1890ff) 14%, transparent);
     }
 
     .ownership-guidance__copy {
