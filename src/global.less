@@ -32,6 +32,40 @@ body {
   text-rendering: optimizelegibility;
 }
 
+.ant-modal-content {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 22px 64px rgba(15, 23, 42, 0.2), 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+
+.ant-modal-header {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+.ant-modal-title {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.ant-modal-footer {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+
+.ant-select-dropdown,
+.ant-dropdown-menu,
+.ant-popover-inner {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 9px;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.ant-dropdown-menu-item,
+.ant-select-dropdown-menu-item {
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
 * {
   scrollbar-color: var(--qd-scrollbar-thumb) var(--qd-scrollbar-track);
   scrollbar-width: thin;
@@ -351,6 +385,8 @@ body.realdark {
   }
   .ant-modal-content {
     background: #1c1c1c !important;
+    border-color: #303030 !important;
+    box-shadow: 0 22px 64px rgba(0, 0, 0, 0.48), 0 4px 16px rgba(0, 0, 0, 0.28) !important;
     .ant-modal-header {
       background: #1c1c1c !important;
       border-bottom-color: #2a2a2a !important;
@@ -365,11 +401,20 @@ body.realdark {
   }
   .ant-select-dropdown {
     background: #1c1c1c !important;
+    border-color: #303030 !important;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42), 0 2px 10px rgba(0, 0, 0, 0.24) !important;
     .ant-select-dropdown-menu-item {
       color: rgba(255, 255, 255, 0.85) !important;
       &:hover { background: #252525 !important; }
       &-active { background: #252525 !important; }
       &-selected { background: var(--primary-color-soft, rgba(24, 144, 255, 0.1)) !important; color: var(--primary-color, #1890ff) !important; }
     }
+  }
+
+  .ant-dropdown-menu,
+  .ant-popover-inner {
+    background: #1c1c1c !important;
+    border-color: #303030 !important;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42), 0 2px 10px rgba(0, 0, 0, 0.24) !important;
   }
 }
