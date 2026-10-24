@@ -29,5 +29,5 @@ export function getSystemUniverseOverview () {
 }
 
 export function syncSystemUniverses (data = {}) {
-  return request({ url: '/api/universes/admin/sync', method: 'post', data })
+  return request({ url: '/api/universes/admin/sync', method: 'post', data, timeout: 600000 })
 }

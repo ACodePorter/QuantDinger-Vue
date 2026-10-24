@@ -395,11 +395,22 @@
                   <div>
                     <h4>{{ $t('settings.universeSync.title') }}</h4>
                     <p>{{ $t('settings.universeSync.description') }}</p>
+                    <p class="universe-sync-capacity">{{ $t('settings.universeSync.capacity', universeExecutionLimits) }}</p>
                   </div>
-                  <a-button type="primary" :loading="universeSyncing" @click="handleUniverseSync">
-                    <a-icon type="sync" />
-                    {{ universeSyncing ? $t('settings.universeSync.syncing') : $t('settings.universeSync.sync') }}
-                  </a-button>
+                  <div class="universe-sync-actions">
+                    <label>
+                      <span>{{ $t('settings.universeSync.historyStart') }}</span>
+                      <a-date-picker
+                        v-model="universeHistoryFrom"
+                        :allow-clear="false"
+                        :disabled-date="disabledUniverseHistoryDate"
+                      />
+                    </label>
+                    <a-button type="primary" :loading="universeSyncing" @click="handleUniverseSync">
+                      <a-icon type="sync" />
+                      {{ universeSyncing ? $t('settings.universeSync.syncing') : $t('settings.universeSync.sync') }}
+                    </a-button>
+                  </div>
                 </div>
                 <a-spin :spinning="universeLoading">
                   <a-checkbox-group v-model="selectedUniverseCodes" class="universe-sync-list">
@@ -409,8 +420,8 @@
                       <div class="universe-sync-name"><strong>{{ universeAdminLabel(item) }}</strong><span>{{ item.market }}</span></div>
                       <div><span>{{ $t('settings.universeSync.members') }}</span><strong>{{ Number(item.member_count || 0).toLocaleString() }}</strong></div>
                       <div><span>{{ $t('settings.universeSync.version') }}</span><strong>{{ item.source_version || universeSnapshotDate(item) }}</strong></div>
-                      <div><span>{{ $t('settings.universeSync.historyFrom') }}</span><strong>{{ item.history_from || '-' }}</strong></div>
-                      <a-tag :color="item.status === 'active' ? 'green' : 'orange'">{{ item.status }}</a-tag>
+                      <div><span>{{ $t('settings.universeSync.historyFrom') }}</span><strong>{{ universeHistoryLabel(item) }}</strong></div>
+                      <a-tag :color="universeCapacityColor(item)">{{ universeCapacityLabel(item) }}</a-tag>
                     </div>
                   </a-checkbox-group>
                 </a-spin>
@@ -875,6 +886,7 @@ import { getSystemUniverseOverview, syncSystemUniverses } from '@/api/universe'
 import { deleteAdminMembershipPlan, getAdminMembershipPlans, saveAdminMembershipPlans } from '@/api/billing'
 import { baseMixin } from '@/store/app-mixin'
 import FundamentalSyncPanel from './FundamentalSyncPanel.vue'
+import moment from 'moment'
 
 export default {
   name: 'Settings',
@@ -905,6 +917,7 @@ export default {
       universeSyncing: false,
       universeOverview: null,
       selectedUniverseCodes: [],
+      universeHistoryFrom: moment().subtract(3, 'years').startOf('year'),
       selectedLlmProvider: '',
       billingPlans: [],
       billingPlansSaving: false,
@@ -1070,6 +1083,13 @@ export default {
     },
     syncableUniverseCodes () {
       return (this.universeOverview && this.universeOverview.syncable_codes) || []
+    },
+    universeExecutionLimits () {
+      const limits = (this.universeOverview && this.universeOverview.execution_limits) || {}
+      return {
+        standard: Number(limits.standard || 600).toLocaleString(),
+        daily: Number(limits.daily || 1200).toLocaleString()
+      }
     },
     catalogStatusType () {
       const status = this.catalogLatest && this.catalogLatest.status
@@ -1366,6 +1386,45 @@ export default {
     universeSnapshotDate (item) {
       return (item.metadata && item.metadata.snapshot_as_of) || (item.updated_at ? String(item.updated_at).slice(0, 10) : '-')
     },
+    universeHistoryLabel (item) {
+      const historyMode = item && item.metadata && item.metadata.history_mode
+      if (historyMode === 'fixed_current_constituents' && item.history_from) {
+        return this.$t('settings.universeSync.fixedCurrentHistory', { date: item.history_from })
+      }
+      if (!item || !item.history_sync_supported) return this.$t('settings.universeSync.currentSnapshotOnly')
+      return item.history_from || '-'
+    },
+    universeCapacityColor (item) {
+      const limits = (this.universeOverview && this.universeOverview.execution_limits) || {}
+      const memberCount = Number(item.member_count || 0)
+      if (memberCount === 0) return 'orange'
+      const dailyEligible = typeof item.daily_frequency_eligible === 'boolean'
+        ? item.daily_frequency_eligible
+        : memberCount <= Number(limits.daily || 1200)
+      const standardEligible = typeof item.standard_frequency_eligible === 'boolean'
+        ? item.standard_frequency_eligible
+        : memberCount <= Number(limits.standard || 600)
+      if (!dailyEligible) return 'red'
+      if (!standardEligible) return 'orange'
+      return item.status === 'active' ? 'green' : 'orange'
+    },
+    universeCapacityLabel (item) {
+      const limits = (this.universeOverview && this.universeOverview.execution_limits) || {}
+      const memberCount = Number(item.member_count || 0)
+      if (memberCount === 0) return this.$t('settings.universeSync.pendingSync')
+      const dailyEligible = typeof item.daily_frequency_eligible === 'boolean'
+        ? item.daily_frequency_eligible
+        : memberCount <= Number(limits.daily || 1200)
+      const standardEligible = typeof item.standard_frequency_eligible === 'boolean'
+        ? item.standard_frequency_eligible
+        : memberCount <= Number(limits.standard || 600)
+      if (!dailyEligible) return this.$t('settings.universeSync.overCapacity')
+      if (!standardEligible) return this.$t('settings.universeSync.dailyOnly')
+      return this.$t('settings.universeSync.ready')
+    },
+    disabledUniverseHistoryDate (current) {
+      return current && current.endOf('day').isAfter(moment().endOf('day'))
+    },
     async refreshUniverseOverview () {
       this.universeLoading = !this.universeOverview
       try {
@@ -1385,9 +1444,26 @@ export default {
       }
       this.universeSyncing = true
       try {
-        const res = await syncSystemUniverses({ codes: this.selectedUniverseCodes })
+        const historyFrom = this.universeHistoryFrom && this.universeHistoryFrom.format('YYYY-MM-DD')
+        const res = await syncSystemUniverses({
+          codes: this.selectedUniverseCodes,
+          history_from: historyFrom
+        })
         if (res.code === 1) {
-          this.$message.success(this.$t('settings.universeSync.started'))
+          const warnings = res.data && Array.isArray(res.data.warnings) ? res.data.warnings : []
+          if (warnings.length) {
+            const codes = warnings.map(item => {
+              const row = this.systemUniverseRows.find(universe => universe.code === item.code)
+              return row ? this.universeAdminLabel(row) : item.code
+            }).join(', ')
+            const fixedHistoryApplied = warnings.every(item => item.warning === 'universe.currentMembershipBackfilled')
+            const messageKey = fixedHistoryApplied
+              ? 'settings.universeSync.fixedHistoryWithCodes'
+              : 'settings.universeSync.historyUnavailableWithCodes'
+            this.$message.warning(this.$t(messageKey, { codes }))
+          } else {
+            this.$message.success(this.$t('settings.universeSync.started'))
+          }
           await this.refreshUniverseOverview()
         }
       } catch (error) {
@@ -2988,9 +3064,18 @@ export default {
     span { color: #8c8c8c; word-break: break-word; }
   }
   .universe-sync-list { display: flex; width: 100%; flex-direction: column; gap: 8px; }
+  .universe-sync-capacity { margin-top: 4px; color: #8c8c8c; font-size: 12px; }
+  .universe-sync-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-end;
+    gap: 10px;
+    label { display: flex; flex-direction: column; gap: 5px; }
+    label > span { color: #8c8c8c; font-size: 11px; }
+  }
   .universe-sync-row {
     display: grid;
-    grid-template-columns: 24px minmax(150px, 1.5fr) repeat(3, minmax(105px, 1fr)) auto;
+    grid-template-columns: 24px minmax(180px, 1fr) 120px minmax(180px, 220px) 140px 110px;
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
@@ -3003,6 +3088,7 @@ export default {
   .universe-sync-row > div { display: flex; min-width: 0; flex-direction: column; }
   .universe-sync-row span { color: #8c8c8c; font-size: 11px; }
   .universe-sync-row strong { overflow: hidden; color: #1f2937; text-overflow: ellipsis; white-space: nowrap; }
+  .universe-sync-row > .ant-tag { width: max-content; max-width: 110px; justify-self: end; }
 }
 
 .theme-dark .market-catalog-panel {
@@ -3019,21 +3105,23 @@ export default {
 
   .catalog-table th {
     color: #9da7b3;
-    background: #20242a;
+    background: #181818;
   }
-  .catalog-table td { background: #171a1f; }
+  .catalog-table td { background: #141414; }
   .catalog-table th,
   .catalog-table td,
   .catalog-market-item { border-color: rgba(255, 255, 255, 0.1); }
-  .catalog-market-item { background: #171a1f; }
+  .catalog-market-item { background: #141414; }
   .catalog-action-row p { color: #8b949e; }
   .catalog-failure-item span { color: #9da7b3; }
-  .universe-sync-row { border-color: rgba(255, 255, 255, 0.1); background: #171a1f; }
+  .universe-sync-row { border-color: rgba(255, 255, 255, 0.1); background: #141414; }
   .universe-sync-row strong { color: #e6edf3; }
   .universe-sync-row span { color: #8b949e; }
+  .universe-sync-capacity,
+  .universe-sync-actions label > span { color: #8b949e; }
 
   ::v-deep .catalog-stats .ant-statistic {
-    background: #171a1f;
+    background: #141414;
     border-color: rgba(255, 255, 255, 0.1);
   }
   ::v-deep .catalog-stats .ant-statistic-title { color: #9da7b3; }
@@ -3067,14 +3155,14 @@ export default {
 
   ::v-deep .catalog-failures.ant-collapse {
     color: #e6edf3;
-    background: #171a1f;
+    background: #141414;
     border-color: rgba(255, 255, 255, 0.1);
   }
   ::v-deep .catalog-failures .ant-collapse-item { border-color: rgba(255, 255, 255, 0.1); }
   ::v-deep .catalog-failures .ant-collapse-header { color: #d8dee4; }
   ::v-deep .catalog-failures .ant-collapse-content {
     color: #d8dee4;
-    background: #12151a;
+    background: #101010;
     border-color: rgba(255, 255, 255, 0.1);
   }
 }
@@ -3083,6 +3171,7 @@ export default {
   .market-catalog-panel {
     .catalog-action-row { flex-direction: column; }
     .catalog-action-row .ant-btn { width: 100%; }
+    .universe-sync-actions { width: 100%; align-items: stretch; flex-direction: column; }
     .catalog-stats ::v-deep .ant-statistic { margin-bottom: 12px; }
     .universe-sync-row { grid-template-columns: 24px minmax(0, 1fr) auto; }
     .universe-sync-row > div:not(.universe-sync-name) { display: none; }
