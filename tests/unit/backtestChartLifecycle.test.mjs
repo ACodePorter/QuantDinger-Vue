@@ -198,6 +198,15 @@ test('benchmark-relative metrics render independently from benchmark chart cover
   assert.match(portfolioResultSource, /status \|\| \(this\.hasMetricValue\(value\) \? 'available' : 'unavailable'\)/)
 })
 
+test('downside risk and advanced benchmark metrics render with legacy-result guards', () => {
+  assert.match(portfolioResultSource, /v-if="hasDownsideRiskAnalysis" class="benchmark-analysis-card risk-analysis-card"/)
+  assert.match(portfolioResultSource, /hasDownsideRiskAnalysis \(\)[\s\S]*?'sortinoRatio'[\s\S]*?'maxDrawdownRecoveryDays'/)
+  assert.match(portfolioResultSource, /v-if="hasAdvancedBenchmarkMetrics"/)
+  assert.match(portfolioResultSource, /advancedBenchmarkMetricCards \(\)[\s\S]*?mSquaredAlpha[\s\S]*?outperformancePayoffRatio/)
+  assert.match(portfolioResultSource, /var\(--primary-color, #1890ff\)/)
+  assert.match(portfolioResultSource, /color-mix\(in srgb, var\(--analysis-accent\)/)
+})
+
 test('backtests default to the latest completed date and reject today in the picker', () => {
   assert.match(source, /const latestCompleteDate = moment\(\)\.subtract\(1, 'day'\)\.startOf\('day'\)/)
   assert.match(source, /endDate: latestCompleteDate/)

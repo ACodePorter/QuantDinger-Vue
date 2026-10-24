@@ -51,6 +51,30 @@
       </div>
     </div>
 
+    <section v-if="hasDownsideRiskAnalysis" class="benchmark-analysis-card risk-analysis-card">
+      <div class="benchmark-analysis-heading">
+        <div>
+          <h3>{{ $t('strategyV2.backtest.riskMetrics.title') }}</h3>
+          <p>{{ $t('strategyV2.backtest.riskMetrics.subtitle') }}</p>
+        </div>
+        <div class="benchmark-analysis-meta">
+          <a-tag class="analysis-accent-tag">
+            {{ $t('strategyV2.backtest.riskMetrics.periodsPerYear', { count: formatNumber(result.periodsPerYear, 0) }) }}
+          </a-tag>
+        </div>
+      </div>
+      <div class="benchmark-analysis-grid">
+        <article v-for="item in riskMetricCards" :key="item.key" class="benchmark-analysis-metric">
+          <span>
+            {{ item.label }}
+            <a-tooltip :title="item.hint"><a-icon type="info-circle" /></a-tooltip>
+          </span>
+          <strong :class="item.tone">{{ item.value }}</strong>
+          <small>{{ item.detail }}</small>
+        </article>
+      </div>
+    </section>
+
     <section v-if="hasBenchmarkRelativeAnalysis" class="benchmark-analysis-card">
       <div class="benchmark-analysis-heading">
         <div>
@@ -58,7 +82,7 @@
           <p>{{ $t('strategyV2.backtest.benchmarkMetrics.subtitle') }}</p>
         </div>
         <div class="benchmark-analysis-meta">
-          <a-tag color="blue">
+          <a-tag class="analysis-accent-tag">
             {{ $t('strategyV2.backtest.benchmarkMetrics.observations', { count: benchmarkRelativeMetrics.observations || 0 }) }}
           </a-tag>
           <a-tag>{{ benchmarkRelativeMetrics.frequency || '-' }}</a-tag>
@@ -79,6 +103,19 @@
           <small>{{ item.detail }}</small>
         </article>
       </div>
+      <template v-if="hasAdvancedBenchmarkMetrics">
+        <h4 class="benchmark-analysis-subheading">{{ $t('strategyV2.backtest.benchmarkMetrics.advancedTitle') }}</h4>
+        <div class="benchmark-analysis-grid benchmark-analysis-grid--advanced">
+          <article v-for="item in advancedBenchmarkMetricCards" :key="item.key" class="benchmark-analysis-metric">
+            <span>
+              {{ item.label }}
+              <a-tooltip :title="item.hint"><a-icon type="info-circle" /></a-tooltip>
+            </span>
+            <strong :class="item.tone">{{ item.value }}</strong>
+            <small>{{ item.detail }}</small>
+          </article>
+        </div>
+      </template>
       <p class="benchmark-analysis-note">{{ $t('strategyV2.backtest.benchmarkMetrics.assumption') }}</p>
     </section>
 
@@ -459,6 +496,149 @@ export default {
     },
     hasBenchmarkRelativeAnalysis () {
       return Number(this.benchmarkRelativeMetrics.observations || 0) > 0
+    },
+    hasDownsideRiskAnalysis () {
+      return [
+        'sortinoRatio',
+        'calmarRatio',
+        'annualizedDownsideDeviation',
+        'maxDrawdownDurationDays',
+        'maxDrawdownRecoveryDays',
+        'recoveryFactor'
+      ].some(key => this.result[key] !== undefined)
+    },
+    riskMetricCards () {
+      const recoveryTime = this.result.maxDrawdownRecoveryTime
+      const recovered = this.result.maxDrawdownRecovered === true
+      return [
+        {
+          key: 'sortino',
+          label: this.$t('strategyV2.backtest.riskMetrics.sortino'),
+          value: this.formatMetricNumber(this.result.sortinoRatio),
+          detail: this.benchmarkMetricStatus(null, this.result.sortinoRatio),
+          hint: this.$t('strategyV2.backtest.riskMetrics.sortinoHint'),
+          tone: this.metricTone(this.result.sortinoRatio)
+        },
+        {
+          key: 'calmar',
+          label: this.$t('strategyV2.backtest.riskMetrics.calmar'),
+          value: this.formatMetricNumber(this.result.calmarRatio),
+          detail: this.benchmarkMetricStatus(null, this.result.calmarRatio),
+          hint: this.$t('strategyV2.backtest.riskMetrics.calmarHint'),
+          tone: this.metricTone(this.result.calmarRatio)
+        },
+        {
+          key: 'downsideDeviation',
+          label: this.$t('strategyV2.backtest.riskMetrics.annualizedDownsideDeviation'),
+          value: this.formatNullablePercent(this.result.annualizedDownsideDeviation, false),
+          detail: this.$t('strategyV2.backtest.riskMetrics.annualized'),
+          hint: this.$t('strategyV2.backtest.riskMetrics.annualizedDownsideDeviationHint'),
+          tone: ''
+        },
+        {
+          key: 'recoveryFactor',
+          label: this.$t('strategyV2.backtest.riskMetrics.recoveryFactor'),
+          value: this.formatMetricMultiple(this.result.recoveryFactor),
+          detail: this.benchmarkMetricStatus(null, this.result.recoveryFactor),
+          hint: this.$t('strategyV2.backtest.riskMetrics.recoveryFactorHint'),
+          tone: this.metricTone(this.result.recoveryFactor)
+        },
+        {
+          key: 'drawdownDuration',
+          label: this.$t('strategyV2.backtest.riskMetrics.maxDrawdownDuration'),
+          value: this.formatDurationDays(this.result.maxDrawdownDurationDays),
+          detail: this.$t('strategyV2.backtest.riskMetrics.longestEpisode'),
+          hint: this.$t('strategyV2.backtest.riskMetrics.maxDrawdownDurationHint'),
+          tone: ''
+        },
+        {
+          key: 'drawdownRecovery',
+          label: this.$t('strategyV2.backtest.riskMetrics.maxDrawdownRecovery'),
+          value: this.formatDurationDays(this.result.maxDrawdownRecoveryDays),
+          detail: recovered
+            ? (recoveryTime
+                ? this.$t('strategyV2.backtest.riskMetrics.recoveredAt', { date: this.formatDate(recoveryTime) })
+                : this.$t('strategyV2.backtest.riskMetrics.noRecoveryNeeded'))
+            : this.$t('strategyV2.backtest.riskMetrics.notRecovered'),
+          hint: this.$t('strategyV2.backtest.riskMetrics.maxDrawdownRecoveryHint'),
+          tone: recovered ? 'positive' : 'negative'
+        }
+      ]
+    },
+    hasAdvancedBenchmarkMetrics () {
+      return [
+        'mSquared',
+        'mSquaredAlpha',
+        'upBeta',
+        'downBeta',
+        'betaSpread',
+        'battingAverage',
+        'outperformancePayoffRatio'
+      ].some(key => this.benchmarkRelativeMetrics[key] !== undefined)
+    },
+    advancedBenchmarkMetricCards () {
+      const metrics = this.benchmarkRelativeMetrics
+      return [
+        {
+          key: 'mSquared',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.mSquared'),
+          value: this.formatMetricRate(metrics.mSquared),
+          detail: this.benchmarkMetricStatus(metrics.mSquaredStatus, metrics.mSquared),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.mSquaredHint'),
+          tone: this.metricTone(metrics.mSquared)
+        },
+        {
+          key: 'mSquaredAlpha',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.mSquaredAlpha'),
+          value: this.formatMetricRate(metrics.mSquaredAlpha),
+          detail: this.benchmarkMetricStatus(metrics.mSquaredStatus, metrics.mSquaredAlpha),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.mSquaredAlphaHint'),
+          tone: this.metricTone(metrics.mSquaredAlpha)
+        },
+        {
+          key: 'upBeta',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.upBeta'),
+          value: this.formatMetricNumber(metrics.upBeta),
+          detail: this.$t('strategyV2.backtest.benchmarkMetrics.periods', { count: metrics.upMarketPeriods || 0 }),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.upBetaHint'),
+          tone: ''
+        },
+        {
+          key: 'downBeta',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.downBeta'),
+          value: this.formatMetricNumber(metrics.downBeta),
+          detail: this.$t('strategyV2.backtest.benchmarkMetrics.periods', { count: metrics.downMarketPeriods || 0 }),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.downBetaHint'),
+          tone: ''
+        },
+        {
+          key: 'betaSpread',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.betaSpread'),
+          value: this.formatMetricNumber(metrics.betaSpread),
+          detail: this.benchmarkMetricStatus(metrics.dualBetaStatus, metrics.betaSpread),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.betaSpreadHint'),
+          tone: this.metricTone(metrics.betaSpread)
+        },
+        {
+          key: 'battingAverage',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.battingAverage'),
+          value: this.formatMetricRate(metrics.battingAverage, false),
+          detail: this.$t('strategyV2.backtest.benchmarkMetrics.outperformancePeriods', {
+            wins: metrics.outperformancePeriods || 0,
+            losses: metrics.underperformancePeriods || 0
+          }),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.battingAverageHint'),
+          tone: ''
+        },
+        {
+          key: 'outperformancePayoffRatio',
+          label: this.$t('strategyV2.backtest.benchmarkMetrics.outperformancePayoffRatio'),
+          value: this.formatMetricMultiple(metrics.outperformancePayoffRatio),
+          detail: this.benchmarkMetricStatus(metrics.battingStatus, metrics.outperformancePayoffRatio),
+          hint: this.$t('strategyV2.backtest.benchmarkMetrics.outperformancePayoffRatioHint'),
+          tone: ''
+        }
+      ]
     },
     benchmarkMetricCards () {
       const metrics = this.benchmarkRelativeMetrics
@@ -1042,6 +1222,10 @@ export default {
       if (!this.hasMetricValue(value)) return '-'
       return `${Number(value).toFixed(2)}×`
     },
+    formatDurationDays (value) {
+      if (!this.hasMetricValue(value)) return '-'
+      return this.$t('strategyV2.backtest.riskMetrics.days', { count: Number(value).toFixed(2) })
+    },
     benchmarkMetricStatus (status, value) {
       const normalizedStatus = status || (this.hasMetricValue(value) ? 'available' : 'unavailable')
       const key = `strategyV2.backtest.benchmarkMetrics.status.${normalizedStatus}`
@@ -1085,18 +1269,22 @@ export default {
 .negative { color: #dc2626 !important; }
 .neutral { color: #94a3b8 !important; }
 .chart-card, .trade-review-card { margin-top: 10px; padding: 12px; border: 1px solid #e5e9ee; border-radius: 8px; background: #fff; }
-.benchmark-analysis-card { order: 4; margin-top: 10px; padding: 14px; border: 1px solid #dbe7f3; border-radius: 8px; background: linear-gradient(135deg, #fbfdff 0%, #f5f9ff 100%); }
+.benchmark-analysis-card { --analysis-accent: var(--primary-color, #1890ff); order: 4; margin-top: 10px; padding: 14px; border: 1px solid color-mix(in srgb, var(--analysis-accent) 24%, #e5e9ee); border-left: 3px solid var(--analysis-accent); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--analysis-accent) 4%, #fff) 0%, #fff 100%); }
+.risk-analysis-card { --analysis-accent: var(--primary-color, #1890ff); }
 .benchmark-analysis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .benchmark-analysis-heading h3 { margin: 0; color: #20324a; font-size: 14px; }
 .benchmark-analysis-heading p, .benchmark-analysis-note { margin: 3px 0 0; color: #7c8ca1; font-size: 11px; }
 .benchmark-analysis-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 .benchmark-analysis-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.benchmark-analysis-subheading { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e5edf6; color: #334155; font-size: 12px; }
+.benchmark-analysis-grid--advanced { margin-top: 8px; }
 .benchmark-analysis-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 12px; min-width: 0; padding: 10px 11px; border: 1px solid #e5edf6; border-radius: 7px; background: rgba(255, 255, 255, .86); }
 .benchmark-analysis-metric > span { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .benchmark-analysis-metric .anticon { margin-left: 4px; cursor: help; }
 .benchmark-analysis-metric strong { grid-row: 1 / 3; grid-column: 2; align-self: center; color: #20324a; font-size: 18px; font-variant-numeric: tabular-nums; }
 .benchmark-analysis-metric small { overflow: hidden; color: #94a3b8; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .benchmark-analysis-note { margin-top: 10px; }
+.benchmark-analysis-meta /deep/ .analysis-accent-tag { border-color: color-mix(in srgb, var(--analysis-accent) 34%, transparent); color: var(--analysis-accent); background: color-mix(in srgb, var(--analysis-accent) 8%, transparent); }
 .chart-card { order: 5; }
 .trade-review-card { order: 6; }
 .assumption-strip { order: 7; }
@@ -1171,12 +1359,14 @@ export default {
 .audit-summary div { display: flex; flex-direction: column; }
 .audit-summary span { color: #7c8ca1; font-size: 11px; }
 .portfolio-result.theme-dark .metrics-grid, .portfolio-result.theme-dark .assumption-strip { border-color: #2d2d2d; }
-.portfolio-result.theme-dark .benchmark-analysis-card { border-color: #2d2d2d; background: #101010; }
+.portfolio-result.theme-dark .benchmark-analysis-card { border-color: color-mix(in srgb, var(--analysis-accent) 30%, #2d2d2d); border-left-color: var(--analysis-accent); background: linear-gradient(135deg, color-mix(in srgb, var(--analysis-accent) 7%, #101010) 0%, #101010 72%); }
 .portfolio-result.theme-dark .benchmark-analysis-heading h3, .portfolio-result.theme-dark .benchmark-analysis-metric strong { color: #e8e8e8; }
 .portfolio-result.theme-dark .benchmark-analysis-heading p, .portfolio-result.theme-dark .benchmark-analysis-note, .portfolio-result.theme-dark .benchmark-analysis-metric > span { color: #8c8c8c; }
 .portfolio-result.theme-dark .benchmark-analysis-metric { border-color: #303030; background: #171717; }
 .portfolio-result.theme-dark .benchmark-analysis-metric small, .portfolio-result.theme-dark .benchmark-analysis-metric .anticon { color: #737373; }
+.portfolio-result.theme-dark .benchmark-analysis-subheading { border-top-color: #303030; color: #bfbfbf; }
 .portfolio-result.theme-dark .benchmark-analysis-meta /deep/ .ant-tag { border-color: #3a3a3a; color: #bfbfbf; background: #1f1f1f; }
+.portfolio-result.theme-dark .benchmark-analysis-meta /deep/ .analysis-accent-tag { border-color: color-mix(in srgb, var(--analysis-accent) 40%, #303030); color: var(--analysis-accent); background: color-mix(in srgb, var(--analysis-accent) 10%, #151515); }
 .portfolio-result.theme-dark .metric-card, .portfolio-result.theme-dark .overview-card, .portfolio-result.theme-dark .status-card, .portfolio-result.theme-dark .assumption-strip div, .portfolio-result.theme-dark .review-facts div { border-color: #2d2d2d; background: #151515; }
 .portfolio-result.theme-dark .portfolio-contribution-panel { border-color: rgba(255,255,255,.1); background: #0d0d0d; }
 .portfolio-result.theme-dark .contribution-heading strong, .portfolio-result.theme-dark .contribution-item b, .portfolio-result.theme-dark .contribution-symbol { color: #e5e7eb; }
