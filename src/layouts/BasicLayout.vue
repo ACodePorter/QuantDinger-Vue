@@ -1150,7 +1150,7 @@ export default {
             }
 
             .social-icon-svg {
-              width: 15x;
+              width: 15px;
               height: 15px;
               color: currentColor;
             }

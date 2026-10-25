@@ -2817,7 +2817,6 @@ export default {
     .password-field {
       ::v-deep .secret-masked-input {
         -webkit-text-security: disc;
-        text-security: disc;
         font-family: text-security-disc, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
