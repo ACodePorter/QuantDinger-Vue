@@ -398,6 +398,9 @@
                     <p class="universe-sync-capacity">{{ $t('settings.universeSync.capacity', universeExecutionLimits) }}</p>
                   </div>
                   <div class="universe-sync-actions">
+                    <a-button icon="plus" @click="openSystemUniverseCreate">
+                      {{ $t('settings.universeSync.add') }}
+                    </a-button>
                     <label>
                       <span>{{ $t('settings.universeSync.historyStart') }}</span>
                       <a-date-picker
@@ -414,14 +417,45 @@
                 </div>
                 <a-spin :spinning="universeLoading">
                   <a-checkbox-group v-model="selectedUniverseCodes" class="universe-sync-list">
-                    <div v-for="item in systemUniverseRows" :key="item.id" class="universe-sync-row">
-                      <a-checkbox v-if="syncableUniverseCodes.includes(item.code)" :value="item.code" />
+                    <div v-for="item in systemUniverseRows" :key="item.id" class="universe-sync-row" :class="{ 'is-hidden': item.status === 'hidden' }">
+                      <a-checkbox
+                        v-if="syncableUniverseCodes.includes(item.code)"
+                        :value="item.code"
+                        :disabled="item.status === 'hidden'"
+                      />
                       <span v-else class="universe-checkbox-spacer" />
                       <div class="universe-sync-name"><strong>{{ universeAdminLabel(item) }}</strong><span>{{ item.market }}</span></div>
                       <div><span>{{ $t('settings.universeSync.members') }}</span><strong>{{ Number(item.member_count || 0).toLocaleString() }}</strong></div>
                       <div><span>{{ $t('settings.universeSync.version') }}</span><strong>{{ item.source_version || universeSnapshotDate(item) }}</strong></div>
                       <div><span>{{ $t('settings.universeSync.historyFrom') }}</span><strong>{{ universeHistoryLabel(item) }}</strong></div>
-                      <a-tag :color="universeCapacityColor(item)">{{ universeCapacityLabel(item) }}</a-tag>
+                      <div class="universe-row-state">
+                        <a-tag v-if="item.status === 'hidden'" color="default">{{ $t('settings.universeSync.hidden') }}</a-tag>
+                        <a-tag :color="universeCapacityColor(item)">{{ universeCapacityLabel(item) }}</a-tag>
+                      </div>
+                      <div class="universe-row-actions">
+                        <a-tooltip :title="$t('settings.universeSync.edit')">
+                          <a-button type="link" icon="edit" @click="openSystemUniverseEdit(item)" />
+                        </a-tooltip>
+                        <a-tooltip :title="item.status === 'hidden' ? $t('settings.universeSync.show') : $t('settings.universeSync.hide')">
+                          <a-button
+                            type="link"
+                            :icon="item.status === 'hidden' ? 'eye' : 'eye-invisible'"
+                            :loading="universeVisibilityId === item.id"
+                            @click="toggleSystemUniverseVisibility(item)"
+                          />
+                        </a-tooltip>
+                        <a-popconfirm
+                          :title="$t('settings.universeSync.deleteConfirm', { name: universeAdminLabel(item) })"
+                          :ok-text="$t('settings.universeSync.delete')"
+                          :cancel-text="$t('settings.universeSync.cancel')"
+                          ok-type="danger"
+                          @confirm="removeSystemUniverse(item)"
+                        >
+                          <a-tooltip :title="$t('settings.universeSync.delete')">
+                            <a-button type="link" class="universe-delete-button" icon="delete" :loading="universeDeletingId === item.id" />
+                          </a-tooltip>
+                        </a-popconfirm>
+                      </div>
                     </div>
                   </a-checkbox-group>
                 </a-spin>
@@ -876,13 +910,81 @@
         {{ $t('settings.save') }}
       </a-button>
     </div>
+
+    <a-modal
+      v-model="systemUniverseEditorVisible"
+      :title="editingSystemUniverseId ? $t('settings.universeSync.editTitle') : $t('settings.universeSync.addTitle')"
+      :confirm-loading="systemUniverseSaving"
+      :ok-text="$t('settings.universeSync.save')"
+      :cancel-text="$t('settings.universeSync.cancel')"
+      width="680px"
+      @ok="saveSystemUniverse"
+      @cancel="resetSystemUniverseEditor"
+    >
+      <div class="system-universe-form">
+        <div class="system-universe-form-grid">
+          <label>
+            <span>{{ $t('settings.universeSync.name') }}</span>
+            <a-input v-model="systemUniverseForm.name" :max-length="160" />
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.code') }}</span>
+            <a-input v-model="systemUniverseForm.code" :disabled="Boolean(editingSystemUniverseId)" :max-length="80" />
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.market') }}</span>
+            <a-select v-model="systemUniverseForm.market">
+              <a-select-option v-for="market in systemUniverseMarkets" :key="market" :value="market">
+                {{ $t(`universeManager.market.${market}`) }}
+              </a-select-option>
+            </a-select>
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.type') }}</span>
+            <a-select v-model="systemUniverseForm.universeType">
+              <a-select-option v-for="type in systemUniverseTypes" :key="type" :value="type">
+                {{ $t(`settings.universeSync.type.${type}`) }}
+              </a-select-option>
+            </a-select>
+          </label>
+          <label>
+            <span>{{ $t('settings.universeSync.memberEffectiveFrom') }}</span>
+            <a-date-picker
+              v-model="systemUniverseForm.historyFrom"
+              :allow-clear="false"
+              :disabled-date="disabledUniverseHistoryDate"
+            />
+          </label>
+        </div>
+        <label class="system-universe-members-field">
+          <span>
+            {{ $t('settings.universeSync.memberSymbols') }}
+            <small>{{ systemUniverseMemberCount.toLocaleString() }} / {{ systemUniverseMemberLimit.toLocaleString() }}</small>
+          </span>
+          <a-textarea
+            v-model="systemUniverseForm.memberText"
+            :rows="12"
+            :placeholder="$t('settings.universeSync.memberPlaceholder')"
+          />
+        </label>
+        <p class="system-universe-form-hint">{{ $t('settings.universeSync.memberHint') }}</p>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script>
 import { getSettingsSchema, getSettingsValues, saveSettings, getOpenRouterBalance, getMarketCatalogOverview, syncMarketCatalog } from '@/api/settings'
 import { getMarketModules } from '@/api/marketModules'
-import { getSystemUniverseOverview, syncSystemUniverses } from '@/api/universe'
+import {
+  createSystemUniverse,
+  deleteSystemUniverse,
+  getSystemUniverseOverview,
+  getUniverseMembers,
+  setSystemUniverseVisibility,
+  syncSystemUniverses,
+  updateSystemUniverse
+} from '@/api/universe'
 import { deleteAdminMembershipPlan, getAdminMembershipPlans, saveAdminMembershipPlans } from '@/api/billing'
 import { baseMixin } from '@/store/app-mixin'
 import FundamentalSyncPanel from './FundamentalSyncPanel.vue'
@@ -918,6 +1020,21 @@ export default {
       universeOverview: null,
       selectedUniverseCodes: [],
       universeHistoryFrom: moment().subtract(3, 'years').startOf('year'),
+      systemUniverseEditorVisible: false,
+      systemUniverseSaving: false,
+      editingSystemUniverseId: 0,
+      universeVisibilityId: 0,
+      universeDeletingId: 0,
+      systemUniverseMarkets: ['USStock', 'HKStock', 'CNStock', 'Crypto'],
+      systemUniverseTypes: ['index', 'etf', 'market_cap', 'market', 'industry', 'manual'],
+      systemUniverseForm: {
+        name: '',
+        code: '',
+        market: 'USStock',
+        universeType: 'index',
+        historyFrom: moment().subtract(3, 'years').startOf('year'),
+        memberText: ''
+      },
       selectedLlmProvider: '',
       billingPlans: [],
       billingPlansSaving: false,
@@ -1090,6 +1207,12 @@ export default {
         standard: Number(limits.standard || 600).toLocaleString(),
         daily: Number(limits.daily || 1200).toLocaleString()
       }
+    },
+    systemUniverseMemberCount () {
+      return this.parseSystemUniverseMemberText(this.systemUniverseForm.memberText).length
+    },
+    systemUniverseMemberLimit () {
+      return Number(this.universeExecutionLimits.daily || 1200)
     },
     catalogStatusType () {
       const status = this.catalogLatest && this.catalogLatest.status
@@ -1425,13 +1548,125 @@ export default {
     disabledUniverseHistoryDate (current) {
       return current && current.endOf('day').isAfter(moment().endOf('day'))
     },
+    parseSystemUniverseMemberText (value) {
+      const seen = new Set()
+      return String(value || '')
+        .split(/[\n,;]+/)
+        .map(symbol => symbol.trim())
+        .filter(symbol => {
+          const key = symbol.toUpperCase()
+          if (!symbol || seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+    },
+    resetSystemUniverseEditor () {
+      this.editingSystemUniverseId = 0
+      this.systemUniverseForm = {
+        name: '',
+        code: '',
+        market: 'USStock',
+        universeType: 'index',
+        historyFrom: this.universeHistoryFrom ? this.universeHistoryFrom.clone() : moment().subtract(3, 'years').startOf('year'),
+        memberText: ''
+      }
+    },
+    openSystemUniverseCreate () {
+      this.resetSystemUniverseEditor()
+      this.systemUniverseEditorVisible = true
+    },
+    async openSystemUniverseEdit (item) {
+      this.universeLoading = true
+      try {
+        const res = await getUniverseMembers(item.id)
+        const payload = (res && res.data) || {}
+        this.editingSystemUniverseId = item.id
+        this.systemUniverseForm = {
+          name: item.name || item.code,
+          code: item.code,
+          market: item.market,
+          universeType: item.universe_type || 'manual',
+          historyFrom: moment(item.history_from || moment().format('YYYY-MM-DD')),
+          memberText: (payload.members || []).map(member => member.symbol).join('\n')
+        }
+        this.systemUniverseEditorVisible = true
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.memberLoadFailed'))
+      } finally {
+        this.universeLoading = false
+      }
+    },
+    async saveSystemUniverse () {
+      const name = this.systemUniverseForm.name.trim()
+      const code = this.systemUniverseForm.code.trim()
+      const symbols = this.parseSystemUniverseMemberText(this.systemUniverseForm.memberText)
+      if (!name || (!this.editingSystemUniverseId && !code) || !symbols.length) {
+        this.$message.warning(this.$t('settings.universeSync.requiredFields'))
+        return
+      }
+      if (symbols.length > this.systemUniverseMemberLimit) {
+        this.$message.warning(this.$t('settings.universeSync.memberLimit', { limit: this.systemUniverseMemberLimit.toLocaleString() }))
+        return
+      }
+      const data = {
+        name,
+        code,
+        market: this.systemUniverseForm.market,
+        universeType: this.systemUniverseForm.universeType,
+        historyFrom: this.systemUniverseForm.historyFrom.format('YYYY-MM-DD'),
+        members: symbols.map(symbol => ({ market: this.systemUniverseForm.market, symbol }))
+      }
+      this.systemUniverseSaving = true
+      try {
+        if (this.editingSystemUniverseId) await updateSystemUniverse(this.editingSystemUniverseId, data)
+        else await createSystemUniverse(data)
+        this.$message.success(this.$t('settings.universeSync.saved'))
+        this.systemUniverseEditorVisible = false
+        this.resetSystemUniverseEditor()
+        await this.refreshUniverseOverview()
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.saveFailed'))
+      } finally {
+        this.systemUniverseSaving = false
+      }
+    },
+    async toggleSystemUniverseVisibility (item) {
+      this.universeVisibilityId = item.id
+      try {
+        const visible = item.status === 'hidden'
+        await setSystemUniverseVisibility(item.id, visible)
+        this.selectedUniverseCodes = this.selectedUniverseCodes.filter(code => code !== item.code)
+        this.$message.success(this.$t(visible ? 'settings.universeSync.shown' : 'settings.universeSync.hiddenSuccess'))
+        await this.refreshUniverseOverview()
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.visibilityFailed'))
+      } finally {
+        this.universeVisibilityId = 0
+      }
+    },
+    async removeSystemUniverse (item) {
+      this.universeDeletingId = item.id
+      try {
+        await deleteSystemUniverse(item.id)
+        this.selectedUniverseCodes = this.selectedUniverseCodes.filter(code => code !== item.code)
+        this.$message.success(this.$t('settings.universeSync.deleted'))
+        await this.refreshUniverseOverview()
+      } catch (error) {
+        this.$message.error((error && error.backendMessage) || this.$t('settings.universeSync.deleteFailed'))
+      } finally {
+        this.universeDeletingId = 0
+      }
+    },
     async refreshUniverseOverview () {
       this.universeLoading = !this.universeOverview
       try {
         const res = await getSystemUniverseOverview()
         if (res.code === 1) {
           this.universeOverview = res.data
-          if (!this.selectedUniverseCodes.length) this.selectedUniverseCodes = [...(res.data.syncable_codes || [])]
+          if (!this.selectedUniverseCodes.length) {
+            const visibleCodes = new Set((res.data.universes || []).filter(item => item.status === 'active').map(item => item.code))
+            this.selectedUniverseCodes = (res.data.syncable_codes || []).filter(code => visibleCodes.has(code))
+          }
         }
       } finally {
         this.universeLoading = false
@@ -3075,7 +3310,7 @@ export default {
   }
   .universe-sync-row {
     display: grid;
-    grid-template-columns: 24px minmax(180px, 1fr) 120px minmax(180px, 220px) 140px 110px;
+    grid-template-columns: 24px minmax(170px, 1fr) 100px minmax(150px, 200px) 130px minmax(100px, auto) 112px;
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
@@ -3084,11 +3319,32 @@ export default {
     background: #fff;
   }
   .universe-checkbox-spacer { width: 16px; }
+  .universe-sync-row.is-hidden { opacity: 0.66; }
   .universe-sync-name,
   .universe-sync-row > div { display: flex; min-width: 0; flex-direction: column; }
   .universe-sync-row span { color: #8c8c8c; font-size: 11px; }
   .universe-sync-row strong { overflow: hidden; color: #1f2937; text-overflow: ellipsis; white-space: nowrap; }
-  .universe-sync-row > .ant-tag { width: max-content; max-width: 110px; justify-self: end; }
+  .universe-row-state { align-items: flex-start; gap: 3px; }
+  .universe-row-state .ant-tag { margin: 0; }
+  .universe-row-actions { flex-direction: row !important; justify-content: flex-end; }
+  .universe-row-actions .ant-btn { padding: 0 7px; }
+  .universe-delete-button { color: #ff4d4f; }
+}
+
+.system-universe-form {
+  .system-universe-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  label { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+  label > span { color: #596579; font-size: 12px; font-weight: 600; }
+  .ant-select,
+  .ant-calendar-picker { width: 100%; }
+  .system-universe-members-field { margin-top: 16px; }
+  .system-universe-members-field > span { display: flex; justify-content: space-between; }
+  .system-universe-members-field small { color: #8c8c8c; font-weight: 400; }
+  .system-universe-form-hint { margin: 7px 0 0; color: #8c8c8c; font-size: 12px; }
 }
 
 .theme-dark .market-catalog-panel {
@@ -3165,6 +3421,7 @@ export default {
     background: #101010;
     border-color: rgba(255, 255, 255, 0.1);
   }
+  ::v-deep .system-universe-form label > span { color: #b8c0cc; }
 }
 
 @media (max-width: 768px) {
@@ -3174,7 +3431,8 @@ export default {
     .universe-sync-actions { width: 100%; align-items: stretch; flex-direction: column; }
     .catalog-stats ::v-deep .ant-statistic { margin-bottom: 12px; }
     .universe-sync-row { grid-template-columns: 24px minmax(0, 1fr) auto; }
-    .universe-sync-row > div:not(.universe-sync-name) { display: none; }
+    .universe-sync-row > div:not(.universe-sync-name):not(.universe-row-actions) { display: none; }
+    .system-universe-form .system-universe-form-grid { grid-template-columns: 1fr; }
   }
 }
 
