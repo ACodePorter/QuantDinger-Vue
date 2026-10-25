@@ -207,6 +207,17 @@ test('downside risk and advanced benchmark metrics render with legacy-result gua
   assert.match(portfolioResultSource, /color-mix\(in srgb, var\(--analysis-accent\)/)
 })
 
+test('risk analysis defaults to compact previews and expands full diagnostics on demand', () => {
+  assert.match(portfolioResultSource, /riskAnalysisExpanded: false/)
+  assert.match(portfolioResultSource, /benchmarkAnalysisExpanded: false/)
+  assert.match(portfolioResultSource, /v-if="!riskAnalysisExpanded" class="benchmark-analysis-preview"/)
+  assert.match(portfolioResultSource, /riskMetricCards\.slice\(0, 3\)/)
+  assert.match(portfolioResultSource, /v-if="riskAnalysisExpanded" class="benchmark-analysis-grid"/)
+  assert.match(portfolioResultSource, /v-if="!benchmarkAnalysisExpanded" class="benchmark-analysis-preview"/)
+  assert.match(portfolioResultSource, /benchmarkMetricCards\.slice\(0, 3\)/)
+  assert.match(portfolioResultSource, /v-if="benchmarkAnalysisExpanded"/)
+})
+
 test('backtests default to the latest completed date and reject today in the picker', () => {
   assert.match(source, /const latestCompleteDate = moment\(\)\.subtract\(1, 'day'\)\.startOf\('day'\)/)
   assert.match(source, /endDate: latestCompleteDate/)

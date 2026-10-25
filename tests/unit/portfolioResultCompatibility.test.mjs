@@ -24,6 +24,14 @@ test('restored legacy details are disclosed in the result trust bar', () => {
   assert.match(source, /strategyV2\.backtest\.legacyBackfillHint/)
 })
 
+test('rebalance history distinguishes strategy batches from risk exits', () => {
+  assert.match(source, /dataIndex: 'recordType'/)
+  assert.match(source, /strategyV2\.backtest\.recordReason\./)
+  assert.match(source, /_rowKey: `\$\{row\.time \|\| 'execution'\}:\$\{index\}`/)
+  assert.match(source, /this\.result\.protectionEvents/)
+  assert.match(source, /row\.recordType = 'protection'/)
+})
+
 test('completed-trade table uses the shared compact scrollbar treatment', () => {
   assert.match(source, /class="completed-trades-table"/)
   assert.match(source, /\.completed-trades-table \/deep\/ \.ant-table-body::\-webkit-scrollbar \{ width: 6px; height: 6px; \}/)

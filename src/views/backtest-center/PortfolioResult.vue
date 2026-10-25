@@ -53,9 +53,23 @@
 
     <section v-if="hasDownsideRiskAnalysis" class="benchmark-analysis-card risk-analysis-card">
       <div class="benchmark-analysis-heading">
-        <div>
+        <button
+          type="button"
+          class="benchmark-analysis-toggle"
+          :aria-expanded="riskAnalysisExpanded ? 'true' : 'false'"
+          :aria-label="$t('strategyV2.backtest.riskMetrics.title')"
+          @click="riskAnalysisExpanded = !riskAnalysisExpanded">
+          <a-icon :type="riskAnalysisExpanded ? 'down' : 'right'" />
+        </button>
+        <div class="benchmark-analysis-title">
           <h3>{{ $t('strategyV2.backtest.riskMetrics.title') }}</h3>
-          <p>{{ $t('strategyV2.backtest.riskMetrics.subtitle') }}</p>
+          <p v-if="riskAnalysisExpanded">{{ $t('strategyV2.backtest.riskMetrics.subtitle') }}</p>
+        </div>
+        <div v-if="!riskAnalysisExpanded" class="benchmark-analysis-preview">
+          <span v-for="item in riskMetricCards.slice(0, 3)" :key="item.key">
+            <small>{{ item.label }}</small>
+            <strong :class="item.tone">{{ item.value }}</strong>
+          </span>
         </div>
         <div class="benchmark-analysis-meta">
           <a-tag class="analysis-accent-tag">
@@ -63,7 +77,7 @@
           </a-tag>
         </div>
       </div>
-      <div class="benchmark-analysis-grid">
+      <div v-if="riskAnalysisExpanded" class="benchmark-analysis-grid">
         <article v-for="item in riskMetricCards" :key="item.key" class="benchmark-analysis-metric">
           <span>
             {{ item.label }}
@@ -77,9 +91,23 @@
 
     <section v-if="hasBenchmarkRelativeAnalysis" class="benchmark-analysis-card">
       <div class="benchmark-analysis-heading">
-        <div>
+        <button
+          type="button"
+          class="benchmark-analysis-toggle"
+          :aria-expanded="benchmarkAnalysisExpanded ? 'true' : 'false'"
+          :aria-label="$t('strategyV2.backtest.benchmarkMetrics.title')"
+          @click="benchmarkAnalysisExpanded = !benchmarkAnalysisExpanded">
+          <a-icon :type="benchmarkAnalysisExpanded ? 'down' : 'right'" />
+        </button>
+        <div class="benchmark-analysis-title">
           <h3>{{ $t('strategyV2.backtest.benchmarkMetrics.title') }}</h3>
-          <p>{{ $t('strategyV2.backtest.benchmarkMetrics.subtitle') }}</p>
+          <p v-if="benchmarkAnalysisExpanded">{{ $t('strategyV2.backtest.benchmarkMetrics.subtitle') }}</p>
+        </div>
+        <div v-if="!benchmarkAnalysisExpanded" class="benchmark-analysis-preview">
+          <span v-for="item in benchmarkMetricCards.slice(0, 3)" :key="item.key">
+            <small>{{ item.label }}</small>
+            <strong :class="item.tone">{{ item.value }}</strong>
+          </span>
         </div>
         <div class="benchmark-analysis-meta">
           <a-tag class="analysis-accent-tag">
@@ -93,20 +121,9 @@
           </a-tooltip>
         </div>
       </div>
-      <div class="benchmark-analysis-grid">
-        <article v-for="item in benchmarkMetricCards" :key="item.key" class="benchmark-analysis-metric">
-          <span>
-            {{ item.label }}
-            <a-tooltip :title="item.hint"><a-icon type="info-circle" /></a-tooltip>
-          </span>
-          <strong :class="item.tone">{{ item.value }}</strong>
-          <small>{{ item.detail }}</small>
-        </article>
-      </div>
-      <template v-if="hasAdvancedBenchmarkMetrics">
-        <h4 class="benchmark-analysis-subheading">{{ $t('strategyV2.backtest.benchmarkMetrics.advancedTitle') }}</h4>
-        <div class="benchmark-analysis-grid benchmark-analysis-grid--advanced">
-          <article v-for="item in advancedBenchmarkMetricCards" :key="item.key" class="benchmark-analysis-metric">
+      <template v-if="benchmarkAnalysisExpanded">
+        <div class="benchmark-analysis-grid">
+          <article v-for="item in benchmarkMetricCards" :key="item.key" class="benchmark-analysis-metric">
             <span>
               {{ item.label }}
               <a-tooltip :title="item.hint"><a-icon type="info-circle" /></a-tooltip>
@@ -115,8 +132,21 @@
             <small>{{ item.detail }}</small>
           </article>
         </div>
+        <template v-if="hasAdvancedBenchmarkMetrics">
+          <h4 class="benchmark-analysis-subheading">{{ $t('strategyV2.backtest.benchmarkMetrics.advancedTitle') }}</h4>
+          <div class="benchmark-analysis-grid benchmark-analysis-grid--advanced">
+            <article v-for="item in advancedBenchmarkMetricCards" :key="item.key" class="benchmark-analysis-metric">
+              <span>
+                {{ item.label }}
+                <a-tooltip :title="item.hint"><a-icon type="info-circle" /></a-tooltip>
+              </span>
+              <strong :class="item.tone">{{ item.value }}</strong>
+              <small>{{ item.detail }}</small>
+            </article>
+          </div>
+        </template>
+        <p class="benchmark-analysis-note">{{ $t('strategyV2.backtest.benchmarkMetrics.assumption') }}</p>
       </template>
-      <p class="benchmark-analysis-note">{{ $t('strategyV2.backtest.benchmarkMetrics.assumption') }}</p>
     </section>
 
     <section class="chart-card">
@@ -211,7 +241,7 @@
           v-else
           :columns="rebalanceColumns"
           :data-source="rebalanceRows"
-          :row-key="row => row.time"
+          :row-key="row => row._rowKey"
           size="small"
           :pagination="{ pageSize: 8 }"
           :scroll="{ x: 1100 }" />
@@ -403,6 +433,8 @@ export default {
       resizeObserver: null,
       activeReviewSymbol: '',
       reviewMarkerTimer: null,
+      riskAnalysisExpanded: false,
+      benchmarkAnalysisExpanded: false,
       orderStatuses: ['filled', 'partial', 'deferred', 'rejected']
     }
   },
@@ -740,7 +772,29 @@ export default {
       const rows = snapshots.length ? snapshots : (this.result.equityCurve || [])
       return rows[rows.length - 1] || {}
     },
-    rebalanceRows () { return this.result.rebalanceRecords || [] },
+    rebalanceRows () {
+      const protectionReasons = (this.result.protectionEvents || []).reduce((groups, event) => {
+        const time = String((event && event.time) || '')
+        if (!groups[time]) groups[time] = []
+        groups[time].push(event.reason)
+        return groups
+      }, {})
+      const rows = (this.result.rebalanceRecords || []).map((row, index) => ({
+        ...row,
+        _rowKey: `${row.time || 'execution'}:${index}`
+      }))
+      for (let index = rows.length - 1; index >= 0; index -= 1) {
+        const row = rows[index]
+        if (row.recordType) continue
+        const reasons = protectionReasons[String(row.time || '')] || []
+        const hasNonZeroTarget = Object.values(row.targetWeights || {}).some(value => Math.abs(Number(value || 0)) > 1e-12)
+        if (!hasNonZeroTarget && reasons.length) {
+          row.recordType = 'protection'
+          row.reasons = [reasons.pop()]
+        }
+      }
+      return rows
+    },
     holdingRows () {
       return (this.result.holdingSnapshots || []).flatMap(snapshot => Object.keys(snapshot.positions || {}).map(symbol => ({ time: snapshot.time, symbol, ...snapshot.positions[symbol], cash: snapshot.cash, grossExposure: snapshot.grossExposure, netExposure: snapshot.netExposure }))).reverse()
     },
@@ -909,6 +963,7 @@ export default {
     rebalanceColumns () {
       return [
         { title: this.$t('strategyV2.backtest.time'), dataIndex: 'time', width: 170, customRender: this.formatDate },
+        { title: this.$t('strategyV2.backtest.recordType'), dataIndex: 'recordType', width: 130, customRender: (value, row) => this.formatRebalanceType(value, row) },
         { title: this.$t('strategyV2.backtest.targetWeights'), dataIndex: 'targetWeights', width: 240, customRender: this.formatWeights },
         { title: this.$t('strategyV2.backtest.actualWeights'), dataIndex: 'actualWeights', width: 240, customRender: this.formatWeights },
         { title: this.$t('strategyV2.backtest.turnover'), dataIndex: 'turnover', customRender: this.formatRate },
@@ -1203,6 +1258,16 @@ export default {
       const translated = this.$t(key)
       return translated === key ? String(value) : translated
     },
+    formatRebalanceType (value, row) {
+      const type = value || 'rebalance'
+      const reasons = Array.isArray(row && row.reasons) ? row.reasons : []
+      const reason = type === 'protection' && reasons.length === 1 ? reasons[0] : ''
+      const reasonKey = reason ? `strategyV2.backtest.recordReason.${reason}` : ''
+      const typeKey = `strategyV2.backtest.recordType.${type}`
+      const label = reasonKey && this.$te(reasonKey) ? this.$t(reasonKey) : this.$t(typeKey)
+      const color = { protection: 'orange', liquidation: 'red', rebalance: 'blue' }[type] || 'default'
+      return this.$createElement('a-tag', { props: { color } }, label)
+    },
     formatPercent (value, signed = true) { const number = Number(value || 0); return `${signed && number > 0 ? '+' : ''}${number.toFixed(2)}%` },
     formatPercentagePointValue (value) { const number = Number(value || 0); return `${number > 0 ? '+' : ''}${number.toFixed(2)}` },
     formatNullablePercent (value, signed = true) { return value === null || value === undefined ? '-' : this.formatPercent(value, signed) },
@@ -1269,21 +1334,29 @@ export default {
 .negative { color: #dc2626 !important; }
 .neutral { color: #94a3b8 !important; }
 .chart-card, .trade-review-card { margin-top: 10px; padding: 12px; border: 1px solid #e5e9ee; border-radius: 8px; background: #fff; }
-.benchmark-analysis-card { --analysis-accent: var(--primary-color, #1890ff); order: 4; margin-top: 10px; padding: 14px; border: 1px solid color-mix(in srgb, var(--analysis-accent) 24%, #e5e9ee); border-left: 3px solid var(--analysis-accent); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--analysis-accent) 4%, #fff) 0%, #fff 100%); }
+.benchmark-analysis-card { --analysis-accent: var(--primary-color, #1890ff); order: 4; margin-top: 8px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--analysis-accent) 24%, #e5e9ee); border-left: 3px solid var(--analysis-accent); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--analysis-accent) 4%, #fff) 0%, #fff 100%); }
 .risk-analysis-card { --analysis-accent: var(--primary-color, #1890ff); }
-.benchmark-analysis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.benchmark-analysis-heading { display: flex; align-items: center; gap: 10px; min-height: 30px; }
+.benchmark-analysis-toggle { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; outline: none; background: transparent; color: var(--analysis-accent); cursor: pointer; transition: background .15s ease; }
+.benchmark-analysis-toggle:hover, .benchmark-analysis-toggle:focus-visible { background: color-mix(in srgb, var(--analysis-accent) 10%, transparent); }
+.benchmark-analysis-title { flex: 0 1 430px; min-width: 170px; }
 .benchmark-analysis-heading h3 { margin: 0; color: #20324a; font-size: 14px; }
 .benchmark-analysis-heading p, .benchmark-analysis-note { margin: 3px 0 0; color: #7c8ca1; font-size: 11px; }
-.benchmark-analysis-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-.benchmark-analysis-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.benchmark-analysis-subheading { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e5edf6; color: #334155; font-size: 12px; }
-.benchmark-analysis-grid--advanced { margin-top: 8px; }
-.benchmark-analysis-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 12px; min-width: 0; padding: 10px 11px; border: 1px solid #e5edf6; border-radius: 7px; background: rgba(255, 255, 255, .86); }
+.benchmark-analysis-preview { display: grid; flex: 1; grid-template-columns: repeat(3, minmax(90px, 1fr)); align-items: center; min-width: 0; }
+.benchmark-analysis-preview > span { display: flex; align-items: baseline; justify-content: flex-end; gap: 8px; min-width: 0; padding: 0 14px; border-right: 1px solid #e5edf6; }
+.benchmark-analysis-preview > span:last-child { border-right: 0; }
+.benchmark-analysis-preview small { overflow: hidden; color: #7c8ca1; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.benchmark-analysis-preview strong { flex: none; color: #20324a; font-size: 14px; font-variant-numeric: tabular-nums; }
+.benchmark-analysis-meta { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto; }
+.benchmark-analysis-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 9px; }
+.benchmark-analysis-subheading { margin: 10px 0 0; padding-top: 9px; border-top: 1px solid #e5edf6; color: #334155; font-size: 11px; }
+.benchmark-analysis-grid--advanced { margin-top: 6px; }
+.benchmark-analysis-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; min-width: 0; padding: 7px 9px; border: 1px solid #e5edf6; border-radius: 6px; background: rgba(255, 255, 255, .86); }
 .benchmark-analysis-metric > span { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .benchmark-analysis-metric .anticon { margin-left: 4px; cursor: help; }
-.benchmark-analysis-metric strong { grid-row: 1 / 3; grid-column: 2; align-self: center; color: #20324a; font-size: 18px; font-variant-numeric: tabular-nums; }
+.benchmark-analysis-metric strong { grid-row: 1 / 3; grid-column: 2; align-self: center; color: #20324a; font-size: 15px; font-variant-numeric: tabular-nums; }
 .benchmark-analysis-metric small { overflow: hidden; color: #94a3b8; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.benchmark-analysis-note { margin-top: 10px; }
+.benchmark-analysis-note { margin-top: 7px; }
 .benchmark-analysis-meta /deep/ .analysis-accent-tag { border-color: color-mix(in srgb, var(--analysis-accent) 34%, transparent); color: var(--analysis-accent); background: color-mix(in srgb, var(--analysis-accent) 8%, transparent); }
 .chart-card { order: 5; }
 .trade-review-card { order: 6; }
@@ -1360,8 +1433,10 @@ export default {
 .audit-summary span { color: #7c8ca1; font-size: 11px; }
 .portfolio-result.theme-dark .metrics-grid, .portfolio-result.theme-dark .assumption-strip { border-color: #2d2d2d; }
 .portfolio-result.theme-dark .benchmark-analysis-card { border-color: color-mix(in srgb, var(--analysis-accent) 30%, #2d2d2d); border-left-color: var(--analysis-accent); background: linear-gradient(135deg, color-mix(in srgb, var(--analysis-accent) 7%, #101010) 0%, #101010 72%); }
-.portfolio-result.theme-dark .benchmark-analysis-heading h3, .portfolio-result.theme-dark .benchmark-analysis-metric strong { color: #e8e8e8; }
+.portfolio-result.theme-dark .benchmark-analysis-heading h3, .portfolio-result.theme-dark .benchmark-analysis-metric strong, .portfolio-result.theme-dark .benchmark-analysis-preview strong { color: #e8e8e8; }
 .portfolio-result.theme-dark .benchmark-analysis-heading p, .portfolio-result.theme-dark .benchmark-analysis-note, .portfolio-result.theme-dark .benchmark-analysis-metric > span { color: #8c8c8c; }
+.portfolio-result.theme-dark .benchmark-analysis-preview > span { border-right-color: #303030; }
+.portfolio-result.theme-dark .benchmark-analysis-preview small { color: #8c8c8c; }
 .portfolio-result.theme-dark .benchmark-analysis-metric { border-color: #303030; background: #171717; }
 .portfolio-result.theme-dark .benchmark-analysis-metric small, .portfolio-result.theme-dark .benchmark-analysis-metric .anticon { color: #737373; }
 .portfolio-result.theme-dark .benchmark-analysis-subheading { border-top-color: #303030; color: #bfbfbf; }
@@ -1389,7 +1464,8 @@ export default {
 .portfolio-result.theme-dark .result-trustbar /deep/ .trust-tag--warning { border-color: #664d03; background: rgba(250, 173, 20, .18); color: #ffe58f; }
 @media (max-width: 1500px) { .metrics-grid { grid-template-columns: repeat(6, minmax(95px, 1fr)); } .assumption-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .metrics-grid, .overview-grid, .status-grid, .assumption-strip { grid-template-columns: repeat(2, 1fr); } .metrics-grid .metric-card, .assumption-strip div { border-right: 0; border-bottom: 1px solid #e5e9ee; } }
-@media (max-width: 900px) { .benchmark-analysis-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .benchmark-analysis-heading { flex-direction: column; } .benchmark-analysis-meta { justify-content: flex-start; } }
+@media (max-width: 1280px) { .benchmark-analysis-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .benchmark-analysis-preview > span:nth-child(3) { display: none; } .benchmark-analysis-preview { grid-template-columns: repeat(2, minmax(90px, 1fr)); } }
+@media (max-width: 900px) { .benchmark-analysis-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .benchmark-analysis-preview { display: none; } .benchmark-analysis-title { flex: 1; } .benchmark-analysis-meta { justify-content: flex-end; } }
 @media (max-width: 560px) { .benchmark-analysis-grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .review-facts { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1150px) { .contribution-list { grid-template-columns: 1fr; } }
